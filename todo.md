@@ -32,3 +32,7 @@
 - [x] Documentar evidências da validação responsiva e da revisão dos fluxos autenticados confirmadas pelo usuário.
 - [x] Implementar resumo diário na página inicial com alertas visuais de vencimento das tarefas.
 - [x] Implementar importação de contatos por CSV com validação, relatório de resultado e modelo de planilha para download.
+- [x] Implementar deduplicação por e-mail e telefone em Python/Flask durante a importação CSV.
+- [x] Exibir no relatório de importação os contatos importados, duplicados e os motivos de duplicidade.
+- [x] Configurar o runtime de produção com Python e Flask sem alterar a execução do servidor Node principal.
+- [x] Retornar e exibir a lista nominal de contatos importados no relatório de CSV.

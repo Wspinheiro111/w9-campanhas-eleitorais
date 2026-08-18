@@ -236,6 +236,11 @@ export async function createVotersBatch(input: (typeof voters.$inferInsert)[]) {
   return input.length;
 }
 
+export async function listContactIdentifiers(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ email: voters.email, phone: voters.phone }).from(voters).where(eq(voters.campaignId, campaignId));
+}
+
 export async function getVoter(voterId: number) {
   const db = requireDb(await getDb());
   const rows = await db.select().from(voters).where(eq(voters.id, voterId)).limit(1);

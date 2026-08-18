@@ -4,6 +4,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import * as db from "../campaignDb";
 import { canAccessOwnedRecord, canManageCampaign, canManageTeam, CampaignRole } from "../campaignPolicy";
 import { parseContactsCsv } from "../csvContacts";
+import { deduplicateWithFlask } from "../flaskDeduplication";
 
 const campaignIdInput = z.object({ campaignId: z.number().int().positive() });
 const memberRoles = ["admin", "coordinator", "partner"] as const;
@@ -111,10 +112,12 @@ export const votersRouter = router({
   importCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     const parsed = parseContactsCsv(input.csv);
-    if (parsed.errors.length) return { imported: 0, errors: parsed.errors };
+    if (parsed.errors.length) return { imported: 0, errors: parsed.errors, duplicates: [], importedContacts: [] };
     const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
-    const imported = await db.createVotersBatch(parsed.rows.map(row => ({ ...row, campaignId: input.campaignId, ownerMemberId })));
-    return { imported, errors: [] };
+    const existing = await db.listContactIdentifiers(input.campaignId);
+    const deduplicated = await deduplicateWithFlask({ existing, incoming: parsed.rows.map((row, index) => ({ ...row, row: index + 2 })) });
+    const imported = await db.createVotersBatch(deduplicated.accepted.map(({ row: _row, ...row }) => ({ ...row, campaignId: input.campaignId, ownerMemberId })));
+    return { imported, errors: [], duplicates: deduplicated.duplicates, importedContacts: deduplicated.accepted.map(contact => ({ row: contact.row, name: contact.name, email: contact.email, phone: contact.phone })) };
   }),
   addInteraction: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), type: z.enum(["visit", "phone", "whatsapp", "event", "audio", "other"]), notes: z.string().min(2).max(3000), happenedAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
     const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });

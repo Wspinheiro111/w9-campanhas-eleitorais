@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 vi.mock("./campaignDb", () => ({
   getCampaignAccess: vi.fn(),
   getDailySummary: vi.fn(),
+  listContactIdentifiers: vi.fn(),
   createVotersBatch: vi.fn(),
 }));
 
@@ -31,10 +32,11 @@ describe("resumo diário e importação CSV", () => {
 
   it("importa somente CSV válido e consentido", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
+    vi.mocked(db.listContactIdentifiers).mockResolvedValue([]);
     vi.mocked(db.createVotersBatch).mockResolvedValue(1);
     const caller = appRouter.createCaller(context());
     const result = await caller.voters.importCsv({ campaignId: 1, csv: "nome;telefone;consentimento\nAna Silva;51999990000;Sim" });
-    expect(result).toEqual({ imported: 1, errors: [] });
+    expect(result).toEqual({ imported: 1, errors: [], duplicates: [], importedContacts: [{ row: 2, name: "Ana Silva", email: null, phone: "51999990000" }] });
     expect(db.createVotersBatch).toHaveBeenCalledWith([expect.objectContaining({ campaignId: 1, name: "Ana Silva", contactConsent: true })]);
   });
 
