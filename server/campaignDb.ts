@@ -241,6 +241,16 @@ export async function listContactIdentifiers(campaignId: number) {
   return db.select({ email: voters.email, phone: voters.phone }).from(voters).where(eq(voters.campaignId, campaignId));
 }
 
+export async function listImportContacts(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ id: voters.id, name: voters.name, email: voters.email, phone: voters.phone, neighborhood: voters.neighborhood }).from(voters).where(eq(voters.campaignId, campaignId));
+}
+
+export async function updateVoterFromImport(voterId: number, input: Omit<typeof voters.$inferInsert, "id" | "campaignId" | "ownerMemberId">) {
+  const db = requireDb(await getDb());
+  await db.update(voters).set(input).where(eq(voters.id, voterId));
+}
+
 export async function getVoter(voterId: number) {
   const db = requireDb(await getDb());
   const rows = await db.select().from(voters).where(eq(voters.id, voterId)).limit(1);

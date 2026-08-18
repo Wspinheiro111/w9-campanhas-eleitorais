@@ -109,15 +109,30 @@ export const votersRouter = router({
     const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
     return { id: await db.createVoter({ ...input, phone: input.phone ?? null, email: input.email ?? null, address: input.address ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, contactProfile: input.contactProfile ?? null, primaryDemand: input.primaryDemand ?? null, notes: input.notes ?? null, ownerMemberId }) };
   }),
-  importCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000) })).mutation(async ({ ctx, input }) => {
+  previewCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     const parsed = parseContactsCsv(input.csv);
-    if (parsed.errors.length) return { imported: 0, errors: parsed.errors, duplicates: [], importedContacts: [] };
-    const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
-    const existing = await db.listContactIdentifiers(input.campaignId);
+    if (parsed.errors.length) return { errors: parsed.errors, newContacts: [], updates: [], candidates: [] };
+    const existing = await db.listImportContacts(input.campaignId);
     const deduplicated = await deduplicateWithFlask({ existing, incoming: parsed.rows.map((row, index) => ({ ...row, row: index + 2 })) });
-    const imported = await db.createVotersBatch(deduplicated.accepted.map(({ row: _row, ...row }) => ({ ...row, campaignId: input.campaignId, ownerMemberId })));
-    return { imported, errors: [], duplicates: deduplicated.duplicates, importedContacts: deduplicated.accepted.map(contact => ({ row: contact.row, name: contact.name, email: contact.email, phone: contact.phone })) };
+    return { errors: [], ...deduplicated };
+  }),
+  commitCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000), approvedUpdateRows: z.array(z.number().int().min(2)).max(1000), approvedCandidateRows: z.array(z.number().int().min(2)).max(1000) })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId);
+    const parsed = parseContactsCsv(input.csv);
+    if (parsed.errors.length) return { imported: 0, updated: 0, skippedCandidates: 0, errors: parsed.errors, importedContacts: [], updatedContacts: [] };
+    const existing = await db.listImportContacts(input.campaignId);
+    const review = await deduplicateWithFlask({ existing, incoming: parsed.rows.map((row, index) => ({ ...row, row: index + 2 })) });
+    const byRow = new Map(review.newContacts.map(row => [row.row, row]));
+    const sourceRows = new Map(parsed.rows.map((row, index) => [index + 2, { ...row, row: index + 2 }]));
+    const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
+    const candidateRows = review.candidates.filter(item => input.approvedCandidateRows.includes(item.row)).map(item => sourceRows.get(item.row)).filter((row): row is NonNullable<typeof row> => Boolean(row));
+    const rowsToCreate = [...Array.from(byRow.values()), ...candidateRows];
+    const recordsToCreate = rowsToCreate.map(({ row: _row, ...row }) => ({ ...row, campaignId: input.campaignId, ownerMemberId }));
+    const imported = await db.createVotersBatch(recordsToCreate);
+    const updates = review.updates.filter(item => input.approvedUpdateRows.includes(item.row) && item.existing).map(item => ({ item, row: sourceRows.get(item.row) })).filter((value): value is { item: typeof review.updates[number]; row: NonNullable<typeof value.row> } => Boolean(value.row));
+    await Promise.all(updates.map(({ item, row }) => db.updateVoterFromImport(item.existing!.id, { name: row.name, phone: row.phone, email: row.email, address: row.address, neighborhood: row.neighborhood, region: row.region, contactProfile: row.contactProfile, engagementLevel: row.engagementLevel, primaryDemand: row.primaryDemand, notes: row.notes, contactConsent: true, doNotContact: false })));
+    return { imported, updated: updates.length, skippedCandidates: review.candidates.length - candidateRows.length, errors: [], importedContacts: recordsToCreate.map((contact, index) => ({ row: rowsToCreate[index].row, name: contact.name, email: contact.email, phone: contact.phone })), updatedContacts: updates.map(({ item, row }) => ({ row: row.row, name: row.name, existingId: item.existing!.id })) };
   }),
   addInteraction: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), type: z.enum(["visit", "phone", "whatsapp", "event", "audio", "other"]), notes: z.string().min(2).max(3000), happenedAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
     const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });

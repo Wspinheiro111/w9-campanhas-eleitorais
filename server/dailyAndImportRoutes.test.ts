@@ -4,8 +4,9 @@ import type { TrpcContext } from "./_core/context";
 vi.mock("./campaignDb", () => ({
   getCampaignAccess: vi.fn(),
   getDailySummary: vi.fn(),
-  listContactIdentifiers: vi.fn(),
+  listImportContacts: vi.fn(),
   createVotersBatch: vi.fn(),
+  updateVoterFromImport: vi.fn(),
 }));
 
 import * as db from "./campaignDb";
@@ -30,21 +31,45 @@ describe("resumo diário e importação CSV", () => {
     expect(db.getDailySummary).toHaveBeenCalledWith(1, null);
   });
 
-  it("importa somente CSV válido e consentido", async () => {
+  it("gera uma prévia de contatos novos sem persistir dados", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
-    vi.mocked(db.listContactIdentifiers).mockResolvedValue([]);
-    vi.mocked(db.createVotersBatch).mockResolvedValue(1);
+    vi.mocked(db.listImportContacts).mockResolvedValue([]);
     const caller = appRouter.createCaller(context());
-    const result = await caller.voters.importCsv({ campaignId: 1, csv: "nome;telefone;consentimento\nAna Silva;51999990000;Sim" });
-    expect(result).toEqual({ imported: 1, errors: [], duplicates: [], importedContacts: [{ row: 2, name: "Ana Silva", email: null, phone: "51999990000" }] });
-    expect(db.createVotersBatch).toHaveBeenCalledWith([expect.objectContaining({ campaignId: 1, name: "Ana Silva", contactConsent: true })]);
+    const result = await caller.voters.previewCsv({ campaignId: 1, csv: "nome;telefone;consentimento\nAna Silva;51999990000;Sim" });
+    expect(result.newContacts).toEqual([expect.objectContaining({ row: 2, name: "Ana Silva" })]);
+    expect(db.createVotersBatch).not.toHaveBeenCalled();
   });
 
-  it("não persiste contatos quando o CSV contém dados inválidos", async () => {
+  it("atualiza apenas o contato existente aprovado pelo usuário", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
+    vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 8, name: "Ana Antiga", email: "ana@example.com", phone: null, neighborhood: "Centro" }]);
+    vi.mocked(db.createVotersBatch).mockResolvedValue(0);
+    vi.mocked(db.updateVoterFromImport).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(context());
+    const result = await caller.voters.commitCsv({ campaignId: 1, csv: "nome;email;bairro;consentimento\nAna Nova;ana@example.com;Centro;Sim", approvedUpdateRows: [2], approvedCandidateRows: [] });
+    expect(result.updated).toBe(1);
+    expect(db.updateVoterFromImport).toHaveBeenCalledWith(8, expect.objectContaining({ name: "Ana Nova", email: "ana@example.com" }));
+  });
+
+  it("só cria possível duplicidade por nome e bairro quando ela é aprovada", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
+    vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 15, name: "Carla", email: null, phone: null, neighborhood: "Norte" }]);
+    vi.mocked(db.createVotersBatch).mockResolvedValue(0);
+    const caller = appRouter.createCaller(context());
+    const csv = "nome;bairro;consentimento\nCarla;Norte;Sim";
+    const withoutApproval = await caller.voters.commitCsv({ campaignId: 1, csv, approvedUpdateRows: [], approvedCandidateRows: [] });
+    expect(withoutApproval).toMatchObject({ imported: 0, skippedCandidates: 1 });
+    expect(db.createVotersBatch).toHaveBeenCalledWith([]);
+    vi.mocked(db.createVotersBatch).mockResolvedValue(1);
+    const withApproval = await caller.voters.commitCsv({ campaignId: 1, csv, approvedUpdateRows: [], approvedCandidateRows: [2] });
+    expect(withApproval.imported).toBe(1);
+    expect(db.createVotersBatch).toHaveBeenLastCalledWith([expect.objectContaining({ name: "Carla", campaignId: 1 })]);
+  });
+
+  it("não permite aplicar dados inválidos", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
     const caller = appRouter.createCaller(context());
-    const result = await caller.voters.importCsv({ campaignId: 1, csv: "nome;email;consentimento\nAna;invalido;Não" });
-    expect(result.imported).toBe(0);
+    const result = await caller.voters.previewCsv({ campaignId: 1, csv: "nome;email;consentimento\nAna;invalido;Não" });
     expect(result.errors).toHaveLength(2);
     expect(db.createVotersBatch).not.toHaveBeenCalled();
   });

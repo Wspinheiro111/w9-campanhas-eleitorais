@@ -36,3 +36,6 @@
 - [x] Exibir no relatório de importação os contatos importados, duplicados e os motivos de duplicidade.
 - [x] Configurar o runtime de produção com Python e Flask sem alterar a execução do servidor Node principal.
 - [x] Retornar e exibir a lista nominal de contatos importados no relatório de CSV.
+- [x] Atualizar automaticamente contatos existentes quando houver duplicidade confirmada por e-mail ou telefone.
+- [x] Detectar possíveis duplicidades por nome e bairro e exigir decisão manual antes de concluir a importação.
+- [x] Implementar uma etapa de prévia e confirmação para aplicar atualizações e criar contatos não duplicados.

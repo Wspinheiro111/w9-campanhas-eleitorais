@@ -2,11 +2,12 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import type { ContactImportRow } from "./csvContacts";
 
-type ContactIdentifier = { email: string | null; phone: string | null };
-export type DuplicateContact = { row: number; name: string; reasons: string[] };
-export type DeduplicationResult = { accepted: Array<ContactImportRow & { row: number }>; duplicates: DuplicateContact[] };
+export type ImportContact = ContactImportRow & { row: number };
+export type ExistingContact = { id: number; name: string; email: string | null; phone: string | null; neighborhood: string | null };
+export type ImportReviewItem = { row: number; name: string; existing: ExistingContact | null; reasons: string[] };
+export type DeduplicationResult = { newContacts: ImportContact[]; updates: ImportReviewItem[]; candidates: ImportReviewItem[] };
 
-export function deduplicateWithFlask(input: { existing: ContactIdentifier[]; incoming: Array<ContactImportRow & { row: number }> }): Promise<DeduplicationResult> {
+export function deduplicateWithFlask(input: { existing: ExistingContact[]; incoming: ImportContact[] }): Promise<DeduplicationResult> {
   return new Promise((resolve, reject) => {
     const servicePath = path.resolve(process.cwd(), "python/deduplication_service.py");
     const child = spawn("python3", [servicePath], { stdio: ["pipe", "pipe", "pipe"] });

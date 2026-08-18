@@ -26,6 +26,8 @@ No módulo **Contatos**, use **Modelo CSV** para baixar a estrutura de planilha 
 
 Antes de salvar contatos válidos, o servidor encaminha somente os identificadores necessários ao serviço Python/Flask de deduplicação. E-mails são comparados sem distinção entre maiúsculas e minúsculas; telefones são comparados somente pelos dígitos. O serviço ignora duplicidades que já existam na campanha e também duplicidades no próprio arquivo, informando a linha e o motivo no relatório. Os contatos não duplicados seguem para o cadastro em lote; ao final, o relatório exibe também a lista nominal e a linha de origem de cada contato importado.
 
+A importação agora possui duas etapas. Primeiro, a plataforma apresenta uma **prévia** sem alterar a base. Correspondências exatas por e-mail ou telefone são oferecidas como atualizações do contato existente e já vêm selecionadas, mas podem ser desmarcadas antes da aplicação. Correspondências apenas por nome e bairro são tratadas como possíveis duplicidades: ficam desmarcadas por padrão e só são criadas se o operador as aprovar explicitamente. Assim, não há atualização ou criação baseada em coincidência aproximada sem decisão humana.
+
 ## Validação técnica
 
 Antes de disponibilizar uma nova versão, execute `pnpm check`, `pnpm test` e `pnpm build`. A suíte atual cobre logout, regras de perfil, bloqueios de contratos e cenários de edição da campanha, agenda, indicadores, tarefas, histórico de interações e acesso ao processamento de áudio.
