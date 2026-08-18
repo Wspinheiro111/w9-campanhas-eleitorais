@@ -3,6 +3,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import * as db from "../campaignDb";
 import { canAccessOwnedRecord, canManageCampaign, canManageTeam, CampaignRole } from "../campaignPolicy";
+import { parseContactsCsv } from "../csvContacts";
 
 const campaignIdInput = z.object({ campaignId: z.number().int().positive() });
 const memberRoles = ["admin", "coordinator", "partner"] as const;
@@ -41,6 +42,10 @@ export const dashboardRouter = router({
   summary: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     return db.getDashboardData(input.campaignId, access.member?.role === "partner" ? access.member.id : null);
+  }),
+  dailySummary: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId);
+    return db.getDailySummary(input.campaignId, access.member?.role === "partner" ? access.member.id : null);
   }),
 });
 
@@ -102,6 +107,14 @@ export const votersRouter = router({
     const access = await requireAccess(ctx.user.id, input.campaignId);
     const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
     return { id: await db.createVoter({ ...input, phone: input.phone ?? null, email: input.email ?? null, address: input.address ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, contactProfile: input.contactProfile ?? null, primaryDemand: input.primaryDemand ?? null, notes: input.notes ?? null, ownerMemberId }) };
+  }),
+  importCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000) })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId);
+    const parsed = parseContactsCsv(input.csv);
+    if (parsed.errors.length) return { imported: 0, errors: parsed.errors };
+    const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
+    const imported = await db.createVotersBatch(parsed.rows.map(row => ({ ...row, campaignId: input.campaignId, ownerMemberId })));
+    return { imported, errors: [] };
   }),
   addInteraction: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), type: z.enum(["visit", "phone", "whatsapp", "event", "audio", "other"]), notes: z.string().min(2).max(3000), happenedAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
     const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });

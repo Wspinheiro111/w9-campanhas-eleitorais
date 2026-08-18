@@ -30,3 +30,5 @@
 - [x] Validar manualmente a interface em breakpoints mobile, tablet e desktop.
 - [x] Revisar os fluxos principais autenticados de dashboard, equipe, agenda, tarefas, contatos, monitoramento, IA e relatórios.
 - [x] Documentar evidências da validação responsiva e da revisão dos fluxos autenticados confirmadas pelo usuário.
+- [x] Implementar resumo diário na página inicial com alertas visuais de vencimento das tarefas.
+- [x] Implementar importação de contatos por CSV com validação, relatório de resultado e modelo de planilha para download.

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, lte, ne, or, sql } from "drizzle-orm";
 import {
   aiMessages,
   audioCrmLogs,
@@ -116,6 +116,26 @@ export async function getDashboardData(campaignId: number, memberId?: number | n
   };
 }
 
+export async function getDailySummary(campaignId: number, memberId?: number | null) {
+  const db = requireDb(await getDb());
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(start); tomorrow.setDate(tomorrow.getDate() + 1);
+  const horizon = new Date(start); horizon.setDate(horizon.getDate() + 4);
+  const scope = memberId ? and(eq(tasks.campaignId, campaignId), eq(tasks.assignedToId, memberId)) : eq(tasks.campaignId, campaignId);
+  const dueScope = and(scope, ne(tasks.status, "done"), lte(tasks.dueAt, horizon));
+  const [dueTasks, todayEvents] = await Promise.all([
+    db.select({ task: tasks, assignee: campaignMembers }).from(tasks).leftJoin(campaignMembers, eq(tasks.assignedToId, campaignMembers.id)).where(dueScope).orderBy(tasks.dueAt),
+    db.select().from(events).where(and(eq(events.campaignId, campaignId), gte(events.startsAt, start), lt(events.startsAt, tomorrow))).orderBy(events.startsAt),
+  ]);
+  return {
+    date: start,
+    overdue: dueTasks.filter(item => item.task.dueAt && item.task.dueAt < start),
+    dueToday: dueTasks.filter(item => item.task.dueAt && item.task.dueAt >= start && item.task.dueAt < tomorrow),
+    upcoming: dueTasks.filter(item => item.task.dueAt && item.task.dueAt >= tomorrow),
+    todayEvents,
+  };
+}
+
 export async function listMembers(campaignId: number) {
   const db = requireDb(await getDb());
   return db.select().from(campaignMembers).where(eq(campaignMembers.campaignId, campaignId)).orderBy(desc(campaignMembers.createdAt));
@@ -207,6 +227,13 @@ export async function createVoter(input: typeof voters.$inferInsert) {
   const db = requireDb(await getDb());
   const result = await db.insert(voters).values(input);
   return Number(result[0].insertId);
+}
+
+export async function createVotersBatch(input: (typeof voters.$inferInsert)[]) {
+  if (!input.length) return 0;
+  const db = requireDb(await getDb());
+  await db.insert(voters).values(input);
+  return input.length;
 }
 
 export async function getVoter(voterId: number) {
