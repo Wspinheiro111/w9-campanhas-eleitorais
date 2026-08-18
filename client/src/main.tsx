@@ -14,6 +14,10 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
+  // Em pré-visualizações incorporadas, um redirecionamento OAuth sem gesto do usuário
+  // pode entrar em ciclo. O DashboardLayout apresenta o botão de acesso explícito.
+  if (window.self !== window.top) return;
+
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
 
   if (!isUnauthorized) return;
@@ -79,3 +83,9 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </trpc.Provider>
 );
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker.register("/sw.js");
+  });
+}

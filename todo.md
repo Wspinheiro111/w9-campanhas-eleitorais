@@ -1,0 +1,29 @@
+# Project TODO
+
+- [x] Criar a fundação visual sofisticada, responsiva e acessível da plataforma.
+- [x] Implementar o dashboard com métricas, tarefas pendentes, próximos eventos e atividades recentes.
+- [x] Modelar e implementar a gestão de candidatos, equipe, responsabilidades e papéis de acesso.
+- [x] Implementar autenticação protegida e autorização rigorosa para perfis administrador e usuário.
+- [x] Implementar o planejamento de agenda eleitoral com criação, edição e visualização de compromissos.
+- [x] Implementar gestão de metas e tarefas com responsável, prazo, prioridade, status e visualizações em lista e kanban.
+- [x] Implementar cadastro, segmentação e histórico de interações de eleitores por bairro, região e perfil.
+- [x] Integrar a geração de conteúdos de campanha por IA no servidor, sem exposição de chaves no cliente.
+- [x] Implementar chat de IA com foco em apoio estratégico à campanha.
+- [x] Implementar monitoramento de ocorrências, feedbacks de campo e indicadores.
+- [x] Implementar relatórios de desempenho, atividades e progresso de metas, com exportação.
+- [x] Criar testes automatizados dos contratos, permissões e principais regras de negócio.
+- [ ] Validar a interface em diferentes tamanhos de tela e revisar os fluxos principais.
+- [x] Documentar as configurações de uso e criar a versão final do projeto.
+- [x] Implementar fluxo mobile de áudio para CRM com transcrição no servidor, extração estruturada e confirmação de consentimento.
+- [x] Configurar manifesto e base de instalação progressiva para uso móvel.
+- [x] Implementar edição dos dados da campanha e do candidato vinculados ao ambiente administrativo.
+- [x] Adicionar edição de eventos existentes na agenda.
+- [x] Permitir selecionar o responsável ao criar tarefas.
+- [x] Adicionar interface de histórico de interações dos contatos.
+- [x] Implementar gestão de indicadores para alimentar o monitoramento e o dashboard.
+- [x] Ampliar os testes automatizados para contratos e fluxos críticos do servidor.
+- [x] Adicionar testes dos fluxos críticos de edição, indicadores, tarefas, interações e processamento de áudio.
+- [x] Cobrir cenários de acesso permitido e negado por papel nos routers principais.
+- [x] Ampliar a cobertura RBAC dos módulos de equipe, agenda, painel, tarefas, relatórios, eleitores e monitoramento.
+- [x] Complementar testes RBAC positivos e negativos de equipe, monitoramento, painel e relatórios.
+- [x] Cobrir bloqueios de acesso ao painel e ao monitoramento quando não houver vínculo válido com a campanha.

@@ -1,0 +1,27 @@
+import { AIChatBox, Message } from "@/components/AIChatBox";
+import { CampaignGate, PageHeader } from "@/components/CampaignShell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useCampaign } from "@/contexts/CampaignContext";
+import { trpc } from "@/lib/trpc";
+import { Clipboard, Sparkles, WandSparkles } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Streamdown } from "streamdown";
+
+function AIStudioContent() {
+  const { activeCampaign } = useCampaign();
+  const { data: history, refetch } = trpc.ai.history.useQuery({ campaignId: activeCampaign!.id });
+  const [draft, setDraft] = useState({ format: "post" as "post" | "roteiro" | "nota" | "convite", subject: "", objective: "", tone: "institucional" as "institucional" | "próximo" | "informativo" });
+  const [content, setContent] = useState("");
+  const messages: Message[] = useMemo(() => (history ?? []).slice().reverse().map(item => ({ role: item.role, content: item.content })), [history]);
+  const chat = trpc.ai.chat.useMutation({ onSuccess: () => void refetch(), onError: error => toast.error(error.message) });
+  const generate = trpc.ai.generateContent.useMutation({ onSuccess: result => { setContent(result.content); toast.success("Material gerado para revisão."); }, onError: error => toast.error(error.message) });
+  return <><PageHeader eyebrow="Assistência inteligente" title="W9 Inteligência" description="Use o Gemini no servidor para apoiar organização, planejamento e produção de materiais institucionais com revisão humana." />
+    <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[#c9a85b]/30 bg-[#c9a85b]/10 p-4 text-sm leading-6 text-[#66511d]"><Sparkles className="mt-0.5 size-4 shrink-0" /><p>O assistente trabalha com orientações de conformidade: não usa informações pessoais para persuasão individualizada, não inventa fatos e sinaliza quando uma revisão jurídica é indicada.</p></div>
+    <div className="grid gap-6 xl:grid-cols-[1.05fr_.95fr]"><section><div className="mb-3"><p className="font-semibold">Assistente de estratégia</p><p className="mt-1 text-xs text-muted-foreground">Converse sobre agenda, organização, priorização e cenários operacionais.</p></div><AIChatBox messages={messages} onSendMessage={message => chat.mutate({ campaignId: activeCampaign!.id, message })} isLoading={chat.isPending} height="560px" placeholder="Ex.: Como estruturar a pauta da reunião da equipe?" emptyStateMessage="Comece uma conversa para organizar a campanha." suggestedPrompts={["Ajude a montar uma pauta para a reunião de coordenação.", "Como priorizar tarefas atrasadas sem perder qualidade?", "Sugira um roteiro para registrar feedbacks de campo."]} /></section>
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-[0_12px_28px_-24px_rgba(0,0,0,.6)]"><div className="flex items-center gap-2"><WandSparkles className="size-5 text-primary" /><div><p className="font-semibold">Gerador de materiais</p><p className="mt-1 text-xs text-muted-foreground">Crie rascunhos institucionais para revisão antes de qualquer publicação.</p></div></div><div className="mt-6 grid gap-4"><div className="space-y-2"><Label>Formato</Label><select value={draft.format} onChange={event => setDraft({ ...draft, format: event.target.value as typeof draft.format })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="post">Post para redes</option><option value="roteiro">Roteiro</option><option value="nota">Nota institucional</option><option value="convite">Convite</option></select></div><div className="space-y-2"><Label>Assunto</Label><Input value={draft.subject} onChange={event => setDraft({ ...draft, subject: event.target.value })} placeholder="Ex.: prestação de contas da agenda semanal" /></div><div className="space-y-2"><Label>Objetivo</Label><Textarea value={draft.objective} onChange={event => setDraft({ ...draft, objective: event.target.value })} placeholder="Qual informação a comunicação deve transmitir?" /></div><div className="space-y-2"><Label>Tom</Label><select value={draft.tone} onChange={event => setDraft({ ...draft, tone: event.target.value as typeof draft.tone })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="institucional">Institucional</option><option value="próximo">Próximo</option><option value="informativo">Informativo</option></select></div><Button disabled={!draft.subject || !draft.objective || generate.isPending} onClick={() => generate.mutate({ campaignId: activeCampaign!.id, ...draft })}>{generate.isPending ? "Gerando..." : <><Sparkles className="mr-2 size-4" />Gerar rascunho</>}</Button></div>{content && <div className="mt-6 rounded-xl border border-border bg-muted/35 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Rascunho para revisão</p><Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard.writeText(content); toast.success("Texto copiado."); }}><Clipboard className="mr-2 size-3" />Copiar</Button></div><div className="prose prose-sm max-w-none text-foreground"><Streamdown>{content}</Streamdown></div></div>}</section></div></>;
+}
+export default function AIStudio() { return <CampaignGate><AIStudioContent /></CampaignGate>; }
