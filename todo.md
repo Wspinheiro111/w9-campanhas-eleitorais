@@ -51,3 +51,9 @@
 - [x] Adicionar links de materiais de campanha e versões aprovadas à biblioteca de conteúdos.
 - [x] Incluir metas na comparação de desempenho por período no backend e na interface de relatórios.
 - [x] Normalizar bairro e região em eventos e ocorrências para exibição territorial agregada e mapeável.
+- [ ] Implementar filtros territoriais por período e responsável no mapa de operação.
+- [ ] Permitir anexar arquivos diretamente aos materiais da biblioteca de conteúdos.
+- [ ] Implementar automações de follow-up por etapa do pipeline com acompanhamento de status.
+- [ ] Configurar alertas externos por prazo de follow-up e preferências de destinatários.
+- [ ] Criar documento profissional em PDF para apresentação do W9 Campanhas e suas funcionalidades.
+- [x] Criar versão comercial em PDF do W9 Campanhas para prospecção de clientes políticos.
