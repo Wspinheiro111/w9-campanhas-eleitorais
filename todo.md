@@ -12,7 +12,7 @@
 - [x] Implementar monitoramento de ocorrências, feedbacks de campo e indicadores.
 - [x] Implementar relatórios de desempenho, atividades e progresso de metas, com exportação.
 - [x] Criar testes automatizados dos contratos, permissões e principais regras de negócio.
-- [ ] Validar a interface em diferentes tamanhos de tela e revisar os fluxos principais.
+- [x] Validar a interface em diferentes tamanhos de tela e revisar os fluxos principais.
 - [x] Documentar as configurações de uso e criar a versão final do projeto.
 - [x] Implementar fluxo mobile de áudio para CRM com transcrição no servidor, extração estruturada e confirmação de consentimento.
 - [x] Configurar manifesto e base de instalação progressiva para uso móvel.
@@ -27,3 +27,6 @@
 - [x] Ampliar a cobertura RBAC dos módulos de equipe, agenda, painel, tarefas, relatórios, eleitores e monitoramento.
 - [x] Complementar testes RBAC positivos e negativos de equipe, monitoramento, painel e relatórios.
 - [x] Cobrir bloqueios de acesso ao painel e ao monitoramento quando não houver vínculo válido com a campanha.
+- [x] Validar manualmente a interface em breakpoints mobile, tablet e desktop.
+- [x] Revisar os fluxos principais autenticados de dashboard, equipe, agenda, tarefas, contatos, monitoramento, IA e relatórios.
+- [x] Documentar evidências da validação responsiva e da revisão dos fluxos autenticados confirmadas pelo usuário.
