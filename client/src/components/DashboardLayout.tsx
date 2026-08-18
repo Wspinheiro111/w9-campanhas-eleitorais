@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { BarChart3, Bot, CalendarDays, CheckSquare, ContactRound, LayoutDashboard, LogOut, Mic, PanelLeft, Radar, ShieldCheck, UsersRound } from "lucide-react";
+import { BarChart3, BookOpenText, Bot, CalendarDays, CheckSquare, ContactRound, LayoutDashboard, LogOut, MapPinned, Mic, PanelLeft, Radar, ShieldCheck, UsersRound } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -16,6 +16,10 @@ const menuItems = [
   { icon: CalendarDays, label: "Agenda", path: "/agenda" },
   { icon: CheckSquare, label: "Tarefas", path: "/tarefas" },
   { icon: ContactRound, label: "Contatos", path: "/contatos" },
+  { icon: UsersRound, label: "Pipeline", path: "/pipeline" },
+  { icon: MapPinned, label: "Território", path: "/territorio" },
+  { icon: UsersRound, label: "Desempenho", path: "/equipe/desempenho" },
+  { icon: BookOpenText, label: "Conteúdos", path: "/conteudos" },
   { icon: Mic, label: "Áudio para CRM", path: "/audio-crm" },
   { icon: Radar, label: "Monitoramento", path: "/monitoramento" },
   { icon: Bot, label: "W9 Inteligência", path: "/inteligencia" },

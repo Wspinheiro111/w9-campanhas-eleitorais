@@ -3,6 +3,7 @@ import {
   aiMessages,
   audioCrmLogs,
   campaignIndicators,
+  campaignContents,
   campaignMembers,
   campaigns,
   events,
@@ -249,6 +250,82 @@ export async function listImportContacts(campaignId: number) {
 export async function updateVoterFromImport(voterId: number, input: Omit<typeof voters.$inferInsert, "id" | "campaignId" | "ownerMemberId">) {
   const db = requireDb(await getDb());
   await db.update(voters).set(input).where(eq(voters.id, voterId));
+}
+
+export async function updateVoterPipeline(voterId: number, pipelineStage: "identified" | "approached" | "engaged" | "mobilized") {
+  const db = requireDb(await getDb());
+  await db.update(voters).set({ pipelineStage }).where(eq(voters.id, voterId));
+}
+
+export async function getTerritoryData(campaignId: number) {
+  const db = requireDb(await getDb());
+  const [contactRows, eventRows, incidentRows] = await Promise.all([
+    db.select({ region: voters.region, neighborhood: voters.neighborhood, contacts: sql<number>`count(*)` }).from(voters).where(eq(voters.campaignId, campaignId)).groupBy(voters.region, voters.neighborhood),
+    db.select({ region: events.region, neighborhood: events.neighborhood, total: sql<number>`count(*)` }).from(events).where(eq(events.campaignId, campaignId)).groupBy(events.region, events.neighborhood),
+    db.select({ region: fieldIncidents.region, neighborhood: fieldIncidents.neighborhood, total: sql<number>`count(*)` }).from(fieldIncidents).where(eq(fieldIncidents.campaignId, campaignId)).groupBy(fieldIncidents.region, fieldIncidents.neighborhood),
+  ]);
+  return { territories: contactRows.map(row => ({ ...row, contacts: Number(row.contacts ?? 0) })), events: eventRows.map(row => ({ ...row, total: Number(row.total ?? 0) })), incidents: incidentRows.map(row => ({ ...row, total: Number(row.total ?? 0) })) };
+}
+
+export async function getTeamPerformance(campaignId: number) {
+  const db = requireDb(await getDb());
+  const [members, taskRows, eventRows] = await Promise.all([
+    db.select().from(campaignMembers).where(and(eq(campaignMembers.campaignId, campaignId), eq(campaignMembers.active, true))),
+    db.select().from(tasks).where(eq(tasks.campaignId, campaignId)),
+    db.select().from(events).where(eq(events.campaignId, campaignId)),
+  ]);
+  return members.map(member => {
+    const memberTasks = taskRows.filter(task => task.assignedToId === member.id);
+    return { member, tasks: memberTasks.length, completed: memberTasks.filter(task => task.status === "done").length, inProgress: memberTasks.filter(task => task.status === "in_progress").length, goals: new Set(memberTasks.map(task => task.goalId).filter(Boolean)).size, events: eventRows.filter(event => event.responsibleId === member.id).length };
+  });
+}
+
+export async function listCampaignContents(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignContents).where(eq(campaignContents.campaignId, campaignId)).orderBy(desc(campaignContents.updatedAt));
+}
+
+export async function createCampaignContent(input: typeof campaignContents.$inferInsert) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(campaignContents).values(input);
+  return Number(result[0].insertId);
+}
+
+export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "version" | "channel" | "status">) {
+  const db = requireDb(await getDb());
+  await db.update(campaignContents).set(input).where(eq(campaignContents.id, id));
+}
+
+export async function getContentById(id: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(campaignContents).where(eq(campaignContents.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPublicCampaign(campaignId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ id: campaigns.id, name: campaigns.name, candidateName: campaigns.candidateName, electionLabel: campaigns.electionLabel, region: campaigns.region, status: campaigns.status }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
+  return rows[0] && ["planning", "active"].includes(rows[0].status) ? rows[0] : null;
+}
+
+export async function getComparativeReport(campaignId: number, startsAt: Date, endsAt: Date) {
+  const db = requireDb(await getDb());
+  const previousStart = new Date(startsAt.getTime() - Math.max(1, endsAt.getTime() - startsAt.getTime()));
+  const previousEnd = new Date(startsAt.getTime() - 1);
+  const [contactsNow, contactsBefore, tasksNow, tasksBefore, eventsNow, eventsBefore, incidentsNow, incidentsBefore, goalsNow, goalsBefore] = await Promise.all([
+    db.select({ total: sql<number>`count(*)` }).from(voters).where(and(eq(voters.campaignId, campaignId), gte(voters.createdAt, startsAt), lte(voters.createdAt, endsAt))),
+    db.select({ total: sql<number>`count(*)` }).from(voters).where(and(eq(voters.campaignId, campaignId), gte(voters.createdAt, previousStart), lte(voters.createdAt, previousEnd))),
+    db.select({ total: sql<number>`count(*)` }).from(tasks).where(and(eq(tasks.campaignId, campaignId), gte(tasks.createdAt, startsAt), lte(tasks.createdAt, endsAt))),
+    db.select({ total: sql<number>`count(*)` }).from(tasks).where(and(eq(tasks.campaignId, campaignId), gte(tasks.createdAt, previousStart), lte(tasks.createdAt, previousEnd))),
+    db.select({ total: sql<number>`count(*)` }).from(events).where(and(eq(events.campaignId, campaignId), gte(events.startsAt, startsAt), lte(events.startsAt, endsAt))),
+    db.select({ total: sql<number>`count(*)` }).from(events).where(and(eq(events.campaignId, campaignId), gte(events.startsAt, previousStart), lte(events.startsAt, previousEnd))),
+    db.select({ total: sql<number>`count(*)` }).from(fieldIncidents).where(and(eq(fieldIncidents.campaignId, campaignId), gte(fieldIncidents.occurredAt, startsAt), lte(fieldIncidents.occurredAt, endsAt))),
+    db.select({ total: sql<number>`count(*)` }).from(fieldIncidents).where(and(eq(fieldIncidents.campaignId, campaignId), gte(fieldIncidents.occurredAt, previousStart), lte(fieldIncidents.occurredAt, previousEnd))),
+    db.select({ total: sql<number>`count(*)` }).from(goals).where(and(eq(goals.campaignId, campaignId), gte(goals.createdAt, startsAt), lte(goals.createdAt, endsAt))),
+    db.select({ total: sql<number>`count(*)` }).from(goals).where(and(eq(goals.campaignId, campaignId), gte(goals.createdAt, previousStart), lte(goals.createdAt, previousEnd))),
+  ]);
+  const normalize = (current: { total: number }[], previous: { total: number }[]) => ({ current: Number(current[0]?.total ?? 0), previous: Number(previous[0]?.total ?? 0) });
+  return { startsAt, endsAt, previousStart, previousEnd, contacts: normalize(contactsNow, contactsBefore), tasks: normalize(tasksNow, tasksBefore), events: normalize(eventsNow, eventsBefore), incidents: normalize(incidentsNow, incidentsBefore), goals: normalize(goalsNow, goalsBefore) };
 }
 
 export async function getVoter(voterId: number) {

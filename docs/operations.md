@@ -28,6 +28,18 @@ Antes de salvar contatos válidos, o servidor encaminha somente os identificador
 
 A importação agora possui duas etapas. Primeiro, a plataforma apresenta uma **prévia** sem alterar a base. Correspondências exatas por e-mail ou telefone são oferecidas como atualizações do contato existente e já vêm selecionadas, mas podem ser desmarcadas antes da aplicação. Correspondências apenas por nome e bairro são tratadas como possíveis duplicidades: ficam desmarcadas por padrão e só são criadas se o operador as aprovar explicitamente. Assim, não há atualização ou criação baseada em coincidência aproximada sem decisão humana.
 
+## Território, pipeline e desempenho
+
+O módulo **Território** consolida contatos por bairro e região e posiciona marcadores agregados no mapa quando houver registros geográficos. Ao cadastrar ou editar eventos e ocorrências, preencha também os campos de bairro e região: esses dados estruturados definem os marcadores e as listas territoriais. O módulo **Pipeline** organiza os contatos nas etapas identificado, abordado, engajado e mobilizado; parceiros somente movimentam contatos sob sua responsabilidade. Em **Desempenho**, a coordenação acompanha tarefas, conclusões, objetivos vinculados e eventos por integrante.
+
+## Formulário público e QR Code
+
+Em **Contatos**, selecione **Formulário público** para copiar o link ou compartilhar o QR Code. Campanhas em planejamento ou ativas podem receber cadastros públicos, sempre com consentimento obrigatório. Os novos contatos entram na etapa inicial do pipeline e não recebem responsável automático.
+
+## Biblioteca e comparativos
+
+A **Biblioteca de conteúdos** reúne textos, roteiros e links de materiais, identificados por canal, versão e status de aprovação. O módulo **Relatórios** permite comparar contatos, tarefas, metas, eventos e ocorrências em um intervalo com o período anterior de mesma duração.
+
 ## Validação técnica
 
 Antes de disponibilizar uma nova versão, execute `pnpm check`, `pnpm test` e `pnpm build`. A suíte atual cobre logout, regras de perfil, bloqueios de contratos e cenários de edição da campanha, agenda, indicadores, tarefas, histórico de interações e acesso ao processamento de áudio.

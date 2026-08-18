@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { aiRouter, campaignRouter, dashboardRouter, goalsRouter, monitoringRouter, planningRouter, reportsRouter, tasksRouter, teamRouter, votersRouter } from "./routers/index";
+import { aiRouter, campaignRouter, contentsRouter, dashboardRouter, goalsRouter, monitoringRouter, planningRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, votersRouter } from "./routers/index";
 
 export const appRouter = router({
   system: systemRouter,
@@ -21,6 +21,9 @@ export const appRouter = router({
   tasks: tasksRouter,
   voters: votersRouter,
   monitoring: monitoringRouter,
+  territory: territoryRouter,
+  contents: contentsRouter,
+  publicIntake: publicIntakeRouter,
   reports: reportsRouter,
   ai: aiRouter,
 });

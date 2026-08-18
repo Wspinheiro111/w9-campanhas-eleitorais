@@ -16,6 +16,9 @@ export const priorityEnum = mysqlEnum("priority", ["low", "medium", "high", "urg
 export const eventTypeEnum = mysqlEnum("event_type", ["meeting", "rally", "visit", "debate", "internal", "other"]);
 export const interactionTypeEnum = mysqlEnum("interaction_type", ["visit", "phone", "whatsapp", "event", "audio", "other"]);
 export const incidentStatusEnum = mysqlEnum("incident_status", ["open", "in_review", "resolved"]);
+export const pipelineStageEnum = mysqlEnum("pipeline_stage", ["identified", "approached", "engaged", "mobilized"]);
+export const contentChannelEnum = mysqlEnum("content_channel", ["social", "whatsapp", "print", "speech", "video", "other"]);
+export const contentStatusEnum = mysqlEnum("content_status", ["draft", "review", "approved", "archived"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -64,6 +67,8 @@ export const events = mysqlTable("events", {
   startsAt: timestamp("startsAt").notNull(),
   endsAt: timestamp("endsAt"),
   location: varchar("location", { length: 240 }),
+  neighborhood: varchar("neighborhood", { length: 120 }),
+  region: varchar("region", { length: 120 }),
   responsibleId: int("responsibleId").references(() => campaignMembers.id),
   status: mysqlEnum("event_status", ["scheduled", "completed", "cancelled"]).default("scheduled").notNull(),
   notes: text("notes"),
@@ -112,6 +117,7 @@ export const voters = mysqlTable("voters", {
   neighborhood: varchar("neighborhood", { length: 120 }),
   region: varchar("region", { length: 120 }),
   contactProfile: varchar("contactProfile", { length: 120 }),
+  pipelineStage: pipelineStageEnum.notNull().default("identified"),
   engagementLevel: mysqlEnum("engagement_level", ["low", "medium", "high"]).default("medium").notNull(),
   conversionScore: int("conversionScore").default(0).notNull(),
   primaryDemand: text("primaryDemand"),
@@ -123,6 +129,7 @@ export const voters = mysqlTable("voters", {
 }, (table) => [
   index("voter_campaign_idx").on(table.campaignId),
   index("voter_owner_idx").on(table.ownerMemberId),
+  index("voter_pipeline_idx").on(table.campaignId, table.pipelineStage),
   index("voter_segment_idx").on(table.campaignId, table.neighborhood, table.region, table.contactProfile),
 ]);
 
@@ -159,6 +166,8 @@ export const fieldIncidents = mysqlTable("field_incidents", {
   priority: priorityEnum.notNull().default("medium"),
   status: incidentStatusEnum.notNull().default("open"),
   location: varchar("location", { length: 220 }),
+  neighborhood: varchar("neighborhood", { length: 120 }),
+  region: varchar("region", { length: 120 }),
   occurredAt: timestamp("occurredAt").defaultNow().notNull(),
   resolvedAt: timestamp("resolvedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -174,6 +183,20 @@ export const campaignIndicators = mysqlTable("campaign_indicators", {
   unit: varchar("unit", { length: 40 }).default("unidades").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("indicator_campaign_idx").on(table.campaignId)]);
+
+export const campaignContents = mysqlTable("campaign_contents", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  title: varchar("title", { length: 200 }).notNull(),
+  body: text("body").notNull(),
+  assetUrl: varchar("assetUrl", { length: 1200 }),
+  version: int("version").default(1).notNull(),
+  channel: contentChannelEnum.notNull().default("social"),
+  status: contentStatusEnum.notNull().default("draft"),
+  createdById: int("createdById").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("content_campaign_status_idx").on(table.campaignId, table.status)]);
 
 export const aiMessages = mysqlTable("ai_messages", {
   id: int("id").autoincrement().primaryKey(),

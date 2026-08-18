@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import * as db from "../campaignDb";
 import { canAccessOwnedRecord, canManageCampaign, canManageTeam, CampaignRole } from "../campaignPolicy";
 import { parseContactsCsv } from "../csvContacts";
@@ -37,6 +37,7 @@ export const campaignRouter = router({
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team");
     const { campaignId, ...details } = input; await db.updateCampaignDetails(campaignId, details); return { success: true };
   }),
+  publicInfo: publicProcedure.input(campaignIdInput).query(({ input }) => db.getPublicCampaign(input.campaignId)),
 });
 
 export const dashboardRouter = router({
@@ -58,19 +59,20 @@ export const teamRouter = router({
     const { campaignId, ...member } = input;
     return { id: await db.createMember({ campaignId, ...member }) };
   }),
+  performance: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getTeamPerformance(input.campaignId); }),
 });
 
 export const planningRouter = router({
   list: protectedProcedure.input(campaignIdInput.extend({ startsAt: z.date().optional(), endsAt: z.date().optional() })).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listEvents(input.campaignId, input.startsAt, input.endsAt); }),
-  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional() })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional() })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     requireCapability(access, "manage");
-    return { id: await db.createEvent({ ...input, endsAt: input.endsAt ?? null, location: input.location ?? null, responsibleId: input.responsibleId ?? null, notes: input.notes ?? null }) };
+    return { id: await db.createEvent({ ...input, endsAt: input.endsAt ?? null, location: input.location ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, responsibleId: input.responsibleId ?? null, notes: input.notes ?? null }) };
   }),
-  update: protectedProcedure.input(z.object({ eventId: z.number().int().positive(), title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional(), status: z.enum(["scheduled", "completed", "cancelled"]) })).mutation(async ({ ctx, input }) => {
+  update: protectedProcedure.input(z.object({ eventId: z.number().int().positive(), title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional(), status: z.enum(["scheduled", "completed", "cancelled"]) })).mutation(async ({ ctx, input }) => {
     const event = await db.getEvent(input.eventId); if (!event) throw new TRPCError({ code: "NOT_FOUND" });
     const access = await requireAccess(ctx.user.id, event.campaignId); requireCapability(access, "manage");
-    const { eventId, ...changes } = input; await db.updateEvent(eventId, { ...changes, endsAt: changes.endsAt ?? null, location: changes.location ?? null, responsibleId: changes.responsibleId ?? null, notes: changes.notes ?? null }); return { success: true };
+    const { eventId, ...changes } = input; await db.updateEvent(eventId, { ...changes, endsAt: changes.endsAt ?? null, location: changes.location ?? null, neighborhood: changes.neighborhood ?? null, region: changes.region ?? null, responsibleId: changes.responsibleId ?? null, notes: changes.notes ?? null }); return { success: true };
   }),
 });
 
@@ -108,6 +110,12 @@ export const votersRouter = router({
     const access = await requireAccess(ctx.user.id, input.campaignId);
     const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
     return { id: await db.createVoter({ ...input, phone: input.phone ?? null, email: input.email ?? null, address: input.address ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, contactProfile: input.contactProfile ?? null, primaryDemand: input.primaryDemand ?? null, notes: input.notes ?? null, ownerMemberId }) };
+  }),
+  movePipeline: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), pipelineStage: z.enum(["identified", "approached", "engaged", "mobilized"]) })).mutation(async ({ ctx, input }) => {
+    const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, voter.campaignId);
+    if (access.member?.role === "partner" && !canAccessOwnedRecord("partner", voter.ownerMemberId, access.member.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Você só pode atualizar contatos sob sua responsabilidade." });
+    await db.updateVoterPipeline(input.voterId, input.pipelineStage); return { success: true };
   }),
   previewCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
@@ -150,9 +158,9 @@ export const votersRouter = router({
 
 export const monitoringRouter = router({
   list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); return db.listIncidents(input.campaignId, access.member?.role === "partner" ? access.member.id : null); }),
-  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), description: z.string().min(4).max(3000), category: z.string().min(2).max(100), priority: z.enum(["low", "medium", "high", "urgent"]), location: z.string().max(220).optional(), occurredAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), description: z.string().min(4).max(3000), category: z.string().min(2).max(100), priority: z.enum(["low", "medium", "high", "urgent"]), location: z.string().max(220).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), occurredAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
-    return { id: await db.createIncident({ ...input, reportedById: access.member?.id ?? null, location: input.location ?? null, occurredAt: input.occurredAt ?? new Date() }) };
+    return { id: await db.createIncident({ ...input, reportedById: access.member?.id ?? null, location: input.location ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, occurredAt: input.occurredAt ?? new Date() }) };
   }),
   indicators: router({
     list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listIndicators(input.campaignId); }),
@@ -163,6 +171,32 @@ export const monitoringRouter = router({
   }),
 });
 
+export const territoryRouter = router({
+  overview: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.getTerritoryData(input.campaignId); }),
+});
+
+export const contentsRouter = router({
+  list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listCampaignContents(input.campaignId); }),
+  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999).default(1), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+    return { id: await db.createCampaignContent({ ...input, assetUrl: input.assetUrl ?? null, createdById: ctx.user.id }) };
+  }),
+  update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
+    const content = await db.getContentById(input.id); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, content.campaignId); requireCapability(access, "manage");
+    await db.updateCampaignContent(input.id, { ...input, assetUrl: input.assetUrl ?? null }); return { success: true };
+  }),
+});
+
+export const publicIntakeRouter = router({
+  submit: publicProcedure.input(z.object({ campaignId: z.number().int().positive(), name: z.string().min(2).max(180), phone: z.string().max(32).optional(), email: z.string().email().optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), contactProfile: z.string().max(120).optional(), consent: z.literal(true) })).mutation(async ({ input }) => {
+    const campaign = await db.getPublicCampaign(input.campaignId);
+    if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Este formulário não está disponível." });
+    return { id: await db.createVoter({ campaignId: input.campaignId, name: input.name, phone: input.phone ?? null, email: input.email ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, contactProfile: input.contactProfile ?? null, address: null, engagementLevel: "medium", pipelineStage: "identified", primaryDemand: null, notes: "Cadastro público consentido", contactConsent: true, doNotContact: false, ownerMemberId: null }) };
+  }),
+});
+
 export const reportsRouter = router({
   summary: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getReportData(input.campaignId); }),
+  comparison: protectedProcedure.input(campaignIdInput.extend({ startsAt: z.date(), endsAt: z.date() })).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); if (input.endsAt < input.startsAt) throw new TRPCError({ code: "BAD_REQUEST", message: "O período final deve ser posterior ao inicial." }); return db.getComparativeReport(input.campaignId, input.startsAt, input.endsAt); }),
 });

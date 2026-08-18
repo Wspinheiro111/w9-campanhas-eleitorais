@@ -1,2 +1,2 @@
 export { aiRouter } from "./ai";
-export { campaignRouter, dashboardRouter, goalsRouter, monitoringRouter, planningRouter, reportsRouter, tasksRouter, teamRouter, votersRouter } from "./campaign";
+export { campaignRouter, contentsRouter, dashboardRouter, goalsRouter, monitoringRouter, planningRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, votersRouter } from "./campaign";
