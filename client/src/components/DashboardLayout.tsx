@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Activity, BarChart3, BookOpenText, Bot, Building2, CalendarDays, CheckSquare, ContactRound, LayoutDashboard, LogOut, MapPinned, Mic, PanelLeft, Radar, ShieldCheck, UsersRound } from "lucide-react";
+import { Activity, BarChart3, BookOpenText, Bot, Building2, CalendarDays, CheckSquare, ContactRound, Gauge, LayoutDashboard, LogOut, MapPinned, Mic, PanelLeft, Radar, ShieldCheck, UsersRound } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -15,6 +15,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Visão geral", path: "/" },
   { icon: Building2, label: "Organizações", path: "/organizacoes" },
   { icon: Activity, label: "Auditoria", path: "/auditoria" },
+  { icon: Gauge, label: "Painel técnico", path: "/tecnico" },
   { icon: UsersRound, label: "Equipe", path: "/equipe" },
   { icon: CalendarDays, label: "Agenda", path: "/agenda" },
   { icon: CheckSquare, label: "Tarefas", path: "/tarefas" },

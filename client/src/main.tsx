@@ -47,6 +47,13 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
+        const telemetryHeaders: Record<string, string> = {};
+        try {
+          const organizationId = localStorage.getItem("w9-active-organization");
+          if (organizationId && /^\d+$/.test(organizationId)) telemetryHeaders["x-w9-organization-id"] = organizationId;
+        } catch {
+          // localStorage unavailable
+        }
         // Preview auto-login fallback: when the browser blocks iframe cookies
         // (Safari ITP / private browsing / WebView), the runtime mirrors the
         // session into sessionStorage so we can forward it as a Bearer token.
@@ -58,13 +65,13 @@ const trpcClient = trpc.createClient({
             const pair = raw.split(";").find(s => s.trim().startsWith(prefix));
             const token = pair?.trim().slice(prefix.length);
             if (token) {
-              return { Authorization: `Bearer ${token}` };
+              return { ...telemetryHeaders, Authorization: `Bearer ${token}` };
             }
           }
         } catch {
           // sessionStorage unavailable
         }
-        return {};
+        return telemetryHeaders;
       },
       fetch(input, init) {
         return globalThis.fetch(input, {

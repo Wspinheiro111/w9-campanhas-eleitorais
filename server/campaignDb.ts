@@ -14,11 +14,13 @@ import {
   organizationMembers,
   organizations,
   pipelineFollowups,
+  routePerformanceEvents,
   tasks,
   voterInteractions,
   voters,
 } from "../drizzle/schema";
 import { getDb } from "./db";
+import { summarizePerformanceEvents } from "./routeMetrics";
 
 export type CampaignAccess = {
   campaign: typeof campaigns.$inferSelect;
@@ -80,6 +82,32 @@ export async function listOrganizationAuditLogs(organizationId: number, limit = 
     .where(eq(organizationAuditLogs.organizationId, organizationId))
     .orderBy(desc(organizationAuditLogs.createdAt))
     .limit(limit);
+}
+
+export async function recordRoutePerformanceEvent(input: { organizationId?: number | null; route: string; method: string; statusCode: number; durationMs: number }) {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db.insert(routePerformanceEvents).values({
+      organizationId: input.organizationId ?? null,
+      route: input.route,
+      method: input.method,
+      statusCode: input.statusCode,
+      durationMs: Math.max(0, Math.min(Math.round(input.durationMs), 300_000)),
+      hasError: input.statusCode >= 400,
+    });
+  } catch (error) {
+    console.warn("[Telemetry] Unable to record route performance", error instanceof Error ? error.message : error);
+  }
+}
+
+export async function getRoutePerformanceMetrics(input: { organizationId: number; days: number }) {
+  const db = requireDb(await getDb());
+  const since = new Date(Date.now() - input.days * 24 * 60 * 60 * 1000);
+  const scope = and(eq(routePerformanceEvents.organizationId, input.organizationId), gte(routePerformanceEvents.createdAt, since));
+  const events = await db.select({ organizationId: routePerformanceEvents.organizationId, route: routePerformanceEvents.route, method: routePerformanceEvents.method, statusCode: routePerformanceEvents.statusCode, durationMs: routePerformanceEvents.durationMs }).from(routePerformanceEvents).where(scope);
+  const metrics = summarizePerformanceEvents(events, input.organizationId);
+  return { periodDays: input.days, since, summary: metrics.summary, routes: metrics.routes.slice(0, 100) };
 }
 
 export async function getOrganizationMembership(userId: number, organizationId: number) {

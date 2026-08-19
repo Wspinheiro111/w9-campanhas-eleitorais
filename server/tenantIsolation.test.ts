@@ -10,6 +10,7 @@ vi.mock("./campaignDb", () => ({
   createOrganizationInvitation: vi.fn(),
   listOrganizationInvitations: vi.fn(),
   listOrganizationAuditLogs: vi.fn(),
+  getRoutePerformanceMetrics: vi.fn(),
   acceptOrganizationInvitation: vi.fn(),
 }));
 
@@ -85,6 +86,20 @@ describe("isolamento multi-tenant", () => {
     vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "operator", active: true } as never);
     const caller = appRouter.createCaller(ctx);
     await expect(caller.organization.audit.list({ organizationId: 2 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("permite que gestor consulte métricas técnicas apenas da própria organização", async () => {
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "manager", active: true } as never);
+    vi.mocked(db.getRoutePerformanceMetrics).mockResolvedValue({ periodDays: 7, since: new Date(), summary: {}, routes: [] } as never);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.organization.performance.byRoute({ organizationId: 2, days: 7 })).resolves.toMatchObject({ periodDays: 7 });
+    expect(db.getRoutePerformanceMetrics).toHaveBeenCalledWith({ organizationId: 2, days: 7 });
+  });
+
+  it("impede operador de consultar métricas técnicas", async () => {
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "operator", active: true } as never);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.organization.performance.byRoute({ organizationId: 2, days: 7 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("encaminha o aceite de convite ao vínculo do usuário autenticado", async () => {

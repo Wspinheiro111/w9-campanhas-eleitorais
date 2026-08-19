@@ -22,12 +22,13 @@ const Pipeline = lazy(() => import("./pages/Pipeline"));
 const PublicSignup = lazy(() => import("./pages/PublicSignup"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Tasks = lazy(() => import("./pages/Tasks"));
+const TechnicalPerformance = lazy(() => import("./pages/TechnicalPerformance"));
 const Team = lazy(() => import("./pages/Team"));
 const TeamPerformance = lazy(() => import("./pages/TeamPerformance"));
 const Territory = lazy(() => import("./pages/Territory"));
 const Voters = lazy(() => import("./pages/Voters"));
 
 function PageLoading() { return <div className="min-h-[55vh] animate-pulse rounded-2xl bg-muted/60" aria-label="Carregando módulo" />; }
-function Router() { return <Switch><Route path="/" component={Dashboard} /><Route path="/organizacoes" component={Organizations} /><Route path="/auditoria" component={AuditLog} /><Route path="/equipe" component={Team} /><Route path="/equipe/desempenho" component={TeamPerformance} /><Route path="/agenda" component={Agenda} /><Route path="/tarefas" component={Tasks} /><Route path="/contatos" component={Voters} /><Route path="/pipeline" component={Pipeline} /><Route path="/territorio" component={Territory} /><Route path="/conteudos" component={Contents} /><Route path="/audio-crm" component={AudioCRM} /><Route path="/monitoramento" component={Monitoring} /><Route path="/inteligencia" component={AIStudio} /><Route path="/relatorios" component={Reports} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>; }
+function Router() { return <Switch><Route path="/" component={Dashboard} /><Route path="/organizacoes" component={Organizations} /><Route path="/auditoria" component={AuditLog} /><Route path="/tecnico" component={TechnicalPerformance} /><Route path="/equipe" component={Team} /><Route path="/equipe/desempenho" component={TeamPerformance} /><Route path="/agenda" component={Agenda} /><Route path="/tarefas" component={Tasks} /><Route path="/contatos" component={Voters} /><Route path="/pipeline" component={Pipeline} /><Route path="/territorio" component={Territory} /><Route path="/conteudos" component={Contents} /><Route path="/audio-crm" component={AudioCRM} /><Route path="/monitoramento" component={Monitoring} /><Route path="/inteligencia" component={AIStudio} /><Route path="/relatorios" component={Reports} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>; }
 function App() { return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><Suspense fallback={<PageLoading />}><Switch><Route path="/login" component={Login} /><Route path="/onboarding" component={Onboarding} /><Route path="/cadastro/:campaignId" component={PublicSignup} /><Route><OrganizationProvider><DashboardLayout><CampaignProvider><Router /></CampaignProvider></DashboardLayout></OrganizationProvider></Route></Switch></Suspense></TooltipProvider></ThemeProvider></ErrorBoundary>; }
 export default App;

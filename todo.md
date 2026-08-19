@@ -92,4 +92,11 @@
 - [x] Ampliar os testes de interface para login, onboarding, troca de organização, importação CSV, pipeline e auditoria administrativa.
 - [x] Executar a suíte final após ampliar a cobertura de interface dos fluxos críticos.
 - [x] Registrar no painel de auditoria as atualizações administrativas dos dados da campanha.
+- [x] Definir e persistir métricas de desempenho por rota com duração, status e organização quando disponível.
+- [x] Instrumentar as rotas HTTP e tRPC para coletar telemetria sem registrar dados sensíveis.
+- [x] Criar painel técnico com filtros temporais, volume, latência, taxa de erro e ranking por rota.
+- [x] Testar isolamento, agregação e acesso administrativo às métricas de desempenho.
+- [x] Instrumentar também as rotas HTTP relevantes fora do tRPC, preservando a normalização de caminho e a privacidade.
+- [x] Testar a agregação de volume, média, pico e taxa de erro das métricas por rota antes de consolidar a entrega.
+- [x] Conectar a agregação de métricas testada ao fluxo de produção do painel técnico para validar os cálculos efetivos por organização.
 - [x] Salvar checkpoint final pós-auditoria após as últimas correções e a atualização do relatório.

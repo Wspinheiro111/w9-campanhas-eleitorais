@@ -9,6 +9,8 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { recordRoutePerformanceEvent } from "../campaignDb";
+import { normalizeTelemetryRoute } from "../routeMetrics";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,6 +37,19 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use((req, res, next) => {
+    const startedAt = performance.now();
+    res.on("finish", () => {
+      if (!req.path.startsWith("/api")) return;
+      const isTrpc = req.path.startsWith("/api/trpc");
+      const rawRoute = normalizeTelemetryRoute(req.path, isTrpc);
+      if (rawRoute.includes("organization.performance")) return;
+      const header = req.get("x-w9-organization-id");
+      const organizationId = header && /^\d+$/.test(header) ? Number(header) : null;
+      void recordRoutePerformanceEvent({ organizationId, route: rawRoute, method: req.method, statusCode: res.statusCode, durationMs: performance.now() - startedAt });
+    });
+    next();
+  });
   registerStorageProxy(app);
   registerGoogleAuthRoutes(app);
   registerOAuthRoutes(app);

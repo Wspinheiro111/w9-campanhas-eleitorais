@@ -62,4 +62,10 @@ export const organizationRouter = router({
       return db.listOrganizationAuditLogs(input.organizationId, input.limit);
     }),
   }),
+  performance: router({
+    byRoute: protectedProcedure.input(z.object({ organizationId: z.number().int().positive(), days: z.number().int().min(1).max(90).default(7) })).query(async ({ ctx, input }) => {
+      await requireOrganizationAdmin(ctx.user.id, input.organizationId);
+      return db.getRoutePerformanceMetrics(input);
+    }),
+  }),
 });

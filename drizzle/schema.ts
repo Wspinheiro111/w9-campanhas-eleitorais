@@ -88,6 +88,17 @@ export const organizationAuditLogs = mysqlTable("organization_audit_logs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("audit_organization_created_idx").on(table.organizationId, table.createdAt), index("audit_actor_idx").on(table.actorUserId, table.createdAt)]);
 
+export const routePerformanceEvents = mysqlTable("route_performance_events", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").references(() => organizations.id),
+  route: varchar("route", { length: 240 }).notNull(),
+  method: varchar("method", { length: 12 }).notNull(),
+  statusCode: int("statusCode").notNull(),
+  durationMs: int("durationMs").notNull(),
+  hasError: boolean("hasError").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("performance_route_created_idx").on(table.route, table.createdAt), index("performance_organization_created_idx").on(table.organizationId, table.createdAt), index("performance_error_created_idx").on(table.hasError, table.createdAt)]);
+
 export const campaigns = mysqlTable("campaigns", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),
