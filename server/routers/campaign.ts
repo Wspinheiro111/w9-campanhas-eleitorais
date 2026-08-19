@@ -41,7 +41,7 @@ export const campaignRouter = router({
   details: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => requireAccess(ctx.user.id, input.campaignId)),
   updateDetails: protectedProcedure.input(campaignIdInput.extend({ name: z.string().min(3).max(160), candidateName: z.string().min(3).max(160), electionLabel: z.string().min(3).max(120), region: z.string().min(2).max(160), status: z.enum(["planning", "active", "paused", "closed"]) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team");
-    const { campaignId, ...details } = input; await db.updateCampaignDetails(campaignId, details); return { success: true };
+    const { campaignId, ...details } = input; await db.updateCampaignDetails(campaignId, { ...details, actorUserId: ctx.user.id }); return { success: true };
   }),
   publicInfo: publicProcedure.input(campaignIdInput).query(({ input }) => db.getPublicCampaign(input.campaignId)),
 });

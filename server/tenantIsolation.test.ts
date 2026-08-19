@@ -9,6 +9,7 @@ vi.mock("./campaignDb", () => ({
   createOrganizationForUser: vi.fn(),
   createOrganizationInvitation: vi.fn(),
   listOrganizationInvitations: vi.fn(),
+  listOrganizationAuditLogs: vi.fn(),
   acceptOrganizationInvitation: vi.fn(),
 }));
 
@@ -70,6 +71,20 @@ describe("isolamento multi-tenant", () => {
     vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "manager", active: true } as never);
     const caller = appRouter.createCaller(ctx);
     await expect(caller.organization.members.updateRole({ organizationId: 2, memberId: 8, role: "admin" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("permite que um gestor consulte a auditoria apenas da própria organização", async () => {
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "manager", active: true } as never);
+    vi.mocked(db.listOrganizationAuditLogs).mockResolvedValue([] as never);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.organization.audit.list({ organizationId: 2 })).resolves.toEqual([]);
+    expect(db.listOrganizationAuditLogs).toHaveBeenCalledWith(2, 100);
+  });
+
+  it("impede operador de consultar a auditoria administrativa", async () => {
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "operator", active: true } as never);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.organization.audit.list({ organizationId: 2 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("encaminha o aceite de convite ao vínculo do usuário autenticado", async () => {

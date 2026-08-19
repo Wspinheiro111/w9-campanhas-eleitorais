@@ -77,6 +77,17 @@ export const organizationInvitations = mysqlTable("organization_invitations", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("invite_org_idx").on(table.organizationId, table.status), index("invite_email_idx").on(table.email, table.status), index("invite_token_idx").on(table.tokenHash)]);
 
+export const organizationAuditLogs = mysqlTable("organization_audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  actorUserId: int("actorUserId").references(() => users.id),
+  action: varchar("action", { length: 100 }).notNull(),
+  entityType: varchar("entityType", { length: 80 }).notNull(),
+  entityId: int("entityId"),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("audit_organization_created_idx").on(table.organizationId, table.createdAt), index("audit_actor_idx").on(table.actorUserId, table.createdAt)]);
+
 export const campaigns = mysqlTable("campaigns", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

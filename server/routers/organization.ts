@@ -36,7 +36,7 @@ export const organizationRouter = router({
     }),
     updateRole: protectedProcedure.input(z.object({ organizationId: z.number().int().positive(), memberId: z.number().int().positive(), role: z.enum(["admin", "manager", "operator", "viewer"]) })).mutation(async ({ ctx, input }) => {
       await requireOrganizationOwner(ctx.user.id, input.organizationId);
-      await db.updateOrganizationMemberRole(input);
+      await db.updateOrganizationMemberRole({ ...input, actorUserId: ctx.user.id });
       return { success: true };
     }),
   }),
@@ -54,6 +54,12 @@ export const organizationRouter = router({
     accept: protectedProcedure.input(z.object({ token: z.string().min(32).max(128) })).mutation(async ({ ctx, input }) => {
       if (!ctx.user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "O convite exige uma conta com e-mail confirmado." });
       return { organizationId: await db.acceptOrganizationInvitation({ userId: ctx.user.id, email: ctx.user.email, tokenHash: hashToken(input.token) }) };
+    }),
+  }),
+  audit: router({
+    list: protectedProcedure.input(z.object({ organizationId: z.number().int().positive(), limit: z.number().int().min(1).max(200).default(100) })).query(async ({ ctx, input }) => {
+      await requireOrganizationAdmin(ctx.user.id, input.organizationId);
+      return db.listOrganizationAuditLogs(input.organizationId, input.limit);
     }),
   }),
 });

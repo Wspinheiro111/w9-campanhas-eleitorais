@@ -86,4 +86,10 @@
 - [x] Salvar um checkpoint final após a revisão conclusiva dos módulos restantes e da checklist de auditoria.
 - [x] Adicionar feedback de sucesso e erro às ações de criação e aprovação de conteúdos.
 - [x] Adicionar feedback de sucesso e erro às transições e conclusões de follow-up do pipeline.
+- [x] Dividir o código do cliente para reduzir o carregamento inicial das rotas administrativas.
+- [x] Criar testes automatizados de interface para formulários e fluxos operacionais críticos.
+- [x] Implementar painel de auditoria de ações administrativas por organização.
+- [x] Ampliar os testes de interface para login, onboarding, troca de organização, importação CSV, pipeline e auditoria administrativa.
+- [x] Executar a suíte final após ampliar a cobertura de interface dos fluxos críticos.
+- [x] Registrar no painel de auditoria as atualizações administrativas dos dados da campanha.
 - [x] Salvar checkpoint final pós-auditoria após as últimas correções e a atualização do relatório.

@@ -2,29 +2,32 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
+import { lazy, Suspense } from "react";
 import DashboardLayout from "./components/DashboardLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { CampaignProvider } from "./contexts/CampaignContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import AIStudio from "./pages/AIStudio";
-import Agenda from "./pages/Agenda";
-import AudioCRM from "./pages/AudioCRM";
-import Contents from "./pages/Contents";
-import Dashboard from "./pages/Dashboard";
-import Monitoring from "./pages/Monitoring";
-import Pipeline from "./pages/Pipeline";
-import PublicSignup from "./pages/PublicSignup";
-import Reports from "./pages/Reports";
-import Tasks from "./pages/Tasks";
-import Team from "./pages/Team";
-import TeamPerformance from "./pages/TeamPerformance";
-import Territory from "./pages/Territory";
-import Voters from "./pages/Voters";
-import Login from "./pages/Login";
-import Onboarding from "./pages/Onboarding";
-import Organizations from "./pages/Organizations";
+const AIStudio = lazy(() => import("./pages/AIStudio"));
+const Agenda = lazy(() => import("./pages/Agenda"));
+const AuditLog = lazy(() => import("./pages/AuditLog"));
+const AudioCRM = lazy(() => import("./pages/AudioCRM"));
+const Contents = lazy(() => import("./pages/Contents"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Login = lazy(() => import("./pages/Login"));
+const Monitoring = lazy(() => import("./pages/Monitoring"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Organizations = lazy(() => import("./pages/Organizations"));
+const Pipeline = lazy(() => import("./pages/Pipeline"));
+const PublicSignup = lazy(() => import("./pages/PublicSignup"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const Team = lazy(() => import("./pages/Team"));
+const TeamPerformance = lazy(() => import("./pages/TeamPerformance"));
+const Territory = lazy(() => import("./pages/Territory"));
+const Voters = lazy(() => import("./pages/Voters"));
 
-function Router() { return <Switch><Route path="/" component={Dashboard} /><Route path="/organizacoes" component={Organizations} /><Route path="/equipe" component={Team} /><Route path="/equipe/desempenho" component={TeamPerformance} /><Route path="/agenda" component={Agenda} /><Route path="/tarefas" component={Tasks} /><Route path="/contatos" component={Voters} /><Route path="/pipeline" component={Pipeline} /><Route path="/territorio" component={Territory} /><Route path="/conteudos" component={Contents} /><Route path="/audio-crm" component={AudioCRM} /><Route path="/monitoramento" component={Monitoring} /><Route path="/inteligencia" component={AIStudio} /><Route path="/relatorios" component={Reports} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>; }
-function App() { return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><Switch><Route path="/login" component={Login} /><Route path="/onboarding" component={Onboarding} /><Route path="/cadastro/:campaignId" component={PublicSignup} /><Route><OrganizationProvider><DashboardLayout><CampaignProvider><Router /></CampaignProvider></DashboardLayout></OrganizationProvider></Route></Switch></TooltipProvider></ThemeProvider></ErrorBoundary>; }
+function PageLoading() { return <div className="min-h-[55vh] animate-pulse rounded-2xl bg-muted/60" aria-label="Carregando módulo" />; }
+function Router() { return <Switch><Route path="/" component={Dashboard} /><Route path="/organizacoes" component={Organizations} /><Route path="/auditoria" component={AuditLog} /><Route path="/equipe" component={Team} /><Route path="/equipe/desempenho" component={TeamPerformance} /><Route path="/agenda" component={Agenda} /><Route path="/tarefas" component={Tasks} /><Route path="/contatos" component={Voters} /><Route path="/pipeline" component={Pipeline} /><Route path="/territorio" component={Territory} /><Route path="/conteudos" component={Contents} /><Route path="/audio-crm" component={AudioCRM} /><Route path="/monitoramento" component={Monitoring} /><Route path="/inteligencia" component={AIStudio} /><Route path="/relatorios" component={Reports} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>; }
+function App() { return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><Suspense fallback={<PageLoading />}><Switch><Route path="/login" component={Login} /><Route path="/onboarding" component={Onboarding} /><Route path="/cadastro/:campaignId" component={PublicSignup} /><Route><OrganizationProvider><DashboardLayout><CampaignProvider><Router /></CampaignProvider></DashboardLayout></OrganizationProvider></Route></Switch></Suspense></TooltipProvider></ThemeProvider></ErrorBoundary>; }
 export default App;

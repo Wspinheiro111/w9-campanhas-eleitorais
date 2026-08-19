@@ -9,6 +9,7 @@ import {
   events,
   fieldIncidents,
   goals,
+  organizationAuditLogs,
   organizationInvitations,
   organizationMembers,
   organizations,
@@ -61,7 +62,24 @@ export async function createOrganizationForUser(input: { userId: number; name: s
   const created = await db.insert(organizations).values({ name: input.name, legalName: input.legalName || null, fiscalId: input.fiscalId || null, status: "active", createdById: input.userId });
   const organizationId = Number(created[0].insertId);
   await db.insert(organizationMembers).values({ organizationId, userId: input.userId, role: "admin", active: true });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.userId, action: "organization.created", entityType: "organization", entityId: organizationId, metadata: { name: input.name } });
   return organizationId;
+}
+
+export async function createOrganizationAuditLog(input: { organizationId: number; actorUserId?: number | null; action: string; entityType: string; entityId?: number | null; metadata?: Record<string, unknown> }) {
+  const db = requireDb(await getDb());
+  await db.insert(organizationAuditLogs).values({ organizationId: input.organizationId, actorUserId: input.actorUserId ?? null, action: input.action, entityType: input.entityType, entityId: input.entityId ?? null, metadata: input.metadata ?? null });
+}
+
+export async function listOrganizationAuditLogs(organizationId: number, limit = 100) {
+  const db = requireDb(await getDb());
+  const { users } = await import("../drizzle/schema");
+  return db.select({ log: organizationAuditLogs, actor: { id: users.id, name: users.name, email: users.email } })
+    .from(organizationAuditLogs)
+    .leftJoin(users, eq(users.id, organizationAuditLogs.actorUserId))
+    .where(eq(organizationAuditLogs.organizationId, organizationId))
+    .orderBy(desc(organizationAuditLogs.createdAt))
+    .limit(limit);
 }
 
 export async function getOrganizationMembership(userId: number, organizationId: number) {
@@ -73,7 +91,9 @@ export async function getOrganizationMembership(userId: number, organizationId: 
 export async function createOrganizationInvitation(input: { organizationId: number; email: string; role: "admin" | "manager" | "operator" | "viewer"; tokenHash: string; invitedById: number; expiresAt: Date }) {
   const db = requireDb(await getDb());
   const result = await db.insert(organizationInvitations).values({ ...input, email: input.email.trim().toLowerCase(), status: "pending" });
-  return Number(result[0].insertId);
+  const invitationId = Number(result[0].insertId);
+  await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.invitedById, action: "member.invited", entityType: "invitation", entityId: invitationId, metadata: { email: input.email.trim().toLowerCase(), role: input.role } });
+  return invitationId;
 }
 
 export async function listOrganizationInvitations(organizationId: number) {
@@ -89,6 +109,7 @@ export async function acceptOrganizationInvitation(input: { userId: number; emai
   const existing = await getOrganizationMembership(input.userId, invitation.organizationId);
   if (!existing) await db.insert(organizationMembers).values({ organizationId: invitation.organizationId, userId: input.userId, role: invitation.role, active: true });
   await db.update(organizationInvitations).set({ status: "accepted", acceptedById: input.userId }).where(eq(organizationInvitations.id, invitation.id));
+  await createOrganizationAuditLog({ organizationId: invitation.organizationId, actorUserId: input.userId, action: "invitation.accepted", entityType: "invitation", entityId: invitation.id, metadata: { role: invitation.role } });
   return invitation.organizationId;
 }
 
@@ -102,9 +123,10 @@ export async function listOrganizationMembers(organizationId: number) {
     .orderBy(desc(organizationMembers.createdAt));
 }
 
-export async function updateOrganizationMemberRole(input: { organizationId: number; memberId: number; role: "admin" | "manager" | "operator" | "viewer" }) {
+export async function updateOrganizationMemberRole(input: { organizationId: number; memberId: number; role: "admin" | "manager" | "operator" | "viewer"; actorUserId: number }) {
   const db = requireDb(await getDb());
   await db.update(organizationMembers).set({ role: input.role }).where(and(eq(organizationMembers.id, input.memberId), eq(organizationMembers.organizationId, input.organizationId)));
+  await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.actorUserId, action: "member.role_updated", entityType: "organization_member", entityId: input.memberId, metadata: { role: input.role } });
 }
 
 export async function listCampaignsForUser(userId: number, organizationId?: number) {
@@ -174,9 +196,11 @@ export async function createCampaignWithOwner(input: {
   return campaignId;
 }
 
-export async function updateCampaignDetails(campaignId: number, input: { name: string; candidateName: string; electionLabel: string; region: string; status: "planning" | "active" | "paused" | "closed" }) {
+export async function updateCampaignDetails(campaignId: number, input: { name: string; candidateName: string; electionLabel: string; region: string; status: "planning" | "active" | "paused" | "closed"; actorUserId: number }) {
   const db = requireDb(await getDb());
-  await db.update(campaigns).set(input).where(eq(campaigns.id, campaignId));
+  const { actorUserId, ...details } = input;
+  await db.update(campaigns).set(details).where(eq(campaigns.id, campaignId));
+  await createOrganizationAuditLog({ organizationId: await organizationIdForCampaign(campaignId), actorUserId, action: "campaign.updated", entityType: "campaign", entityId: campaignId, metadata: { name: details.name, status: details.status } });
 }
 
 export async function getDashboardData(campaignId: number, memberId?: number | null) {
