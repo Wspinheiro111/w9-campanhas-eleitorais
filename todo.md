@@ -126,3 +126,6 @@
 - [x] Criar painel de treinamento interativo no portal privado do voluntário.
 - [x] Disponibilizar materiais de apoio com status de leitura individual.
 - [x] Permitir confirmação de conclusão do treinamento pelo voluntário e exibir o progresso à coordenação.
+- [x] Emitir automaticamente certificado interno quando o voluntário concluir todos os materiais ativos.
+- [x] Disponibilizar visualização e impressão segura do certificado no portal individual do voluntário.
+- [x] Registrar a validação do certificado e sua consulta pela coordenação autorizada.

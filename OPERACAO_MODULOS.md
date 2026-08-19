@@ -50,6 +50,17 @@ A coordenação pode publicar uma trilha de materiais no Portal do voluntário. 
 
 > A confirmação é vinculada ao link privado do voluntário e não libera acesso a informações de outros participantes ou da equipe interna.
 
+### Certificado interno de conclusão
+
+Ao confirmar todos os materiais ativos da trilha, o sistema emite automaticamente um **certificado interno de conclusão**. A emissão é idempotente: confirmações repetidas não criam certificados duplicados. O documento permanece associado ao voluntário, à campanha e à organização, com código único, data de emissão e quantidade de materiais concluídos.
+
+| Quem consulta | Como acessa | Informações disponíveis |
+|---|---|---|
+| Voluntário | Link privado individual | Certificado visual, código interno e opção de impressão. |
+| Coordenação autorizada | Base administrativa de voluntários | Status de formação e registro do certificado na listagem protegida da campanha. |
+
+> O certificado é um registro interno da plataforma e não representa diploma, certificação profissional ou credencial externa.
+
 ## Benchmark interno de equipe
 
 O Benchmark regional consolida tarefas, entregas, eventos e visitas de campo por **região de trabalho**, sem apresentar nomes ou métricas individuais. Para reduzir risco de reidentificação, resultados de regiões com menos de dois integrantes ativos são suprimidos.

@@ -253,6 +253,17 @@ export const volunteerTrainingCompletions = mysqlTable("volunteer_training_compl
   completedAt: timestamp("completedAt").defaultNow().notNull(),
 }, (table) => [uniqueIndex("training_completion_material_volunteer_idx").on(table.materialId, table.volunteerId), index("training_completion_volunteer_idx").on(table.volunteerId), index("training_completion_campaign_idx").on(table.campaignId)]);
 
+export const volunteerTrainingCertificates = mysqlTable("volunteer_training_certificates", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  volunteerId: int("volunteerId").notNull().references(() => volunteers.id),
+  certificateCode: varchar("certificateCode", { length: 50 }).notNull().unique(),
+  completedMaterials: int("completedMaterials").notNull(),
+  issuedAt: timestamp("issuedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("training_certificate_volunteer_campaign_idx").on(table.volunteerId, table.campaignId), index("training_certificate_campaign_idx").on(table.campaignId), index("training_certificate_organization_idx").on(table.organizationId)]);
+
 export const events = mysqlTable("events", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

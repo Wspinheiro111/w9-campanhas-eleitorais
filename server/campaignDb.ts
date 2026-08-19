@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, lt, lte, ne, or, sql } from "drizzle-orm";
 import {
   aiMessages,
@@ -23,6 +24,7 @@ import {
   surveyResponses,
   tasks,
   volunteerAssignments,
+  volunteerTrainingCertificates,
   volunteerTrainingCompletions,
   volunteerTrainingMaterials,
   volunteers,
@@ -546,13 +548,15 @@ export async function getPublicCampaign(campaignId: number) {
 
 export async function listVolunteers(campaignId: number) {
   const db = requireDb(await getDb());
-  const [rows, materials, completions] = await Promise.all([
+  const [rows, materials, completions, certificates] = await Promise.all([
     db.select().from(volunteers).where(eq(volunteers.campaignId, campaignId)).orderBy(desc(volunteers.createdAt)),
     db.select({ id: volunteerTrainingMaterials.id }).from(volunteerTrainingMaterials).where(and(eq(volunteerTrainingMaterials.campaignId, campaignId), eq(volunteerTrainingMaterials.active, true))),
     db.select({ volunteerId: volunteerTrainingCompletions.volunteerId }).from(volunteerTrainingCompletions).where(eq(volunteerTrainingCompletions.campaignId, campaignId)),
+    db.select().from(volunteerTrainingCertificates).where(eq(volunteerTrainingCertificates.campaignId, campaignId)),
   ]);
   const completedByVolunteer = new Map<number, number>(); completions.forEach(item => completedByVolunteer.set(item.volunteerId, (completedByVolunteer.get(item.volunteerId) ?? 0) + 1));
-  return rows.map(volunteer => ({ ...volunteer, trainingCompleted: completedByVolunteer.get(volunteer.id) ?? 0, trainingTotal: materials.length }));
+  const certificateByVolunteer = new Map(certificates.map(item => [item.volunteerId, item]));
+  return rows.map(volunteer => ({ ...volunteer, trainingCompleted: completedByVolunteer.get(volunteer.id) ?? 0, trainingTotal: materials.length, certificate: certificateByVolunteer.get(volunteer.id) ?? null }));
 }
 
 export async function getVolunteer(volunteerId: number) {
@@ -622,7 +626,19 @@ export async function completeVolunteerTrainingMaterial(input: { campaignId: num
   ]);
   const trainingStatus = materials.length > 0 && completions.length >= materials.length ? "completed" : "in_progress";
   await db.update(volunteers).set({ trainingStatus }).where(eq(volunteers.id, input.volunteerId));
-  return { completed: completions.length, total: materials.length, trainingStatus };
+  let certificate: { certificateCode: string; issuedAt: Date; completedMaterials: number } | null = null;
+  if (trainingStatus === "completed") {
+    await db.insert(volunteerTrainingCertificates).values({ organizationId, campaignId: input.campaignId, volunteerId: input.volunteerId, certificateCode: `W9-${randomUUID().replace(/-/g, "").toUpperCase()}`, completedMaterials: materials.length, issuedAt: new Date() }).onDuplicateKeyUpdate({ set: { completedMaterials: materials.length } });
+    const rows = await db.select({ certificateCode: volunteerTrainingCertificates.certificateCode, issuedAt: volunteerTrainingCertificates.issuedAt, completedMaterials: volunteerTrainingCertificates.completedMaterials }).from(volunteerTrainingCertificates).where(and(eq(volunteerTrainingCertificates.campaignId, input.campaignId), eq(volunteerTrainingCertificates.volunteerId, input.volunteerId))).limit(1);
+    certificate = rows[0] ?? null;
+  }
+  return { completed: completions.length, total: materials.length, trainingStatus, certificate };
+}
+
+export async function getVolunteerTrainingCertificate(campaignId: number, volunteerId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ certificateCode: volunteerTrainingCertificates.certificateCode, issuedAt: volunteerTrainingCertificates.issuedAt, completedMaterials: volunteerTrainingCertificates.completedMaterials }).from(volunteerTrainingCertificates).where(and(eq(volunteerTrainingCertificates.campaignId, campaignId), eq(volunteerTrainingCertificates.volunteerId, volunteerId))).limit(1);
+  return rows[0] ?? null;
 }
 
 export async function listVolunteerAssignments(campaignId: number, volunteerId?: number) {
