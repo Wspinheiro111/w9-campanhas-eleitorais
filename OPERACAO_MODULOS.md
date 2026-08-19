@@ -37,6 +37,19 @@ Após a primeira inscrição, o voluntário recebe um link privado para acompanh
 | Tarefa territorial | Atribuir atividade, território e data; concluir quando houver confirmação operacional. |
 | Acompanhamento individual | O voluntário usa o link privado recebido na inscrição para atualizar informações e acompanhar apenas suas próprias tarefas. |
 
+## Painel de treinamento interativo
+
+A coordenação pode publicar uma trilha de materiais no Portal do voluntário. Cada etapa aceita resumo, conteúdo textual, link complementar, duração estimada e tipo de material: guia, vídeo, checklist ou material externo. Os módulos ativos são apresentados em ordem ao voluntário no seu acesso privado.
+
+| Etapa | Ação | Resultado |
+|---|---|---|
+| Publicação | A coordenação cria o material no painel interno de voluntários. | O módulo fica disponível na trilha privada da campanha. |
+| Estudo | O voluntário abre o conteúdo ou o material complementar indicado. | A etapa permanece pendente até a confirmação pessoal. |
+| Confirmação | O voluntário seleciona **Confirmar conclusão**. | O sistema grava a confirmação individual e atualiza o progresso. |
+| Formação concluída | Todas as etapas ativas foram confirmadas. | O status da formação é alterado automaticamente para concluído. |
+
+> A confirmação é vinculada ao link privado do voluntário e não libera acesso a informações de outros participantes ou da equipe interna.
+
 ## Benchmark interno de equipe
 
 O Benchmark regional consolida tarefas, entregas, eventos e visitas de campo por **região de trabalho**, sem apresentar nomes ou métricas individuais. Para reduzir risco de reidentificação, resultados de regiões com menos de dois integrantes ativos são suprimidos.

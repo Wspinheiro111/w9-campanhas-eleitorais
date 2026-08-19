@@ -227,6 +227,32 @@ export const volunteerAssignments = mysqlTable("volunteer_assignments", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("volunteer_assignment_campaign_status_idx").on(table.campaignId, table.status), index("volunteer_assignment_volunteer_idx").on(table.volunteerId), index("volunteer_assignment_organization_idx").on(table.organizationId)]);
 
+export const volunteerTrainingMaterials = mysqlTable("volunteer_training_materials", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  title: varchar("title", { length: 220 }).notNull(),
+  description: text("description"),
+  materialType: mysqlEnum("materialType", ["guide", "video", "checklist", "link"]).notNull().default("guide"),
+  resourceUrl: varchar("resourceUrl", { length: 2000 }),
+  content: text("content"),
+  durationMinutes: int("durationMinutes").notNull().default(10),
+  position: int("position").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("training_material_campaign_idx").on(table.campaignId, table.active, table.position), index("training_material_organization_idx").on(table.organizationId)]);
+
+export const volunteerTrainingCompletions = mysqlTable("volunteer_training_completions", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  materialId: int("materialId").notNull().references(() => volunteerTrainingMaterials.id),
+  volunteerId: int("volunteerId").notNull().references(() => volunteers.id),
+  completedAt: timestamp("completedAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("training_completion_material_volunteer_idx").on(table.materialId, table.volunteerId), index("training_completion_volunteer_idx").on(table.volunteerId), index("training_completion_campaign_idx").on(table.campaignId)]);
+
 export const events = mysqlTable("events", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

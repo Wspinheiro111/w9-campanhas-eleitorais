@@ -123,3 +123,6 @@
 - [x] Ampliar a cobertura dos fluxos de revogação de consentimento e histórico completo de crise.
 - [x] Adicionar teste de interface para revogação e histórico de validade do consentimento.
 - [x] Adicionar teste de interface para abertura, atualização e histórico de decisões da sala de crise.
+- [x] Criar painel de treinamento interativo no portal privado do voluntário.
+- [x] Disponibilizar materiais de apoio com status de leitura individual.
+- [x] Permitir confirmação de conclusão do treinamento pelo voluntário e exibir o progresso à coordenação.

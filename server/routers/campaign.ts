@@ -248,8 +248,8 @@ export const volunteersRouter = router({
   }),
   portal: publicProcedure.input(z.object({ token: z.string().min(32).max(128) })).query(async ({ input }) => {
     const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." });
-    const assignments = await db.listVolunteerAssignments(volunteer.campaignId, volunteer.id);
-    return { volunteer: { name: volunteer.name, neighborhood: volunteer.neighborhood, region: volunteer.region, availability: volunteer.availability, skills: volunteer.skills, trainingStatus: volunteer.trainingStatus, status: volunteer.status }, assignments: assignments.map(item => ({ id: item.id, title: item.title, description: item.description, territory: item.territory, scheduledAt: item.scheduledAt, status: item.status })) };
+    const [assignments, trainingMaterials] = await Promise.all([db.listVolunteerAssignments(volunteer.campaignId, volunteer.id), db.listVolunteerTrainingMaterials(volunteer.campaignId, volunteer.id)]);
+    return { volunteer: { name: volunteer.name, neighborhood: volunteer.neighborhood, region: volunteer.region, availability: volunteer.availability, skills: volunteer.skills, trainingStatus: volunteer.trainingStatus, status: volunteer.status }, assignments: assignments.map(item => ({ id: item.id, title: item.title, description: item.description, territory: item.territory, scheduledAt: item.scheduledAt, status: item.status })), trainingMaterials: trainingMaterials.map(item => ({ id: item.id, title: item.title, description: item.description, materialType: item.materialType, resourceUrl: item.resourceUrl, content: item.content, durationMinutes: item.durationMinutes, completedAt: item.completedAt })) };
   }),
   updatePortalProfile: publicProcedure.input(z.object({ token: z.string().min(32).max(128), availability: z.string().max(2000).optional(), skills: z.string().max(1000).optional() })).mutation(async ({ input }) => {
     const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." });
@@ -258,6 +258,10 @@ export const volunteersRouter = router({
   updateOwnAssignmentStatus: publicProcedure.input(z.object({ token: z.string().min(32).max(128), assignmentId: z.number().int().positive(), status: z.enum(["accepted", "completed"]) })).mutation(async ({ input }) => {
     const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." }); const assignment = await db.getVolunteerAssignment(input.assignmentId); if (!assignment || assignment.volunteerId !== volunteer.id) throw new TRPCError({ code: "NOT_FOUND", message: "Tarefa não encontrada." });
     await db.updateVolunteerAssignmentStatus(input.assignmentId, input.status); return { success: true };
+  }),
+  completeTrainingMaterial: publicProcedure.input(z.object({ token: z.string().min(32).max(128), materialId: z.number().int().positive() })).mutation(async ({ input }) => {
+    const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." }); const material = await db.getVolunteerTrainingMaterial(input.materialId); if (!material || material.campaignId !== volunteer.campaignId || !material.active) throw new TRPCError({ code: "NOT_FOUND", message: "Material de treinamento não encontrado." });
+    return db.completeVolunteerTrainingMaterial({ campaignId: volunteer.campaignId, materialId: material.id, volunteerId: volunteer.id });
   }),
   list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listVolunteers(input.campaignId); }),
   update: protectedProcedure.input(z.object({ volunteerId: z.number().int().positive(), phone: z.string().max(32).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), availability: z.string().max(2000).optional(), skills: z.string().max(1000).optional(), notes: z.string().max(3000).optional(), trainingStatus: z.enum(["not_started", "in_progress", "completed"]), status: z.enum(["pending", "active", "inactive"]) })).mutation(async ({ ctx, input }) => {
@@ -272,6 +276,12 @@ export const volunteersRouter = router({
     }),
     updateStatus: protectedProcedure.input(z.object({ assignmentId: z.number().int().positive(), status: z.enum(["assigned", "accepted", "completed", "cancelled"]) })).mutation(async ({ ctx, input }) => {
       const assignment = await db.getVolunteerAssignment(input.assignmentId); if (!assignment) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, assignment.campaignId); requireCapability(access, "manage"); await db.updateVolunteerAssignmentStatus(input.assignmentId, input.status); return { success: true };
+    }),
+  }),
+  training: router({
+    list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listVolunteerTrainingMaterials(input.campaignId, undefined, true); }),
+    create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(220), description: z.string().max(3000).optional(), materialType: z.enum(["guide", "video", "checklist", "link"]).default("guide"), resourceUrl: z.string().url().max(2000).optional(), content: z.string().max(12000).optional(), durationMinutes: z.number().int().min(1).max(240).default(10), position: z.number().int().min(0).max(999).default(0) })).mutation(async ({ ctx, input }) => {
+      const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return { id: await db.createVolunteerTrainingMaterial({ campaignId: input.campaignId, title: input.title, description: input.description ?? null, materialType: input.materialType, resourceUrl: input.resourceUrl ?? null, content: input.content ?? null, durationMinutes: input.durationMinutes, position: input.position, active: true, createdByUserId: ctx.user.id }) };
     }),
   }),
 });

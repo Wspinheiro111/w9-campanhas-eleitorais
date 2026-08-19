@@ -23,6 +23,8 @@ import {
   surveyResponses,
   tasks,
   volunteerAssignments,
+  volunteerTrainingCompletions,
+  volunteerTrainingMaterials,
   volunteers,
   voterInteractions,
   voters,
@@ -544,7 +546,13 @@ export async function getPublicCampaign(campaignId: number) {
 
 export async function listVolunteers(campaignId: number) {
   const db = requireDb(await getDb());
-  return db.select().from(volunteers).where(eq(volunteers.campaignId, campaignId)).orderBy(desc(volunteers.createdAt));
+  const [rows, materials, completions] = await Promise.all([
+    db.select().from(volunteers).where(eq(volunteers.campaignId, campaignId)).orderBy(desc(volunteers.createdAt)),
+    db.select({ id: volunteerTrainingMaterials.id }).from(volunteerTrainingMaterials).where(and(eq(volunteerTrainingMaterials.campaignId, campaignId), eq(volunteerTrainingMaterials.active, true))),
+    db.select({ volunteerId: volunteerTrainingCompletions.volunteerId }).from(volunteerTrainingCompletions).where(eq(volunteerTrainingCompletions.campaignId, campaignId)),
+  ]);
+  const completedByVolunteer = new Map<number, number>(); completions.forEach(item => completedByVolunteer.set(item.volunteerId, (completedByVolunteer.get(item.volunteerId) ?? 0) + 1));
+  return rows.map(volunteer => ({ ...volunteer, trainingCompleted: completedByVolunteer.get(volunteer.id) ?? 0, trainingTotal: materials.length }));
 }
 
 export async function getVolunteer(volunteerId: number) {
@@ -579,6 +587,42 @@ export async function updateVolunteer(volunteerId: number, input: Pick<typeof vo
 export async function updateVolunteerPortalProfile(volunteerId: number, input: { availability?: string | null; skills?: string | null }) {
   const db = requireDb(await getDb());
   await db.update(volunteers).set(input).where(eq(volunteers.id, volunteerId));
+}
+
+export async function listVolunteerTrainingMaterials(campaignId: number, volunteerId?: number, includeInactive = false) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(volunteerTrainingMaterials.campaignId, campaignId)]; if (!includeInactive) conditions.push(eq(volunteerTrainingMaterials.active, true));
+  const [materials, completions] = await Promise.all([
+    db.select().from(volunteerTrainingMaterials).where(and(...conditions)).orderBy(volunteerTrainingMaterials.position, volunteerTrainingMaterials.createdAt),
+    volunteerId ? db.select().from(volunteerTrainingCompletions).where(and(eq(volunteerTrainingCompletions.campaignId, campaignId), eq(volunteerTrainingCompletions.volunteerId, volunteerId))) : Promise.resolve([]),
+  ]);
+  const completedAtByMaterial = new Map(completions.map(item => [item.materialId, item.completedAt]));
+  return materials.map(material => ({ ...material, completedAt: completedAtByMaterial.get(material.id) ?? null }));
+}
+
+export async function getVolunteerTrainingMaterial(materialId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(volunteerTrainingMaterials).where(eq(volunteerTrainingMaterials.id, materialId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createVolunteerTrainingMaterial(input: Omit<typeof volunteerTrainingMaterials.$inferInsert, "organizationId">) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(volunteerTrainingMaterials).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
+  return Number(result[0].insertId);
+}
+
+export async function completeVolunteerTrainingMaterial(input: { campaignId: number; materialId: number; volunteerId: number }) {
+  const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId);
+  const existing = await db.select({ id: volunteerTrainingCompletions.id }).from(volunteerTrainingCompletions).where(and(eq(volunteerTrainingCompletions.materialId, input.materialId), eq(volunteerTrainingCompletions.volunteerId, input.volunteerId))).limit(1);
+  if (!existing[0]) await db.insert(volunteerTrainingCompletions).values({ ...input, organizationId, completedAt: new Date() });
+  const [materials, completions] = await Promise.all([
+    db.select({ id: volunteerTrainingMaterials.id }).from(volunteerTrainingMaterials).where(and(eq(volunteerTrainingMaterials.campaignId, input.campaignId), eq(volunteerTrainingMaterials.active, true))),
+    db.select({ id: volunteerTrainingCompletions.id }).from(volunteerTrainingCompletions).where(and(eq(volunteerTrainingCompletions.campaignId, input.campaignId), eq(volunteerTrainingCompletions.volunteerId, input.volunteerId))),
+  ]);
+  const trainingStatus = materials.length > 0 && completions.length >= materials.length ? "completed" : "in_progress";
+  await db.update(volunteers).set({ trainingStatus }).where(eq(volunteers.id, input.volunteerId));
+  return { completed: completions.length, total: materials.length, trainingStatus };
 }
 
 export async function listVolunteerAssignments(campaignId: number, volunteerId?: number) {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 vi.mock("./campaignDb", () => ({
-  getCampaignAccess: vi.fn(), listFieldVisits: vi.fn(), syncFieldVisits: vi.fn(), getVoter: vi.fn(), listConsentRecords: vi.fn(), createConsentRecord: vi.fn(), getConsentRecord: vi.fn(), revokeConsentRecord: vi.fn(), listCrisisCases: vi.fn(), createCrisisCase: vi.fn(), getCrisisCase: vi.fn(), updateCrisisCase: vi.fn(), listCrisisDecisions: vi.fn(), addCrisisDecision: vi.fn(), getTerritoryHeatmap: vi.fn(), getMobilizationScores: vi.fn(), listCampaignSurveys: vi.fn(), createCampaignSurvey: vi.fn(), submitSurveyResponse: vi.fn(), getSurveySummary: vi.fn(), getPublicCampaign: vi.fn(), getVolunteerByEmail: vi.fn(), getVolunteerByAccessTokenHash: vi.fn(), createVolunteer: vi.fn(), listVolunteers: vi.fn(), getVolunteer: vi.fn(), updateVolunteer: vi.fn(), updateVolunteerPortalProfile: vi.fn(), listVolunteerAssignments: vi.fn(), createVolunteerAssignment: vi.fn(), getVolunteerAssignment: vi.fn(), updateVolunteerAssignmentStatus: vi.fn(), getTeamBenchmark: vi.fn(),
+  getCampaignAccess: vi.fn(), listFieldVisits: vi.fn(), syncFieldVisits: vi.fn(), getVoter: vi.fn(), listConsentRecords: vi.fn(), createConsentRecord: vi.fn(), getConsentRecord: vi.fn(), revokeConsentRecord: vi.fn(), listCrisisCases: vi.fn(), createCrisisCase: vi.fn(), getCrisisCase: vi.fn(), updateCrisisCase: vi.fn(), listCrisisDecisions: vi.fn(), addCrisisDecision: vi.fn(), getTerritoryHeatmap: vi.fn(), getMobilizationScores: vi.fn(), listCampaignSurveys: vi.fn(), createCampaignSurvey: vi.fn(), submitSurveyResponse: vi.fn(), getSurveySummary: vi.fn(), getPublicCampaign: vi.fn(), getVolunteerByEmail: vi.fn(), getVolunteerByAccessTokenHash: vi.fn(), createVolunteer: vi.fn(), listVolunteers: vi.fn(), getVolunteer: vi.fn(), updateVolunteer: vi.fn(), updateVolunteerPortalProfile: vi.fn(), listVolunteerAssignments: vi.fn(), createVolunteerAssignment: vi.fn(), getVolunteerAssignment: vi.fn(), updateVolunteerAssignmentStatus: vi.fn(), listVolunteerTrainingMaterials: vi.fn(), getVolunteerTrainingMaterial: vi.fn(), completeVolunteerTrainingMaterial: vi.fn(), createVolunteerTrainingMaterial: vi.fn(), getTeamBenchmark: vi.fn(),
 }));
 
 import * as db from "./campaignDb";
@@ -79,8 +79,22 @@ describe("módulos prioritários", () => {
   });
 
   it("retorna somente o portal do voluntário associado ao token privado", async () => {
-    vi.mocked(db.getVolunteerByAccessTokenHash).mockResolvedValue({ id: 81, campaignId: 1, name: "Ana Voluntária", neighborhood: "Centro", region: "Norte", availability: "Sábado", skills: "Eventos", trainingStatus: "in_progress", status: "active" } as never); vi.mocked(db.listVolunteerAssignments).mockResolvedValue([{ id: 90, volunteerId: 81, title: "Apoiar reunião", status: "assigned" }] as never);
+    vi.mocked(db.getVolunteerByAccessTokenHash).mockResolvedValue({ id: 81, campaignId: 1, name: "Ana Voluntária", neighborhood: "Centro", region: "Norte", availability: "Sábado", skills: "Eventos", trainingStatus: "in_progress", status: "active" } as never); vi.mocked(db.listVolunteerAssignments).mockResolvedValue([{ id: 90, volunteerId: 81, title: "Apoiar reunião", status: "assigned" }] as never); vi.mocked(db.listVolunteerTrainingMaterials).mockResolvedValue([{ id: 91, title: "Conduta", materialType: "guide", durationMinutes: 10, completedAt: null }] as never);
     await expect(appRouter.createCaller(context()).volunteers.portal({ token: "x".repeat(32) })).resolves.toEqual(expect.objectContaining({ volunteer: expect.objectContaining({ name: "Ana Voluntária", trainingStatus: "in_progress" }), assignments: [expect.objectContaining({ id: 90, title: "Apoiar reunião" })] }));
+  });
+
+  it("permite que o voluntário confirme apenas material ativo da própria campanha", async () => {
+    vi.mocked(db.getVolunteerByAccessTokenHash).mockResolvedValue({ id: 81, campaignId: 1 } as never); vi.mocked(db.getVolunteerTrainingMaterial).mockResolvedValue({ id: 91, campaignId: 1, active: true } as never); vi.mocked(db.completeVolunteerTrainingMaterial).mockResolvedValue({ completed: 1, total: 2, trainingStatus: "in_progress" } as never);
+    await expect(appRouter.createCaller(context()).volunteers.completeTrainingMaterial({ token: "x".repeat(32), materialId: 91 })).resolves.toEqual({ completed: 1, total: 2, trainingStatus: "in_progress" });
+    expect(db.completeVolunteerTrainingMaterial).toHaveBeenCalledWith({ campaignId: 1, materialId: 91, volunteerId: 81 });
+  });
+
+  it("reserva a publicação de materiais de treinamento à coordenação", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: partnerMember, organizationMember: { role: "operator" } } as never);
+    await expect(appRouter.createCaller(context(12)).volunteers.training.create({ campaignId: 1, title: "Guia de campo" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never); vi.mocked(db.createVolunteerTrainingMaterial).mockResolvedValue(101);
+    await expect(appRouter.createCaller(context()).volunteers.training.create({ campaignId: 1, title: "Guia de campo", content: "Leia antes da visita.", durationMinutes: 12 })).resolves.toEqual({ id: 101 });
+    expect(db.createVolunteerTrainingMaterial).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, title: "Guia de campo", createdByUserId: 99 }));
   });
 
   it("restringe benchmark regional a gestores e retorna somente agregados", async () => {
