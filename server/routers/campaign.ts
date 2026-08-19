@@ -21,6 +21,15 @@ async function requireAccess(userId: number, campaignId: number): Promise<Access
 
 function hashVolunteerToken(token: string) { return createHash("sha256").update(token).digest("hex"); }
 
+function parseCertificateAsset(dataUrl: string) {
+  const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+  if (!match) throw new TRPCError({ code: "BAD_REQUEST", message: "Envie uma imagem PNG, JPEG ou WebP válida." });
+  const bytes = Buffer.from(match[2], "base64");
+  if (!bytes.length || bytes.length > 2 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "A imagem deve ter no máximo 2 MB." });
+  const extension = match[1] === "image/jpeg" ? "jpg" : match[1].split("/")[1];
+  return { bytes, mimeType: match[1], extension };
+}
+
 function requireCapability(access: Access, action: "manage" | "team" | "own_data") {
   const role = access.member?.role ?? (access.campaign.ownerId ? "admin" : null) as CampaignRole | null;
   if (!role) throw new TRPCError({ code: "FORBIDDEN", message: "Vínculo da campanha não encontrado." });
@@ -293,8 +302,13 @@ export const volunteersRouter = router({
     }),
     settings: router({
       get: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getCampaignCertificateSettings(input.campaignId); }),
-      update: protectedProcedure.input(campaignIdInput.extend({ primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/), accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/), logoUrl: z.string().url().max(2000).optional(), signatureName: z.string().max(180).optional(), signatureRole: z.string().max(180).optional() })).mutation(async ({ ctx, input }) => {
-        const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.updateCampaignCertificateSettings({ campaignId: input.campaignId, primaryColor: input.primaryColor, accentColor: input.accentColor, logoUrl: input.logoUrl ?? null, signatureName: input.signatureName ?? null, signatureRole: input.signatureRole ?? null, updatedByUserId: ctx.user.id });
+      uploadAsset: protectedProcedure.input(campaignIdInput.extend({ assetType: z.enum(["logo", "signature"]), dataUrl: z.string().max(2_900_000) })).mutation(async ({ ctx, input }) => {
+        const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); const asset = parseCertificateAsset(input.dataUrl);
+        const { url } = await storagePut(`campaign-certificates/${access.campaign.organizationId}/${input.campaignId}/${input.assetType}-${randomBytes(16).toString("hex")}.${asset.extension}`, asset.bytes, asset.mimeType);
+        return { url };
+      }),
+      update: protectedProcedure.input(campaignIdInput.extend({ primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/), accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/), logoUrl: z.string().url().max(2000).optional(), signatureImageUrl: z.string().url().max(2000).optional(), signatureName: z.string().max(180).optional(), signatureRole: z.string().max(180).optional() })).mutation(async ({ ctx, input }) => {
+        const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.updateCampaignCertificateSettings({ campaignId: input.campaignId, primaryColor: input.primaryColor, accentColor: input.accentColor, logoUrl: input.logoUrl ?? null, signatureImageUrl: input.signatureImageUrl ?? null, signatureName: input.signatureName ?? null, signatureRole: input.signatureRole ?? null, updatedByUserId: ctx.user.id });
       }),
     }),
   }),

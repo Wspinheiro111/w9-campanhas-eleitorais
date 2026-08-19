@@ -71,13 +71,14 @@ Depois que o último material é confirmado, a plataforma mostra uma celebraçã
 
 ### Identidade visual por campanha e histórico privado
 
-No painel administrativo de voluntários, a coordenação pode definir a **cor principal**, a **cor de destaque**, a URL do **logotipo**, o nome da assinatura e sua função. A configuração é exclusiva da campanha selecionada e é aplicada ao certificado exibido no portal, ao QR Code e à exportação em PDF.
+No painel administrativo de voluntários, a coordenação pode definir a **cor principal**, a **cor de destaque**, o logotipo, a assinatura visual, o nome da assinatura e sua função. O logotipo e a assinatura podem ser enviados diretamente no painel em PNG, JPEG ou WebP de até 2 MB; os arquivos são armazenados de forma segura por campanha. A configuração é exclusiva da campanha selecionada e é aplicada ao certificado exibido no portal, ao QR Code e à exportação em PDF.
 
 | Recurso | Acesso | Comportamento |
 |---|---|---|
 | Identidade visual | Coordenação com permissão de gestão | Altera cores, logotipo e assinatura apenas da campanha ativa. |
 | Progresso da trilha | Voluntário no portal privado | Mostra percentual, quantidade concluída e etapas restantes para a emissão. |
 | Histórico de certificados | Voluntário no portal privado | Lista os certificados emitidos no vínculo da campanha e permite baixar novamente o PDF. |
+| Lembrete de pendências | Voluntário no portal privado | Exibe aviso visual com quantidade de módulos pendentes e atalho para a trilha. |
 
 > O histórico e os arquivos exportados continuam vinculados ao acesso privado do voluntário. A personalização visual não altera o código, a data ou as regras de validação do certificado.
 

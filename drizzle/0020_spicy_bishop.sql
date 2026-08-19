@@ -1,0 +1,1 @@
+ALTER TABLE `campaign_certificate_settings` ADD `signatureImageUrl` varchar(2000);

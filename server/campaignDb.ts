@@ -664,17 +664,17 @@ export async function listVolunteerTrainingCertificates(campaignId: number, volu
   return current ? [{ ...current, versionNumber: 1 }] : [];
 }
 
-const defaultCertificateSettings = { primaryColor: "#103527", accentColor: "#c9a85b", logoUrl: null, signatureName: null, signatureRole: null };
+const defaultCertificateSettings = { primaryColor: "#103527", accentColor: "#c9a85b", logoUrl: null, signatureImageUrl: null, signatureName: null, signatureRole: null };
 
 export async function getCampaignCertificateSettings(campaignId: number) {
   const db = requireDb(await getDb());
-  const rows = await db.select({ primaryColor: campaignCertificateSettings.primaryColor, accentColor: campaignCertificateSettings.accentColor, logoUrl: campaignCertificateSettings.logoUrl, signatureName: campaignCertificateSettings.signatureName, signatureRole: campaignCertificateSettings.signatureRole }).from(campaignCertificateSettings).where(eq(campaignCertificateSettings.campaignId, campaignId)).limit(1);
+  const rows = await db.select({ primaryColor: campaignCertificateSettings.primaryColor, accentColor: campaignCertificateSettings.accentColor, logoUrl: campaignCertificateSettings.logoUrl, signatureImageUrl: campaignCertificateSettings.signatureImageUrl, signatureName: campaignCertificateSettings.signatureName, signatureRole: campaignCertificateSettings.signatureRole }).from(campaignCertificateSettings).where(eq(campaignCertificateSettings.campaignId, campaignId)).limit(1);
   return rows[0] ?? defaultCertificateSettings;
 }
 
-export async function updateCampaignCertificateSettings(input: { campaignId: number; primaryColor: string; accentColor: string; logoUrl: string | null; signatureName: string | null; signatureRole: string | null; updatedByUserId: number }) {
+export async function updateCampaignCertificateSettings(input: { campaignId: number; primaryColor: string; accentColor: string; logoUrl: string | null; signatureImageUrl: string | null; signatureName: string | null; signatureRole: string | null; updatedByUserId: number }) {
   const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId);
-  await db.insert(campaignCertificateSettings).values({ ...input, organizationId }).onDuplicateKeyUpdate({ set: { primaryColor: input.primaryColor, accentColor: input.accentColor, logoUrl: input.logoUrl, signatureName: input.signatureName, signatureRole: input.signatureRole, updatedByUserId: input.updatedByUserId } });
+  await db.insert(campaignCertificateSettings).values({ ...input, organizationId }).onDuplicateKeyUpdate({ set: { primaryColor: input.primaryColor, accentColor: input.accentColor, logoUrl: input.logoUrl, signatureImageUrl: input.signatureImageUrl, signatureName: input.signatureName, signatureRole: input.signatureRole, updatedByUserId: input.updatedByUserId } });
   return getCampaignCertificateSettings(input.campaignId);
 }
 

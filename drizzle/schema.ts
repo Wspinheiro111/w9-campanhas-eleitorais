@@ -283,6 +283,7 @@ export const campaignCertificateSettings = mysqlTable("campaign_certificate_sett
   primaryColor: varchar("primaryColor", { length: 7 }).notNull().default("#103527"),
   accentColor: varchar("accentColor", { length: 7 }).notNull().default("#c9a85b"),
   logoUrl: varchar("logoUrl", { length: 2000 }),
+  signatureImageUrl: varchar("signatureImageUrl", { length: 2000 }),
   signatureName: varchar("signatureName", { length: 180 }),
   signatureRole: varchar("signatureRole", { length: 180 }),
   updatedByUserId: int("updatedByUserId").references(() => users.id),

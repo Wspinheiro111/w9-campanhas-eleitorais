@@ -138,3 +138,5 @@
 - [x] Permitir histórico real de certificados por reemissão ou versão da trilha na mesma campanha.
 - [x] Cobrir em testes o histórico com múltiplos certificados e a reexportação de versões anteriores.
 - [x] Adicionar teste de interface para baixar em PDF uma versão anterior no histórico privado de certificados.
+- [x] Permitir upload direto de logotipo e assinatura visual para a identidade do certificado por campanha.
+- [x] Exibir notificações visuais no portal do voluntário para módulos de treinamento ainda pendentes.

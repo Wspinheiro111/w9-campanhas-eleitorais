@@ -4,8 +4,10 @@ import type { TrpcContext } from "./_core/context";
 vi.mock("./campaignDb", () => ({
   getCampaignAccess: vi.fn(), listFieldVisits: vi.fn(), syncFieldVisits: vi.fn(), getVoter: vi.fn(), listConsentRecords: vi.fn(), createConsentRecord: vi.fn(), getConsentRecord: vi.fn(), revokeConsentRecord: vi.fn(), listCrisisCases: vi.fn(), createCrisisCase: vi.fn(), getCrisisCase: vi.fn(), updateCrisisCase: vi.fn(), listCrisisDecisions: vi.fn(), addCrisisDecision: vi.fn(), getTerritoryHeatmap: vi.fn(), getMobilizationScores: vi.fn(), listCampaignSurveys: vi.fn(), createCampaignSurvey: vi.fn(), submitSurveyResponse: vi.fn(), getSurveySummary: vi.fn(), getPublicCampaign: vi.fn(), getVolunteerByEmail: vi.fn(), getVolunteerByAccessTokenHash: vi.fn(), createVolunteer: vi.fn(), listVolunteers: vi.fn(), getVolunteer: vi.fn(), updateVolunteer: vi.fn(), updateVolunteerPortalProfile: vi.fn(), listVolunteerAssignments: vi.fn(), createVolunteerAssignment: vi.fn(), getVolunteerAssignment: vi.fn(), updateVolunteerAssignmentStatus: vi.fn(), listVolunteerTrainingMaterials: vi.fn(), getVolunteerTrainingMaterial: vi.fn(), completeVolunteerTrainingMaterial: vi.fn(), getVolunteerTrainingCertificate: vi.fn(), listVolunteerTrainingCertificates: vi.fn(), getVolunteerTrainingCertificateByCode: vi.fn(), getCampaignCertificateSettings: vi.fn(), updateCampaignCertificateSettings: vi.fn(), createVolunteerTrainingMaterial: vi.fn(), getTeamBenchmark: vi.fn(),
 }));
+vi.mock("./storage", () => ({ storagePut: vi.fn() }));
 
 import * as db from "./campaignDb";
+import { storagePut } from "./storage";
 import { appRouter } from "./routers";
 
 const campaign = { id: 1, organizationId: 1, ownerId: 99, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active", createdAt: new Date(), updatedAt: new Date() };
@@ -117,6 +119,14 @@ describe("módulos prioritários", () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never); vi.mocked(db.updateCampaignCertificateSettings).mockResolvedValue({ primaryColor: "#254f3e", accentColor: "#e0bb62", logoUrl: "https://example.com/logo.png", signatureName: "Coordenação", signatureRole: "Mobilização" } as never);
     await expect(appRouter.createCaller(context()).volunteers.certificates.settings.update({ campaignId: 1, primaryColor: "#254f3e", accentColor: "#e0bb62", logoUrl: "https://example.com/logo.png", signatureName: "Coordenação", signatureRole: "Mobilização" })).resolves.toEqual(expect.objectContaining({ primaryColor: "#254f3e", signatureName: "Coordenação" }));
     expect(db.updateCampaignCertificateSettings).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, updatedByUserId: 99, accentColor: "#e0bb62" }));
+  });
+
+  it("armazena logotipo do certificado somente após validar permissão e formato de imagem", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: partnerMember, organizationMember: { role: "operator" } } as never);
+    await expect(appRouter.createCaller(context(12)).volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: "data:image/png;base64,aGVsbG8=" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never); vi.mocked(storagePut).mockResolvedValue({ key: "campaign-certificates/1/1/logo.png", url: "/manus-storage/campaign-certificates/1/1/logo.png" } as never);
+    await expect(appRouter.createCaller(context()).volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: "data:image/png;base64,aGVsbG8=" })).resolves.toEqual({ url: "/manus-storage/campaign-certificates/1/1/logo.png" });
+    expect(storagePut).toHaveBeenCalledWith(expect.stringMatching(/^campaign-certificates\/1\/1\/logo-[a-f0-9]+\.png$/), expect.any(Buffer), "image/png");
   });
 
   it("restringe benchmark regional a gestores e retorna somente agregados", async () => {
