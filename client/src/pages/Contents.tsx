@@ -17,8 +17,8 @@ function ContentsContent() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", body: "", assetUrl: "", version: 1, channel: "social" as keyof typeof channelLabels, status: "draft" as keyof typeof statusLabels });
   const { data, isLoading, refetch } = trpc.contents.list.useQuery({ campaignId: activeCampaign!.id });
-  const create = trpc.contents.create.useMutation({ onSuccess: () => { setForm({ title: "", body: "", assetUrl: "", version: 1, channel: "social", status: "draft" }); setOpen(false); void refetch(); } });
-  const update = trpc.contents.update.useMutation({ onSuccess: () => void refetch() });
+  const create = trpc.contents.create.useMutation({ onSuccess: () => { setForm({ title: "", body: "", assetUrl: "", version: 1, channel: "social", status: "draft" }); setOpen(false); void refetch(); toast.success("Conteúdo salvo na biblioteca."); }, onError: error => toast.error(error.message) });
+  const update = trpc.contents.update.useMutation({ onSuccess: () => { void refetch(); toast.success("Conteúdo aprovado."); }, onError: error => toast.error(error.message) });
   const attach = trpc.contents.attach.useMutation({ onSuccess: () => { toast.success("Material anexado à biblioteca."); void refetch(); }, onError: error => toast.error(error.message) });
   const submit = (event: FormEvent) => { event.preventDefault(); create.mutate({ campaignId: activeCampaign!.id, ...form, assetUrl: form.assetUrl || undefined }); };
   const uploadFile = (contentId: number, file?: File) => {

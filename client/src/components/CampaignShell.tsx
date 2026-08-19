@@ -1,4 +1,5 @@
 import { useCampaign } from "@/contexts/CampaignContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 
 export function CampaignGate({ children }: { children: ReactNode }) {
   const { activeCampaign, campaigns, loading, refetchCampaigns } = useCampaign();
+  const { activeOrganizationId } = useOrganization();
   const [name, setName] = useState("");
   const [candidateName, setCandidateName] = useState("");
   const [electionLabel, setElectionLabel] = useState("");
@@ -21,7 +23,7 @@ export function CampaignGate({ children }: { children: ReactNode }) {
 
   const handleCreate = (event: FormEvent) => {
     event.preventDefault();
-    createCampaign.mutate({ name, candidateName, electionLabel, region });
+    createCampaign.mutate({ organizationId: activeOrganizationId ?? undefined, name, candidateName, electionLabel, region });
   };
 
   if (loading) return <div className="space-y-5 p-4 md:p-7"><Skeleton className="h-10 w-64" /><Skeleton className="h-64 w-full" /></div>;

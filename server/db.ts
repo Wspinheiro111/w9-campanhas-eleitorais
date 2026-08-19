@@ -1,7 +1,7 @@
 import { eq, or } from "drizzle-orm";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, User, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -108,4 +108,10 @@ export async function authenticateLocalUser(emailInput: string, password: string
   if (!user?.passwordHash || !passwordMatches(password, user.passwordHash)) return null;
   await db.update(users).set({ lastSignedIn: new Date(), loginMethod: "password" }).where(eq(users.id, user.id));
   return user;
+}
+
+export function toPublicUser(user: User | null | undefined) {
+  if (!user) return null;
+  const { passwordHash: _passwordHash, googleId: _googleId, openId: _openId, ...safeUser } = user;
+  return safeUser;
 }

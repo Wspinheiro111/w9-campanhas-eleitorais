@@ -6,6 +6,7 @@ import { useCampaign } from "@/contexts/CampaignContext";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, CalendarDays, CircleAlert, ContactRound, Download, Flag, Target } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 function ReportsContent() {
   const { activeCampaign } = useCampaign();
@@ -28,8 +29,11 @@ function ReportsContent() {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `relatorio-${activeCampaign.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 0);
+    toast.success("Relatório CSV exportado.");
   };
   if (isLoading) return <div className="h-64 animate-pulse rounded-2xl bg-muted" />;
   const completed = data?.tasks.filter(task => task.status === "done").length ?? 0;

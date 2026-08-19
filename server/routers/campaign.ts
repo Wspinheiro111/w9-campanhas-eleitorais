@@ -27,10 +27,14 @@ function requireCapability(access: Access, action: "manage" | "team" | "own_data
 }
 
 export const campaignRouter = router({
-  list: protectedProcedure.query(({ ctx }) => db.listCampaignsForUser(ctx.user.id)),
-  create: protectedProcedure.input(z.object({ name: z.string().min(3).max(160), candidateName: z.string().min(3).max(160), electionLabel: z.string().min(3).max(120), region: z.string().min(2).max(160) })).mutation(async ({ ctx, input }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "A criação de campanha exige um perfil administrador." });
-    const organizationId = await db.getOrCreateInitialOrganization(ctx.user.id, ctx.user.name);
+  list: protectedProcedure.input(z.object({ organizationId: z.number().int().positive().optional() }).optional()).query(async ({ ctx, input }) => {
+    if (input?.organizationId && !await db.getOrganizationMembership(ctx.user.id, input.organizationId)) throw new TRPCError({ code: "FORBIDDEN", message: "Organização não disponível para este usuário." });
+    return db.listCampaignsForUser(ctx.user.id, input?.organizationId);
+  }),
+  create: protectedProcedure.input(z.object({ organizationId: z.number().int().positive().optional(), name: z.string().min(3).max(160), candidateName: z.string().min(3).max(160), electionLabel: z.string().min(3).max(120), region: z.string().min(2).max(160) })).mutation(async ({ ctx, input }) => {
+    const organizationId = input.organizationId ?? await db.getOrCreateInitialOrganization(ctx.user.id, ctx.user.name);
+    const membership = await db.getOrganizationMembership(ctx.user.id, organizationId);
+    if (!membership || !["admin", "manager"].includes(membership.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Você não possui permissão para criar campanhas nesta organização." });
     const id = await db.createCampaignWithOwner({ organizationId, ownerId: ctx.user.id, ownerName: ctx.user.name ?? "Administrador", ownerEmail: ctx.user.email ?? "sem-email@w9.local", ...input });
     return { id };
   }),

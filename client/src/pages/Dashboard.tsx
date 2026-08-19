@@ -1,6 +1,7 @@
 import { CampaignGate, EmptyPanel, PageHeader } from "@/components/CampaignShell";
 import { MetricCard } from "@/components/MetricCard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { trpc } from "@/lib/trpc";
 import { Activity, AlertTriangle, CalendarDays, CheckSquare, CircleAlert, Clock3, ContactRound, Flag, MapPin } from "lucide-react";
@@ -9,9 +10,12 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "sh
 
 function DashboardContent() {
   const { activeCampaign } = useCampaign();
-  const { data, isLoading } = trpc.dashboard.summary.useQuery({ campaignId: activeCampaign!.id });
-  const { data: daily } = trpc.dashboard.dailySummary.useQuery({ campaignId: activeCampaign!.id });
-  if (isLoading) return <div className="space-y-6"><PageHeader eyebrow="Visão geral" title="Painel de comando" description="Indicadores, agenda e acompanhamento tático em um só lugar." /><div className="h-64 animate-pulse rounded-2xl bg-muted" /></div>;
+  const summaryQuery = trpc.dashboard.summary.useQuery({ campaignId: activeCampaign!.id });
+  const dailyQuery = trpc.dashboard.dailySummary.useQuery({ campaignId: activeCampaign!.id });
+  const { data, isLoading } = summaryQuery;
+  const daily = dailyQuery.data;
+  if (isLoading || dailyQuery.isLoading) return <div className="space-y-6"><PageHeader eyebrow="Visão geral" title="Painel de comando" description="Indicadores, agenda e acompanhamento tático em um só lugar." /><div className="h-64 animate-pulse rounded-2xl bg-muted" /></div>;
+  if (summaryQuery.isError || dailyQuery.isError) return <div className="space-y-6"><PageHeader eyebrow="Visão geral" title="Painel de comando" description="Indicadores, agenda e acompanhamento tático em um só lugar." /><section className="rounded-2xl border border-rose-200 bg-rose-50 p-7 text-center"><AlertTriangle className="mx-auto size-6 text-rose-700" /><h2 className="mt-3 font-semibold text-rose-950">Não foi possível carregar o painel</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-rose-800">Verifique a conexão e tente novamente. Nenhum dado da campanha foi alterado.</p><Button className="mt-5" variant="outline" onClick={() => { void Promise.all([summaryQuery.refetch(), dailyQuery.refetch()]); }}>Tentar novamente</Button></section></div>;
   const metrics = data?.metrics ?? { tasks: 0, voters: 0, goals: 0, incidents: 0 };
   return <>
     <PageHeader eyebrow="Visão geral" title="Painel de comando" description={`Acompanhe o ritmo operacional de ${activeCampaign?.name} com visibilidade e foco nas próximas entregas.`} />

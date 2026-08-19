@@ -107,12 +107,18 @@ export async function updateOrganizationMemberRole(input: { organizationId: numb
   await db.update(organizationMembers).set({ role: input.role }).where(and(eq(organizationMembers.id, input.memberId), eq(organizationMembers.organizationId, input.organizationId)));
 }
 
-export async function listCampaignsForUser(userId: number) {
+export async function listCampaignsForUser(userId: number, organizationId?: number) {
   const db = requireDb(await getDb());
+  const organizationConditions = [
+    eq(organizationMembers.organizationId, campaigns.organizationId),
+    eq(organizationMembers.userId, userId),
+    eq(organizationMembers.active, true),
+  ];
+  if (organizationId) organizationConditions.push(eq(campaigns.organizationId, organizationId));
   const rows = await db
     .select({ campaign: campaigns, member: campaignMembers })
     .from(campaigns)
-    .innerJoin(organizationMembers, and(eq(organizationMembers.organizationId, campaigns.organizationId), eq(organizationMembers.userId, userId), eq(organizationMembers.active, true)))
+    .innerJoin(organizationMembers, and(...organizationConditions))
     .leftJoin(campaignMembers, and(eq(campaignMembers.campaignId, campaigns.id), eq(campaignMembers.userId, userId)))
     .orderBy(desc(campaigns.updatedAt));
 

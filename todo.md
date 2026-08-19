@@ -66,3 +66,24 @@
 - [x] Implementar no onboarding a aceitação de convites por token e a seleção explícita para usuários com múltiplas organizações.
 - [x] Criar painel de membros da organização para listar integrantes e alterar papéis por tenant.
 - [x] Criar versão comercial em PDF do W9 Campanhas para prospecção de clientes políticos.
+- [x] Auditar todas as rotas autenticadas, públicas e de onboarding para identificar páginas em branco e navegação quebrada.
+- [x] Auditar botões, formulários e ações de cada módulo para identificar interações sem implementação ou falhas silenciosas.
+- [x] Auditar contratos tRPC, autorização, isolamento de organização e erros de execução do servidor.
+- [x] Corrigir os problemas identificados e expandir a cobertura automatizada dos fluxos críticos.
+- [x] Validar visualmente desktop e celular, consolidar o relatório de auditoria e salvar a versão corrigida.
+- [x] Corrigir a duplicidade de organização e de membro exibida após a migração multi-tenant.
+- [x] Confirmar e corrigir todos os controles de filtros, atalhos, modais e ações de estados vazios identificados na auditoria visual.
+- [x] Remover hashes de senha e campos sensíveis de todas as respostas de autenticação enviadas ao cliente.
+- [x] Sincronizar a organização ativa com a lista e a seleção de campanhas para impedir a mistura de ambientes no cliente.
+- [x] Exibir erro e opção de nova tentativa no painel inicial quando os dados da campanha não puderem ser carregados.
+- [x] Auditar explicitamente os controles interativos de Agenda, Monitoramento, Inteligência, Território, Conteúdos, Áudio CRM, Pipeline e Equipe.
+- [x] Registrar uma checklist final de filtros, atalhos, modais e estados vazios por módulo, com achados e correções.
+- [x] Confirmar o documento de auditoria e salvar a versão corrigida após a revisão módulo a módulo.
+- [x] Tratar falhas de cópia do rascunho gerado pela Inteligência com feedback visível ao usuário.
+- [x] Ocultar ou desabilitar os controles de indicadores do monitoramento para perfis sem permissão de gestão.
+- [x] Incluir o campo de região de trabalho no formulário de cadastro de membros da equipe.
+- [x] Auditar explicitamente os controles interativos de Território, Conteúdos, Pipeline e Áudio CRM e registrar os resultados.
+- [x] Salvar um checkpoint final após a revisão conclusiva dos módulos restantes e da checklist de auditoria.
+- [x] Adicionar feedback de sucesso e erro às ações de criação e aprovação de conteúdos.
+- [x] Adicionar feedback de sucesso e erro às transições e conclusões de follow-up do pipeline.
+- [x] Salvar checkpoint final pós-auditoria após as últimas correções e a atualização do relatório.

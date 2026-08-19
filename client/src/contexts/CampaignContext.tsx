@@ -1,7 +1,8 @@
 import { trpc } from "@/lib/trpc";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useOrganization } from "./OrganizationContext";
 
-type Campaign = { id: number; name: string; candidateName: string; electionLabel: string; region: string; status: "planning" | "active" | "paused" | "closed"; memberRole: "admin" | "coordinator" | "partner" | null };
+type Campaign = { id: number; organizationId: number; name: string; candidateName: string; electionLabel: string; region: string; status: "planning" | "active" | "paused" | "closed"; memberRole: "admin" | "coordinator" | "partner" | null };
 
 type CampaignContextValue = {
   campaigns: Campaign[];
@@ -16,18 +17,20 @@ const CampaignContext = createContext<CampaignContextValue | null>(null);
 const STORAGE_KEY = "w9-active-campaign";
 
 export function CampaignProvider({ children }: { children: React.ReactNode }) {
-  const { data, isLoading, refetch } = trpc.campaign.list.useQuery();
+  const { activeOrganizationId, loading: organizationLoading } = useOrganization();
+  const campaignInput = useMemo(() => activeOrganizationId ? { organizationId: activeOrganizationId } : undefined, [activeOrganizationId]);
+  const { data, isLoading, refetch } = trpc.campaign.list.useQuery(campaignInput, { enabled: !organizationLoading && Boolean(activeOrganizationId) });
   const [activeCampaignId, setActiveCampaignIdState] = useState<number | null>(null);
 
   useEffect(() => {
     if (!data?.length) return;
-    const storedId = Number(localStorage.getItem(STORAGE_KEY));
+    const storedId = Number(localStorage.getItem(`${STORAGE_KEY}:${activeOrganizationId ?? "none"}`));
     const chosen = data.find(campaign => campaign.id === storedId) ?? data[0];
     setActiveCampaignIdState(chosen.id);
-  }, [data]);
+  }, [data, activeOrganizationId]);
 
   const setActiveCampaignId = (id: number) => {
-    localStorage.setItem(STORAGE_KEY, String(id));
+    localStorage.setItem(`${STORAGE_KEY}:${activeOrganizationId ?? "none"}`, String(id));
     setActiveCampaignIdState(id);
   };
 
@@ -36,9 +39,9 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
     activeCampaign: (data?.find(campaign => campaign.id === activeCampaignId) ?? null) as Campaign | null,
     activeCampaignId,
     setActiveCampaignId,
-    loading: isLoading,
+    loading: isLoading || organizationLoading,
     refetchCampaigns: () => { void refetch(); },
-  }), [data, activeCampaignId, isLoading]);
+  }), [data, activeCampaignId, isLoading, organizationLoading]);
 
   return <CampaignContext.Provider value={value}>{children}</CampaignContext.Provider>;
 }

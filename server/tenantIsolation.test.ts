@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 
 vi.mock("./campaignDb", () => ({
   getCampaignAccess: vi.fn(),
+  listCampaignsForUser: vi.fn(),
   listOrganizationsForUser: vi.fn(),
   getOrganizationMembership: vi.fn(),
   createOrganizationForUser: vi.fn(),
@@ -33,6 +34,20 @@ describe("isolamento multi-tenant", () => {
     vi.mocked(db.getOrganizationMembership).mockResolvedValue(null);
     const caller = appRouter.createCaller(ctx);
     await expect(caller.organization.select({ organizationId: 9 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("bloqueia a listagem de campanhas de uma organização sem vínculo", async () => {
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue(null);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.campaign.list({ organizationId: 9 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("lista campanhas somente dentro da organização ativa informada", async () => {
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "operator", active: true } as never);
+    vi.mocked(db.listCampaignsForUser).mockResolvedValue([] as never);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.campaign.list({ organizationId: 2 })).resolves.toEqual([]);
+    expect(db.listCampaignsForUser).toHaveBeenCalledWith(20, 2);
   });
 
   it("permite que gerente crie convite apenas na própria organização", async () => {

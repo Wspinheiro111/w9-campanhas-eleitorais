@@ -16,17 +16,17 @@ async function establishSession(ctx: { res: any; req: any }, user: { openId: str
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => db.toPublicUser(opts.ctx.user)),
     register: publicProcedure.input(z.object({ name: z.string().min(2).max(160), email: z.string().email(), password: z.string().min(10).max(128) })).mutation(async ({ ctx, input }) => {
       const user = await db.registerLocalUser(input);
       await establishSession(ctx, user);
-      return { user, needsOnboarding: true };
+      return { user: db.toPublicUser(user), needsOnboarding: true };
     }),
     login: publicProcedure.input(z.object({ email: z.string().email(), password: z.string().min(1).max(128) })).mutation(async ({ ctx, input }) => {
       const user = await db.authenticateLocalUser(input.email, input.password);
       if (!user) throw new Error("E-mail ou senha inválidos.");
       await establishSession(ctx, user);
-      return { user };
+      return { user: db.toPublicUser(user) };
     }),
     logout: publicProcedure.mutation(({ ctx }) => {
       ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
