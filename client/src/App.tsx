@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import DashboardLayout from "./components/DashboardLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { CampaignProvider } from "./contexts/CampaignContext";
+import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AIStudio from "./pages/AIStudio";
 import Agenda from "./pages/Agenda";
@@ -20,7 +21,10 @@ import Team from "./pages/Team";
 import TeamPerformance from "./pages/TeamPerformance";
 import Territory from "./pages/Territory";
 import Voters from "./pages/Voters";
+import Login from "./pages/Login";
+import Onboarding from "./pages/Onboarding";
+import Organizations from "./pages/Organizations";
 
-function Router() { return <Switch><Route path="/" component={Dashboard} /><Route path="/equipe" component={Team} /><Route path="/equipe/desempenho" component={TeamPerformance} /><Route path="/agenda" component={Agenda} /><Route path="/tarefas" component={Tasks} /><Route path="/contatos" component={Voters} /><Route path="/pipeline" component={Pipeline} /><Route path="/territorio" component={Territory} /><Route path="/conteudos" component={Contents} /><Route path="/audio-crm" component={AudioCRM} /><Route path="/monitoramento" component={Monitoring} /><Route path="/inteligencia" component={AIStudio} /><Route path="/relatorios" component={Reports} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>; }
-function App() { return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><Switch><Route path="/cadastro/:campaignId" component={PublicSignup} /><Route><DashboardLayout><CampaignProvider><Router /></CampaignProvider></DashboardLayout></Route></Switch></TooltipProvider></ThemeProvider></ErrorBoundary>; }
+function Router() { return <Switch><Route path="/" component={Dashboard} /><Route path="/organizacoes" component={Organizations} /><Route path="/equipe" component={Team} /><Route path="/equipe/desempenho" component={TeamPerformance} /><Route path="/agenda" component={Agenda} /><Route path="/tarefas" component={Tasks} /><Route path="/contatos" component={Voters} /><Route path="/pipeline" component={Pipeline} /><Route path="/territorio" component={Territory} /><Route path="/conteudos" component={Contents} /><Route path="/audio-crm" component={AudioCRM} /><Route path="/monitoramento" component={Monitoring} /><Route path="/inteligencia" component={AIStudio} /><Route path="/relatorios" component={Reports} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>; }
+function App() { return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><Switch><Route path="/login" component={Login} /><Route path="/onboarding" component={Onboarding} /><Route path="/cadastro/:campaignId" component={PublicSignup} /><Route><OrganizationProvider><DashboardLayout><CampaignProvider><Router /></CampaignProvider></DashboardLayout></OrganizationProvider></Route></Switch></TooltipProvider></ThemeProvider></ErrorBoundary>; }
 export default App;

@@ -5,6 +5,7 @@ import * as db from "../campaignDb";
 import { canAccessOwnedRecord, canManageCampaign, canManageTeam, CampaignRole } from "../campaignPolicy";
 import { parseContactsCsv } from "../csvContacts";
 import { deduplicateWithFlask } from "../flaskDeduplication";
+import { storagePut } from "../storage";
 
 const campaignIdInput = z.object({ campaignId: z.number().int().positive() });
 const memberRoles = ["admin", "coordinator", "partner"] as const;
@@ -29,7 +30,8 @@ export const campaignRouter = router({
   list: protectedProcedure.query(({ ctx }) => db.listCampaignsForUser(ctx.user.id)),
   create: protectedProcedure.input(z.object({ name: z.string().min(3).max(160), candidateName: z.string().min(3).max(160), electionLabel: z.string().min(3).max(120), region: z.string().min(2).max(160) })).mutation(async ({ ctx, input }) => {
     if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "A criação de campanha exige um perfil administrador." });
-    const id = await db.createCampaignWithOwner({ ownerId: ctx.user.id, ownerName: ctx.user.name ?? "Administrador", ownerEmail: ctx.user.email ?? "sem-email@w9.local", ...input });
+    const organizationId = await db.getOrCreateInitialOrganization(ctx.user.id, ctx.user.name);
+    const id = await db.createCampaignWithOwner({ organizationId, ownerId: ctx.user.id, ownerName: ctx.user.name ?? "Administrador", ownerEmail: ctx.user.email ?? "sem-email@w9.local", ...input });
     return { id };
   }),
   details: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => requireAccess(ctx.user.id, input.campaignId)),
@@ -115,7 +117,9 @@ export const votersRouter = router({
     const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
     const access = await requireAccess(ctx.user.id, voter.campaignId);
     if (access.member?.role === "partner" && !canAccessOwnedRecord("partner", voter.ownerMemberId, access.member.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Você só pode atualizar contatos sob sua responsabilidade." });
-    await db.updateVoterPipeline(input.voterId, input.pipelineStage); return { success: true };
+    await db.updateVoterPipeline(input.voterId, input.pipelineStage);
+    const followup = await db.createFollowupForPipeline({ campaignId: voter.campaignId, voterId: voter.id, assignedToId: voter.ownerMemberId, stage: input.pipelineStage });
+    return { success: true, followup };
   }),
   previewCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
@@ -172,7 +176,11 @@ export const monitoringRouter = router({
 });
 
 export const territoryRouter = router({
-  overview: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.getTerritoryData(input.campaignId); }),
+  overview: protectedProcedure.input(campaignIdInput.extend({ startsAt: z.date().optional(), endsAt: z.date().optional(), memberId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+    await requireAccess(ctx.user.id, input.campaignId);
+    if (input.endsAt && input.startsAt && input.endsAt < input.startsAt) throw new TRPCError({ code: "BAD_REQUEST", message: "O período final deve ser posterior ao inicial." });
+    return db.getTerritoryData(input.campaignId, { startsAt: input.startsAt, endsAt: input.endsAt, memberId: input.memberId });
+  }),
 });
 
 export const contentsRouter = router({
@@ -185,6 +193,29 @@ export const contentsRouter = router({
     const content = await db.getContentById(input.id); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
     const access = await requireAccess(ctx.user.id, content.campaignId); requireCapability(access, "manage");
     await db.updateCampaignContent(input.id, { ...input, assetUrl: input.assetUrl ?? null }); return { success: true };
+  }),
+  attach: protectedProcedure.input(z.object({ id: z.number().int().positive(), fileName: z.string().min(1).max(240), mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.presentationml.presentation"]), base64: z.string().min(8).max(14_000_000) })).mutation(async ({ ctx, input }) => {
+    const content = await db.getContentById(input.id); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, content.campaignId); requireCapability(access, "manage");
+    const bytes = Buffer.from(input.base64, "base64");
+    if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O arquivo deve ter até 10 MB." });
+    const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const stored = await storagePut(`campaigns/${content.campaignId}/materials/${content.id}/${safeName}`, bytes, input.mimeType);
+    await db.saveCampaignContentAsset(input.id, { assetUrl: stored.url, assetKey: stored.key, assetName: input.fileName, assetMime: input.mimeType, assetSize: bytes.length });
+    return { url: stored.url, name: input.fileName, size: bytes.length };
+  }),
+});
+
+export const followupsRouter = router({
+  list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId);
+    return db.listPipelineFollowups(input.campaignId, access.member?.role === "partner" ? access.member.id : null);
+  }),
+  updateStatus: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["pending", "completed", "cancelled"]) })).mutation(async ({ ctx, input }) => {
+    const followup = await db.getPipelineFollowup(input.id); if (!followup) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, followup.campaignId);
+    if (access.member?.role === "partner" && !canAccessOwnedRecord("partner", followup.assignedToId, access.member.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Você só pode atualizar follow-ups atribuídos a você." });
+    await db.updatePipelineFollowupStatus(input.id, input.status); return { success: true };
   }),
 });
 

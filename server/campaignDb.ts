@@ -9,6 +9,10 @@ import {
   events,
   fieldIncidents,
   goals,
+  organizationInvitations,
+  organizationMembers,
+  organizations,
+  pipelineFollowups,
   tasks,
   voterInteractions,
   voters,
@@ -18,6 +22,7 @@ import { getDb } from "./db";
 export type CampaignAccess = {
   campaign: typeof campaigns.$inferSelect;
   member: typeof campaignMembers.$inferSelect | null;
+  organizationMember: typeof organizationMembers.$inferSelect;
 };
 
 function requireDb<T>(db: T | null): T {
@@ -25,13 +30,90 @@ function requireDb<T>(db: T | null): T {
   return db;
 }
 
+async function organizationIdForCampaign(campaignId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ organizationId: campaigns.organizationId }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
+  if (!rows[0]?.organizationId) throw new Error("Campanha sem organização válida.");
+  return rows[0].organizationId;
+}
+
+export async function getOrCreateInitialOrganization(userId: number, userName?: string | null) {
+  const db = requireDb(await getDb());
+  const membership = await db.select({ organizationId: organizationMembers.organizationId }).from(organizationMembers).where(and(eq(organizationMembers.userId, userId), eq(organizationMembers.active, true))).limit(1);
+  if (membership[0]) return membership[0].organizationId;
+  const created = await db.insert(organizations).values({ name: userName ? `Organização de ${userName}` : "Minha organização", status: "active", createdById: userId });
+  const organizationId = Number(created[0].insertId);
+  await db.insert(organizationMembers).values({ organizationId, userId, role: "admin", active: true });
+  return organizationId;
+}
+
+export async function listOrganizationsForUser(userId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ organization: organizations, membership: organizationMembers })
+    .from(organizationMembers)
+    .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationId))
+    .where(and(eq(organizationMembers.userId, userId), eq(organizationMembers.active, true), eq(organizations.status, "active")))
+    .orderBy(desc(organizations.updatedAt));
+}
+
+export async function createOrganizationForUser(input: { userId: number; name: string; legalName?: string; fiscalId?: string }) {
+  const db = requireDb(await getDb());
+  const created = await db.insert(organizations).values({ name: input.name, legalName: input.legalName || null, fiscalId: input.fiscalId || null, status: "active", createdById: input.userId });
+  const organizationId = Number(created[0].insertId);
+  await db.insert(organizationMembers).values({ organizationId, userId: input.userId, role: "admin", active: true });
+  return organizationId;
+}
+
+export async function getOrganizationMembership(userId: number, organizationId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(organizationMembers).where(and(eq(organizationMembers.userId, userId), eq(organizationMembers.organizationId, organizationId), eq(organizationMembers.active, true))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createOrganizationInvitation(input: { organizationId: number; email: string; role: "admin" | "manager" | "operator" | "viewer"; tokenHash: string; invitedById: number; expiresAt: Date }) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(organizationInvitations).values({ ...input, email: input.email.trim().toLowerCase(), status: "pending" });
+  return Number(result[0].insertId);
+}
+
+export async function listOrganizationInvitations(organizationId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(organizationInvitations).where(eq(organizationInvitations.organizationId, organizationId)).orderBy(desc(organizationInvitations.createdAt));
+}
+
+export async function acceptOrganizationInvitation(input: { userId: number; email: string; tokenHash: string }) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(organizationInvitations).where(and(eq(organizationInvitations.tokenHash, input.tokenHash), eq(organizationInvitations.status, "pending"))).limit(1);
+  const invitation = rows[0];
+  if (!invitation || invitation.expiresAt < new Date() || invitation.email !== input.email.trim().toLowerCase()) throw new Error("INVITATION_INVALID_OR_EXPIRED");
+  const existing = await getOrganizationMembership(input.userId, invitation.organizationId);
+  if (!existing) await db.insert(organizationMembers).values({ organizationId: invitation.organizationId, userId: input.userId, role: invitation.role, active: true });
+  await db.update(organizationInvitations).set({ status: "accepted", acceptedById: input.userId }).where(eq(organizationInvitations.id, invitation.id));
+  return invitation.organizationId;
+}
+
+export async function listOrganizationMembers(organizationId: number) {
+  const db = requireDb(await getDb());
+  const { users } = await import("../drizzle/schema");
+  return db.select({ member: organizationMembers, user: users })
+    .from(organizationMembers)
+    .innerJoin(users, eq(users.id, organizationMembers.userId))
+    .where(eq(organizationMembers.organizationId, organizationId))
+    .orderBy(desc(organizationMembers.createdAt));
+}
+
+export async function updateOrganizationMemberRole(input: { organizationId: number; memberId: number; role: "admin" | "manager" | "operator" | "viewer" }) {
+  const db = requireDb(await getDb());
+  await db.update(organizationMembers).set({ role: input.role }).where(and(eq(organizationMembers.id, input.memberId), eq(organizationMembers.organizationId, input.organizationId)));
+}
+
 export async function listCampaignsForUser(userId: number) {
   const db = requireDb(await getDb());
   const rows = await db
     .select({ campaign: campaigns, member: campaignMembers })
     .from(campaigns)
+    .innerJoin(organizationMembers, and(eq(organizationMembers.organizationId, campaigns.organizationId), eq(organizationMembers.userId, userId), eq(organizationMembers.active, true)))
     .leftJoin(campaignMembers, and(eq(campaignMembers.campaignId, campaigns.id), eq(campaignMembers.userId, userId)))
-    .where(or(eq(campaigns.ownerId, userId), eq(campaignMembers.userId, userId)))
     .orderBy(desc(campaigns.updatedAt));
 
   return rows.map(({ campaign, member }) => ({ ...campaign, memberRole: member?.role ?? (campaign.ownerId === userId ? "admin" : null) }));
@@ -40,16 +122,18 @@ export async function listCampaignsForUser(userId: number) {
 export async function getCampaignAccess(campaignId: number, userId: number): Promise<CampaignAccess | null> {
   const db = requireDb(await getDb());
   const rows = await db
-    .select({ campaign: campaigns, member: campaignMembers })
+    .select({ campaign: campaigns, member: campaignMembers, organizationMember: organizationMembers })
     .from(campaigns)
+    .innerJoin(organizationMembers, and(eq(organizationMembers.organizationId, campaigns.organizationId), eq(organizationMembers.userId, userId), eq(organizationMembers.active, true)))
     .leftJoin(campaignMembers, and(eq(campaignMembers.campaignId, campaigns.id), eq(campaignMembers.userId, userId)))
-    .where(and(eq(campaigns.id, campaignId), or(eq(campaigns.ownerId, userId), eq(campaignMembers.userId, userId))))
+    .where(eq(campaigns.id, campaignId))
     .limit(1);
 
   return rows[0] ?? null;
 }
 
 export async function createCampaignWithOwner(input: {
+  organizationId: number;
   ownerId: number;
   ownerName: string;
   ownerEmail: string;
@@ -60,6 +144,7 @@ export async function createCampaignWithOwner(input: {
 }) {
   const db = requireDb(await getDb());
   const campaignResult = await db.insert(campaigns).values({
+    organizationId: input.organizationId,
     name: input.name,
     candidateName: input.candidateName,
     electionLabel: input.electionLabel,
@@ -70,6 +155,7 @@ export async function createCampaignWithOwner(input: {
   const campaignId = Number(campaignResult[0].insertId);
 
   await db.insert(campaignMembers).values({
+    organizationId: input.organizationId,
     campaignId,
     userId: input.ownerId,
     name: input.ownerName,
@@ -151,7 +237,8 @@ export async function createMember(input: {
   workRegion?: string;
 }) {
   const db = requireDb(await getDb());
-  const result = await db.insert(campaignMembers).values({ ...input, active: true });
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignMembers).values({ ...input, organizationId, active: true });
   return Number(result[0].insertId);
 }
 
@@ -163,9 +250,9 @@ export async function listEvents(campaignId: number, startsAt?: Date, endsAt?: D
   return db.select().from(events).where(and(...conditions)).orderBy(events.startsAt);
 }
 
-export async function createEvent(input: typeof events.$inferInsert) {
+export async function createEvent(input: Omit<typeof events.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
-  const result = await db.insert(events).values(input);
+  const result = await db.insert(events).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
@@ -185,9 +272,9 @@ export async function listGoals(campaignId: number) {
   return db.select().from(goals).where(eq(goals.campaignId, campaignId)).orderBy(goals.deadline);
 }
 
-export async function createGoal(input: typeof goals.$inferInsert) {
+export async function createGoal(input: Omit<typeof goals.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
-  const result = await db.insert(goals).values(input);
+  const result = await db.insert(goals).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
@@ -197,9 +284,9 @@ export async function listTasks(campaignId: number, memberId?: number | null) {
   return db.select({ task: tasks, assignee: campaignMembers }).from(tasks).leftJoin(campaignMembers, eq(tasks.assignedToId, campaignMembers.id)).where(condition).orderBy(tasks.dueAt);
 }
 
-export async function createTask(input: typeof tasks.$inferInsert) {
+export async function createTask(input: Omit<typeof tasks.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
-  const result = await db.insert(tasks).values(input);
+  const result = await db.insert(tasks).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
@@ -224,16 +311,17 @@ export async function listVoters(input: { campaignId: number; memberId?: number 
   return db.select().from(voters).where(and(...conditions)).orderBy(desc(voters.updatedAt)).limit(100);
 }
 
-export async function createVoter(input: typeof voters.$inferInsert) {
+export async function createVoter(input: Omit<typeof voters.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
-  const result = await db.insert(voters).values(input);
+  const result = await db.insert(voters).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
-export async function createVotersBatch(input: (typeof voters.$inferInsert)[]) {
+export async function createVotersBatch(input: Omit<typeof voters.$inferInsert, "organizationId">[]) {
   if (!input.length) return 0;
   const db = requireDb(await getDb());
-  await db.insert(voters).values(input);
+  const organizationId = await organizationIdForCampaign(input[0].campaignId);
+  await db.insert(voters).values(input.map(item => ({ ...item, organizationId })));
   return input.length;
 }
 
@@ -247,7 +335,7 @@ export async function listImportContacts(campaignId: number) {
   return db.select({ id: voters.id, name: voters.name, email: voters.email, phone: voters.phone, neighborhood: voters.neighborhood }).from(voters).where(eq(voters.campaignId, campaignId));
 }
 
-export async function updateVoterFromImport(voterId: number, input: Omit<typeof voters.$inferInsert, "id" | "campaignId" | "ownerMemberId">) {
+export async function updateVoterFromImport(voterId: number, input: Omit<typeof voters.$inferInsert, "id" | "campaignId" | "organizationId" | "ownerMemberId">) {
   const db = requireDb(await getDb());
   await db.update(voters).set(input).where(eq(voters.id, voterId));
 }
@@ -257,12 +345,18 @@ export async function updateVoterPipeline(voterId: number, pipelineStage: "ident
   await db.update(voters).set({ pipelineStage }).where(eq(voters.id, voterId));
 }
 
-export async function getTerritoryData(campaignId: number) {
+export async function getTerritoryData(campaignId: number, filters?: { startsAt?: Date; endsAt?: Date; memberId?: number | null }) {
   const db = requireDb(await getDb());
+  const voterConditions = [eq(voters.campaignId, campaignId)];
+  const eventConditions = [eq(events.campaignId, campaignId)];
+  const incidentConditions = [eq(fieldIncidents.campaignId, campaignId)];
+  if (filters?.startsAt) { voterConditions.push(gte(voters.createdAt, filters.startsAt)); eventConditions.push(gte(events.startsAt, filters.startsAt)); incidentConditions.push(gte(fieldIncidents.occurredAt, filters.startsAt)); }
+  if (filters?.endsAt) { voterConditions.push(lte(voters.createdAt, filters.endsAt)); eventConditions.push(lte(events.startsAt, filters.endsAt)); incidentConditions.push(lte(fieldIncidents.occurredAt, filters.endsAt)); }
+  if (filters?.memberId) { voterConditions.push(eq(voters.ownerMemberId, filters.memberId)); eventConditions.push(eq(events.responsibleId, filters.memberId)); incidentConditions.push(eq(fieldIncidents.reportedById, filters.memberId)); }
   const [contactRows, eventRows, incidentRows] = await Promise.all([
-    db.select({ region: voters.region, neighborhood: voters.neighborhood, contacts: sql<number>`count(*)` }).from(voters).where(eq(voters.campaignId, campaignId)).groupBy(voters.region, voters.neighborhood),
-    db.select({ region: events.region, neighborhood: events.neighborhood, total: sql<number>`count(*)` }).from(events).where(eq(events.campaignId, campaignId)).groupBy(events.region, events.neighborhood),
-    db.select({ region: fieldIncidents.region, neighborhood: fieldIncidents.neighborhood, total: sql<number>`count(*)` }).from(fieldIncidents).where(eq(fieldIncidents.campaignId, campaignId)).groupBy(fieldIncidents.region, fieldIncidents.neighborhood),
+    db.select({ region: voters.region, neighborhood: voters.neighborhood, contacts: sql<number>`count(*)` }).from(voters).where(and(...voterConditions)).groupBy(voters.region, voters.neighborhood),
+    db.select({ region: events.region, neighborhood: events.neighborhood, total: sql<number>`count(*)` }).from(events).where(and(...eventConditions)).groupBy(events.region, events.neighborhood),
+    db.select({ region: fieldIncidents.region, neighborhood: fieldIncidents.neighborhood, total: sql<number>`count(*)` }).from(fieldIncidents).where(and(...incidentConditions)).groupBy(fieldIncidents.region, fieldIncidents.neighborhood),
   ]);
   return { territories: contactRows.map(row => ({ ...row, contacts: Number(row.contacts ?? 0) })), events: eventRows.map(row => ({ ...row, total: Number(row.total ?? 0) })), incidents: incidentRows.map(row => ({ ...row, total: Number(row.total ?? 0) })) };
 }
@@ -285,15 +379,20 @@ export async function listCampaignContents(campaignId: number) {
   return db.select().from(campaignContents).where(eq(campaignContents.campaignId, campaignId)).orderBy(desc(campaignContents.updatedAt));
 }
 
-export async function createCampaignContent(input: typeof campaignContents.$inferInsert) {
+export async function createCampaignContent(input: Omit<typeof campaignContents.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
-  const result = await db.insert(campaignContents).values(input);
+  const result = await db.insert(campaignContents).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
-export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "version" | "channel" | "status">) {
+export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize" | "version" | "channel" | "status">) {
   const db = requireDb(await getDb());
   await db.update(campaignContents).set(input).where(eq(campaignContents.id, id));
+}
+
+export async function saveCampaignContentAsset(id: number, asset: Pick<typeof campaignContents.$inferInsert, "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize">) {
+  const db = requireDb(await getDb());
+  await db.update(campaignContents).set(asset).where(eq(campaignContents.id, id));
 }
 
 export async function getContentById(id: number) {
@@ -334,9 +433,44 @@ export async function getVoter(voterId: number) {
   return rows[0] ?? null;
 }
 
-export async function createVoterInteraction(input: typeof voterInteractions.$inferInsert) {
+const followupRules = {
+  identified: { days: 1, title: "Realizar primeiro contato" },
+  approached: { days: 2, title: "Retornar após a abordagem" },
+  engaged: { days: 3, title: "Aprofundar o relacionamento" },
+  mobilized: { days: 7, title: "Manter o relacionamento ativo" },
+} as const;
+
+export async function createFollowupForPipeline(input: { campaignId: number; voterId: number; assignedToId?: number | null; stage: keyof typeof followupRules }) {
   const db = requireDb(await getDb());
-  const result = await db.insert(voterInteractions).values(input);
+  const pending = await db.select({ id: pipelineFollowups.id }).from(pipelineFollowups).where(and(eq(pipelineFollowups.voterId, input.voterId), eq(pipelineFollowups.stage, input.stage), eq(pipelineFollowups.status, "pending"))).limit(1);
+  if (pending[0]) return { id: pending[0].id, created: false };
+  const rule = followupRules[input.stage];
+  const dueAt = new Date(); dueAt.setDate(dueAt.getDate() + rule.days); dueAt.setHours(9, 0, 0, 0);
+  const result = await db.insert(pipelineFollowups).values({ organizationId: await organizationIdForCampaign(input.campaignId), campaignId: input.campaignId, voterId: input.voterId, assignedToId: input.assignedToId ?? null, stage: input.stage, title: rule.title, dueAt, status: "pending" });
+  return { id: Number(result[0].insertId), created: true };
+}
+
+export async function listPipelineFollowups(campaignId: number, memberId?: number | null) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(pipelineFollowups.campaignId, campaignId)];
+  if (memberId) conditions.push(eq(pipelineFollowups.assignedToId, memberId));
+  return db.select({ followup: pipelineFollowups, voter: voters, assignee: campaignMembers }).from(pipelineFollowups).innerJoin(voters, eq(pipelineFollowups.voterId, voters.id)).leftJoin(campaignMembers, eq(pipelineFollowups.assignedToId, campaignMembers.id)).where(and(...conditions)).orderBy(pipelineFollowups.status, pipelineFollowups.dueAt).limit(100);
+}
+
+export async function getPipelineFollowup(id: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(pipelineFollowups).where(eq(pipelineFollowups.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updatePipelineFollowupStatus(id: number, status: "pending" | "completed" | "cancelled") {
+  const db = requireDb(await getDb());
+  await db.update(pipelineFollowups).set({ status, completedAt: status === "completed" ? new Date() : null }).where(eq(pipelineFollowups.id, id));
+}
+
+export async function createVoterInteraction(input: Omit<typeof voterInteractions.$inferInsert, "organizationId">) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(voterInteractions).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
@@ -345,9 +479,9 @@ export async function listVoterInteractions(voterId: number) {
   return db.select().from(voterInteractions).where(eq(voterInteractions.voterId, voterId)).orderBy(desc(voterInteractions.happenedAt));
 }
 
-export async function saveAudioCrmLog(input: typeof audioCrmLogs.$inferInsert) {
+export async function saveAudioCrmLog(input: Omit<typeof audioCrmLogs.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
-  const result = await db.insert(audioCrmLogs).values(input);
+  const result = await db.insert(audioCrmLogs).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
@@ -357,9 +491,9 @@ export async function listIncidents(campaignId: number, memberId?: number | null
   return db.select().from(fieldIncidents).where(condition).orderBy(desc(fieldIncidents.occurredAt)).limit(100);
 }
 
-export async function createIncident(input: typeof fieldIncidents.$inferInsert) {
+export async function createIncident(input: Omit<typeof fieldIncidents.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
-  const result = await db.insert(fieldIncidents).values(input);
+  const result = await db.insert(fieldIncidents).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
@@ -368,13 +502,13 @@ export async function listIndicators(campaignId: number) {
   return db.select().from(campaignIndicators).where(eq(campaignIndicators.campaignId, campaignId)).orderBy(desc(campaignIndicators.updatedAt));
 }
 
-export async function saveIndicator(input: typeof campaignIndicators.$inferInsert) {
+export async function saveIndicator(input: Omit<typeof campaignIndicators.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
   if (input.id) {
     await db.update(campaignIndicators).set({ label: input.label, currentValue: input.currentValue, targetValue: input.targetValue, unit: input.unit }).where(eq(campaignIndicators.id, input.id));
     return input.id;
   }
-  const result = await db.insert(campaignIndicators).values(input);
+  const result = await db.insert(campaignIndicators).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
   return Number(result[0].insertId);
 }
 
@@ -395,7 +529,7 @@ export async function listAiMessages(campaignId: number, userId: number, kind: "
   return db.select().from(aiMessages).where(and(eq(aiMessages.campaignId, campaignId), eq(aiMessages.userId, userId), eq(aiMessages.kind, kind))).orderBy(desc(aiMessages.createdAt)).limit(12);
 }
 
-export async function saveAiMessage(input: typeof aiMessages.$inferInsert) {
+export async function saveAiMessage(input: Omit<typeof aiMessages.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
-  await db.insert(aiMessages).values(input);
+  await db.insert(aiMessages).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
 }

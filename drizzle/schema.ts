@@ -19,6 +19,10 @@ export const incidentStatusEnum = mysqlEnum("incident_status", ["open", "in_revi
 export const pipelineStageEnum = mysqlEnum("pipeline_stage", ["identified", "approached", "engaged", "mobilized"]);
 export const contentChannelEnum = mysqlEnum("content_channel", ["social", "whatsapp", "print", "speech", "video", "other"]);
 export const contentStatusEnum = mysqlEnum("content_status", ["draft", "review", "approved", "archived"]);
+export const followupStatusEnum = mysqlEnum("followup_status", ["pending", "completed", "cancelled"]);
+export const organizationRoleEnum = mysqlEnum("organization_role", ["admin", "manager", "operator", "viewer"]);
+export const organizationStatusEnum = mysqlEnum("organization_status", ["active", "suspended", "archived"]);
+export const invitationStatusEnum = mysqlEnum("invitation_status", ["pending", "accepted", "revoked", "expired"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -26,6 +30,9 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  passwordHash: varchar("passwordHash", { length: 255 }),
+  googleId: varchar("googleId", { length: 128 }).unique(),
+  avatarUrl: varchar("avatarUrl", { length: 1200 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -33,8 +40,45 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const organizations = mysqlTable("organizations", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 180 }).notNull(),
+  legalName: varchar("legalName", { length: 220 }),
+  fiscalId: varchar("fiscalId", { length: 32 }),
+  status: organizationStatusEnum.default("active").notNull(),
+  settings: json("settings"),
+  createdById: int("createdById").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("organization_status_idx").on(table.status), index("organization_fiscal_idx").on(table.fiscalId)]);
+
+export const organizationMembers = mysqlTable("organization_members", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  userId: int("userId").notNull().references(() => users.id),
+  role: organizationRoleEnum.default("operator").notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("org_member_user_idx").on(table.userId), index("org_member_org_idx").on(table.organizationId), index("org_member_unique_idx").on(table.organizationId, table.userId)]);
+
+export const organizationInvitations = mysqlTable("organization_invitations", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  email: varchar("email", { length: 320 }).notNull(),
+  role: organizationRoleEnum.default("operator").notNull(),
+  tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
+  status: invitationStatusEnum.default("pending").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  invitedById: int("invitedById").notNull().references(() => users.id),
+  acceptedById: int("acceptedById").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("invite_org_idx").on(table.organizationId, table.status), index("invite_email_idx").on(table.email, table.status), index("invite_token_idx").on(table.tokenHash)]);
+
 export const campaigns = mysqlTable("campaigns", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   name: varchar("name", { length: 160 }).notNull(),
   candidateName: varchar("candidateName", { length: 160 }).notNull(),
   electionLabel: varchar("electionLabel", { length: 120 }).notNull(),
@@ -43,10 +87,11 @@ export const campaigns = mysqlTable("campaigns", {
   ownerId: int("ownerId").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [index("campaign_owner_idx").on(table.ownerId)]);
+}, (table) => [index("campaign_owner_idx").on(table.ownerId), index("campaign_organization_idx").on(table.organizationId)]);
 
 export const campaignMembers = mysqlTable("campaign_members", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   userId: int("userId").references(() => users.id),
   name: varchar("name", { length: 160 }).notNull(),
@@ -57,10 +102,11 @@ export const campaignMembers = mysqlTable("campaign_members", {
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [index("member_campaign_idx").on(table.campaignId), index("member_user_idx").on(table.userId)]);
+}, (table) => [index("member_campaign_idx").on(table.campaignId), index("member_user_idx").on(table.userId), index("member_organization_idx").on(table.organizationId)]);
 
 export const events = mysqlTable("events", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   title: varchar("title", { length: 200 }).notNull(),
   type: eventTypeEnum.notNull().default("meeting"),
@@ -78,6 +124,7 @@ export const events = mysqlTable("events", {
 
 export const goals = mysqlTable("goals", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   title: varchar("title", { length: 200 }).notNull(),
   description: text("description"),
@@ -92,6 +139,7 @@ export const goals = mysqlTable("goals", {
 
 export const tasks = mysqlTable("tasks", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   goalId: int("goalId").references(() => goals.id),
   title: varchar("title", { length: 220 }).notNull(),
@@ -108,6 +156,7 @@ export const tasks = mysqlTable("tasks", {
 
 export const voters = mysqlTable("voters", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   ownerMemberId: int("ownerMemberId").references(() => campaignMembers.id),
   name: varchar("name", { length: 180 }).notNull(),
@@ -135,6 +184,7 @@ export const voters = mysqlTable("voters", {
 
 export const voterInteractions = mysqlTable("voter_interactions", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   voterId: int("voterId").notNull().references(() => voters.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   memberId: int("memberId").references(() => campaignMembers.id),
@@ -146,6 +196,7 @@ export const voterInteractions = mysqlTable("voter_interactions", {
 
 export const audioCrmLogs = mysqlTable("audio_crm_logs", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   memberId: int("memberId").references(() => campaignMembers.id),
   audioUrl: text("audioUrl").notNull(),
@@ -158,6 +209,7 @@ export const audioCrmLogs = mysqlTable("audio_crm_logs", {
 
 export const fieldIncidents = mysqlTable("field_incidents", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   reportedById: int("reportedById").references(() => campaignMembers.id),
   title: varchar("title", { length: 200 }).notNull(),
@@ -176,6 +228,7 @@ export const fieldIncidents = mysqlTable("field_incidents", {
 
 export const campaignIndicators = mysqlTable("campaign_indicators", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   label: varchar("label", { length: 120 }).notNull(),
   currentValue: int("currentValue").default(0).notNull(),
@@ -186,10 +239,15 @@ export const campaignIndicators = mysqlTable("campaign_indicators", {
 
 export const campaignContents = mysqlTable("campaign_contents", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   title: varchar("title", { length: 200 }).notNull(),
   body: text("body").notNull(),
   assetUrl: varchar("assetUrl", { length: 1200 }),
+  assetKey: varchar("assetKey", { length: 500 }),
+  assetName: varchar("assetName", { length: 260 }),
+  assetMime: varchar("assetMime", { length: 120 }),
+  assetSize: int("assetSize"),
   version: int("version").default(1).notNull(),
   channel: contentChannelEnum.notNull().default("social"),
   status: contentStatusEnum.notNull().default("draft"),
@@ -198,8 +256,28 @@ export const campaignContents = mysqlTable("campaign_contents", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("content_campaign_status_idx").on(table.campaignId, table.status)]);
 
+export const pipelineFollowups = mysqlTable("pipeline_followups", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  voterId: int("voterId").notNull().references(() => voters.id),
+  assignedToId: int("assignedToId").references(() => campaignMembers.id),
+  stage: pipelineStageEnum.notNull(),
+  title: varchar("title", { length: 220 }).notNull(),
+  dueAt: timestamp("dueAt").notNull(),
+  status: followupStatusEnum.notNull().default("pending"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("followup_campaign_due_idx").on(table.campaignId, table.status, table.dueAt),
+  index("followup_voter_idx").on(table.voterId),
+  index("followup_assignee_idx").on(table.assignedToId),
+]);
+
 export const aiMessages = mysqlTable("ai_messages", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   userId: int("userId").notNull().references(() => users.id),
   kind: mysqlEnum("ai_message_kind", ["chat", "content"]).notNull().default("chat"),

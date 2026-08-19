@@ -2,18 +2,39 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { aiRouter, campaignRouter, contentsRouter, dashboardRouter, goalsRouter, monitoringRouter, planningRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, votersRouter } from "./routers/index";
+import { z } from "zod";
+import * as db from "./db";
+import { sdk } from "./_core/sdk";
+import { ONE_YEAR_MS } from "../shared/const";
+import { aiRouter, campaignRouter, contentsRouter, dashboardRouter, followupsRouter, goalsRouter, monitoringRouter, organizationRouter, planningRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, votersRouter } from "./routers/index";
+
+async function establishSession(ctx: { res: any; req: any }, user: { openId: string; name: string | null }) {
+  const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
+  ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+}
 
 export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    register: publicProcedure.input(z.object({ name: z.string().min(2).max(160), email: z.string().email(), password: z.string().min(10).max(128) })).mutation(async ({ ctx, input }) => {
+      const user = await db.registerLocalUser(input);
+      await establishSession(ctx, user);
+      return { user, needsOnboarding: true };
+    }),
+    login: publicProcedure.input(z.object({ email: z.string().email(), password: z.string().min(1).max(128) })).mutation(async ({ ctx, input }) => {
+      const user = await db.authenticateLocalUser(input.email, input.password);
+      if (!user) throw new Error("E-mail ou senha inválidos.");
+      await establishSession(ctx, user);
+      return { user };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
       return { success: true } as const;
     }),
   }),
   campaign: campaignRouter,
+  organization: organizationRouter,
   dashboard: dashboardRouter,
   team: teamRouter,
   planning: planningRouter,
@@ -23,6 +44,7 @@ export const appRouter = router({
   monitoring: monitoringRouter,
   territory: territoryRouter,
   contents: contentsRouter,
+  followups: followupsRouter,
   publicIntake: publicIntakeRouter,
   reports: reportsRouter,
   ai: aiRouter,

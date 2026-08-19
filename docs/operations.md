@@ -40,6 +40,18 @@ Em **Contatos**, selecione **Formulário público** para copiar o link ou compar
 
 A **Biblioteca de conteúdos** reúne textos, roteiros e links de materiais, identificados por canal, versão e status de aprovação. O módulo **Relatórios** permite comparar contatos, tarefas, metas, eventos e ocorrências em um intervalo com o período anterior de mesma duração.
 
+## Filtros territoriais, anexos e follow-ups
+
+No módulo **Território**, a coordenação pode filtrar os agregados do mapa por período e integrante responsável. A biblioteca aceita anexos em PDF, JPG, PNG, DOCX e PPTX de até 10 MB; os arquivos são guardados fora do banco e ficam associados ao respectivo conteúdo. Ao avançar um contato no pipeline, o sistema cria um follow-up interno com prazo conforme a etapa, responsável, status e ação de conclusão ou cancelamento.
+
+## Organizações, acessos e login
+
+Cada organização possui um ambiente isolado. Toda campanha e entidade operacional está vinculada a uma organização, e o acesso a uma campanha só é concedido após a validação do vínculo organizacional ativo do usuário. O seletor no menu lateral permite alternar entre organizações autorizadas sem misturar dados.
+
+No primeiro acesso por Google ou por e-mail e senha, o usuário cria a primeira organização ou seleciona uma das existentes. Administradores podem gerar convites com os papéis **administrador**, **gerente**, **operador** e **leitor**. O convite é aceito somente pela conta autenticada com o mesmo e-mail para o qual ele foi emitido. O painel **Organizações** permite acompanhar membros e ajustar papéis; a entrega do convite pode ser disparada pelo e-mail pré-preenchido com o link seguro.
+
+O login Google usa um cliente OAuth configurado somente no servidor. Enquanto a tela de consentimento do Google estiver em modo de teste, acrescente os usuários autorizados no projeto do Google Cloud antes de solicitarem acesso.
+
 ## Validação técnica
 
 Antes de disponibilizar uma nova versão, execute `pnpm check`, `pnpm test` e `pnpm build`. A suíte atual cobre logout, regras de perfil, bloqueios de contratos e cenários de edição da campanha, agenda, indicadores, tarefas, histórico de interações e acesso ao processamento de áudio.

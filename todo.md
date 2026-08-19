@@ -51,9 +51,18 @@
 - [x] Adicionar links de materiais de campanha e versões aprovadas à biblioteca de conteúdos.
 - [x] Incluir metas na comparação de desempenho por período no backend e na interface de relatórios.
 - [x] Normalizar bairro e região em eventos e ocorrências para exibição territorial agregada e mapeável.
-- [ ] Implementar filtros territoriais por período e responsável no mapa de operação.
-- [ ] Permitir anexar arquivos diretamente aos materiais da biblioteca de conteúdos.
-- [ ] Implementar automações de follow-up por etapa do pipeline com acompanhamento de status.
+- [x] Implementar filtros territoriais por período e responsável no mapa de operação.
+- [x] Permitir anexar arquivos diretamente aos materiais da biblioteca de conteúdos.
+- [x] Implementar automações de follow-up por etapa do pipeline com acompanhamento de status.
 - [ ] Configurar alertas externos por prazo de follow-up e preferências de destinatários.
-- [ ] Criar documento profissional em PDF para apresentação do W9 Campanhas e suas funcionalidades.
+- [x] Modelar organizações, membros, convites e papéis por tenant.
+- [x] Isolar dados de campanha por organização em tabelas, consultas e procedimentos protegidos.
+- [x] Implementar login social com Google OAuth e suporte a login por e-mail e senha.
+- [x] Criar onboarding para criação ou seleção da primeira organização após login.
+- [x] Adicionar seletor de organização no cabeçalho e persistência de organização ativa.
+- [x] Implementar convites de equipe por e-mail e gestão de papéis por organização.
+- [x] Criar testes de isolamento de tenant e autorização multi-organização.
+- [x] Criar documento profissional em PDF para apresentação do W9 Campanhas e suas funcionalidades.
+- [x] Implementar no onboarding a aceitação de convites por token e a seleção explícita para usuários com múltiplas organizações.
+- [x] Criar painel de membros da organização para listar integrantes e alterar papéis por tenant.
 - [x] Criar versão comercial em PDF do W9 Campanhas para prospecção de clientes políticos.
