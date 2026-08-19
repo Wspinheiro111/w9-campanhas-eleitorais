@@ -6,7 +6,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
 import { ONE_YEAR_MS } from "../shared/const";
-import { aiRouter, campaignRouter, contentsRouter, dashboardRouter, followupsRouter, goalsRouter, monitoringRouter, organizationRouter, planningRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, votersRouter } from "./routers/index";
+import { aiRouter, campaignRouter, consentRouter, contentsRouter, crisisRouter, dashboardRouter, fieldRouter, followupsRouter, goalsRouter, insightsRouter, monitoringRouter, organizationRouter, planningRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, volunteersRouter, votersRouter } from "./routers/index";
 
 async function establishSession(ctx: { res: any; req: any }, user: { openId: string; name: string | null }) {
   const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
@@ -45,7 +45,12 @@ export const appRouter = router({
   territory: territoryRouter,
   contents: contentsRouter,
   followups: followupsRouter,
+  field: fieldRouter,
+  consent: consentRouter,
+  crisis: crisisRouter,
+  insights: insightsRouter,
   publicIntake: publicIntakeRouter,
+  volunteers: volunteersRouter,
   reports: reportsRouter,
   ai: aiRouter,
 });

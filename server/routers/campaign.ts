@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import * as db from "../campaignDb";
@@ -17,6 +18,8 @@ async function requireAccess(userId: number, campaignId: number): Promise<Access
   if (!access) throw new TRPCError({ code: "FORBIDDEN", message: "Você não possui acesso a esta campanha." });
   return access;
 }
+
+function hashVolunteerToken(token: string) { return createHash("sha256").update(token).digest("hex"); }
 
 function requireCapability(access: Access, action: "manage" | "team" | "own_data") {
   const role = access.member?.role ?? (access.campaign.ownerId ? "admin" : null) as CampaignRole | null;
@@ -66,6 +69,7 @@ export const teamRouter = router({
     return { id: await db.createMember({ campaignId, ...member }) };
   }),
   performance: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getTeamPerformance(input.campaignId); }),
+  benchmark: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getTeamBenchmark(input.campaignId); }),
 });
 
 export const planningRouter = router({
@@ -189,14 +193,16 @@ export const territoryRouter = router({
 
 export const contentsRouter = router({
   list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listCampaignContents(input.campaignId); }),
-  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999).default(1), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999).default(1), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
-    return { id: await db.createCampaignContent({ ...input, assetUrl: input.assetUrl ?? null, createdById: ctx.user.id }) };
+    if (input.ownerMemberId && !await db.getCampaignMember(input.campaignId, input.ownerMemberId)) throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável editorial precisa pertencer a esta campanha." });
+    return { id: await db.createCampaignContent({ ...input, assetUrl: input.assetUrl ?? null, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, ownerMemberId: input.ownerMemberId ?? null, createdById: ctx.user.id }) };
   }),
-  update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
+  update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
     const content = await db.getContentById(input.id); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
     const access = await requireAccess(ctx.user.id, content.campaignId); requireCapability(access, "manage");
-    await db.updateCampaignContent(input.id, { ...input, assetUrl: input.assetUrl ?? null }); return { success: true };
+    if (input.ownerMemberId && !await db.getCampaignMember(content.campaignId, input.ownerMemberId)) throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável editorial precisa pertencer a esta campanha." });
+    await db.updateCampaignContent(input.id, { ...input, assetUrl: input.assetUrl ?? null, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, ownerMemberId: input.ownerMemberId ?? null }); return { success: true };
   }),
   attach: protectedProcedure.input(z.object({ id: z.number().int().positive(), fileName: z.string().min(1).max(240), mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.presentationml.presentation"]), base64: z.string().min(8).max(14_000_000) })).mutation(async ({ ctx, input }) => {
     const content = await db.getContentById(input.id); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
@@ -231,7 +237,106 @@ export const publicIntakeRouter = router({
   }),
 });
 
+export const volunteersRouter = router({
+  publicSignup: publicProcedure.input(z.object({ campaignId: z.number().int().positive(), name: z.string().min(2).max(180), email: z.string().email().max(320), phone: z.string().max(32).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), availability: z.string().max(2000).optional(), skills: z.string().max(1000).optional(), consent: z.literal(true) })).mutation(async ({ input }) => {
+    const campaign = await db.getPublicCampaign(input.campaignId); if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Esta campanha não está disponível para inscrição." });
+    const existing = await db.getVolunteerByEmail(input.campaignId, input.email);
+    if (existing) return { id: existing.id, alreadyRegistered: true };
+    const token = randomBytes(32).toString("base64url");
+    const id = await db.createVolunteer({ campaignId: input.campaignId, name: input.name, email: input.email, accessTokenHash: hashVolunteerToken(token), phone: input.phone ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, availability: input.availability ?? null, skills: input.skills ?? null, trainingStatus: "not_started", status: "pending", consent: true, consentedAt: new Date(), notes: null });
+    return { id, alreadyRegistered: false, portalToken: token };
+  }),
+  portal: publicProcedure.input(z.object({ token: z.string().min(32).max(128) })).query(async ({ input }) => {
+    const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." });
+    const assignments = await db.listVolunteerAssignments(volunteer.campaignId, volunteer.id);
+    return { volunteer: { name: volunteer.name, neighborhood: volunteer.neighborhood, region: volunteer.region, availability: volunteer.availability, skills: volunteer.skills, trainingStatus: volunteer.trainingStatus, status: volunteer.status }, assignments: assignments.map(item => ({ id: item.id, title: item.title, description: item.description, territory: item.territory, scheduledAt: item.scheduledAt, status: item.status })) };
+  }),
+  updatePortalProfile: publicProcedure.input(z.object({ token: z.string().min(32).max(128), availability: z.string().max(2000).optional(), skills: z.string().max(1000).optional() })).mutation(async ({ input }) => {
+    const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." });
+    await db.updateVolunteerPortalProfile(volunteer.id, { availability: input.availability ?? null, skills: input.skills ?? null }); return { success: true };
+  }),
+  updateOwnAssignmentStatus: publicProcedure.input(z.object({ token: z.string().min(32).max(128), assignmentId: z.number().int().positive(), status: z.enum(["accepted", "completed"]) })).mutation(async ({ input }) => {
+    const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." }); const assignment = await db.getVolunteerAssignment(input.assignmentId); if (!assignment || assignment.volunteerId !== volunteer.id) throw new TRPCError({ code: "NOT_FOUND", message: "Tarefa não encontrada." });
+    await db.updateVolunteerAssignmentStatus(input.assignmentId, input.status); return { success: true };
+  }),
+  list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listVolunteers(input.campaignId); }),
+  update: protectedProcedure.input(z.object({ volunteerId: z.number().int().positive(), phone: z.string().max(32).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), availability: z.string().max(2000).optional(), skills: z.string().max(1000).optional(), notes: z.string().max(3000).optional(), trainingStatus: z.enum(["not_started", "in_progress", "completed"]), status: z.enum(["pending", "active", "inactive"]) })).mutation(async ({ ctx, input }) => {
+    const volunteer = await db.getVolunteer(input.volunteerId); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, volunteer.campaignId); requireCapability(access, "manage");
+    await db.updateVolunteer(input.volunteerId, { phone: input.phone ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, availability: input.availability ?? null, skills: input.skills ?? null, notes: input.notes ?? null, trainingStatus: input.trainingStatus, status: input.status }); return { success: true };
+  }),
+  assignments: router({
+    list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listVolunteerAssignments(input.campaignId); }),
+    create: protectedProcedure.input(campaignIdInput.extend({ volunteerId: z.number().int().positive(), title: z.string().min(3).max(220), description: z.string().max(3000).optional(), territory: z.string().max(180).optional(), scheduledAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+      const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); const volunteer = await db.getVolunteer(input.volunteerId); if (!volunteer || volunteer.campaignId !== input.campaignId) throw new TRPCError({ code: "BAD_REQUEST", message: "O voluntário precisa pertencer à campanha selecionada." });
+      return { id: await db.createVolunteerAssignment({ campaignId: input.campaignId, volunteerId: input.volunteerId, title: input.title, description: input.description ?? null, territory: input.territory ?? null, scheduledAt: input.scheduledAt ?? null, status: "assigned", completedAt: null, createdByUserId: ctx.user.id }) };
+    }),
+    updateStatus: protectedProcedure.input(z.object({ assignmentId: z.number().int().positive(), status: z.enum(["assigned", "accepted", "completed", "cancelled"]) })).mutation(async ({ ctx, input }) => {
+      const assignment = await db.getVolunteerAssignment(input.assignmentId); if (!assignment) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, assignment.campaignId); requireCapability(access, "manage"); await db.updateVolunteerAssignmentStatus(input.assignmentId, input.status); return { success: true };
+    }),
+  }),
+});
+
 export const reportsRouter = router({
   summary: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getReportData(input.campaignId); }),
   comparison: protectedProcedure.input(campaignIdInput.extend({ startsAt: z.date(), endsAt: z.date() })).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); if (input.endsAt < input.startsAt) throw new TRPCError({ code: "BAD_REQUEST", message: "O período final deve ser posterior ao inicial." }); return db.getComparativeReport(input.campaignId, input.startsAt, input.endsAt); }),
+});
+
+export const fieldRouter = router({
+  list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId);
+    return db.listFieldVisits(input.campaignId, access.member?.role === "partner" ? access.member.id : null);
+  }),
+  sync: protectedProcedure.input(campaignIdInput.extend({ visits: z.array(z.object({ voterId: z.number().int().positive().optional(), clientReference: z.string().uuid(), outcome: z.enum(["contacted", "absent", "refused", "follow_up", "other"]), notes: z.string().max(3000).optional(), occurredAt: z.date() })).min(1).max(100) })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId);
+    const memberId = access.member?.id ?? null;
+    if (access.member?.role === "partner" && !memberId) throw new TRPCError({ code: "FORBIDDEN", message: "Membro de campo não encontrado." });
+    return db.syncFieldVisits(input.visits.map(visit => ({ ...visit, campaignId: input.campaignId, memberId, notes: visit.notes ?? null })));
+  }),
+});
+
+export const consentRouter = router({
+  list: protectedProcedure.input(z.object({ voterId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, voter.campaignId);
+    if (access.member?.role === "partner" && !canAccessOwnedRecord("partner", voter.ownerMemberId, access.member.id)) throw new TRPCError({ code: "FORBIDDEN" });
+    return db.listConsentRecords(input.voterId);
+  }),
+  create: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), purpose: z.string().min(3).max(240), source: z.string().min(2).max(120), evidence: z.string().max(3000).optional(), consentedAt: z.date(), expiresAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+    const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, voter.campaignId);
+    if (access.member?.role === "partner" && !canAccessOwnedRecord("partner", voter.ownerMemberId, access.member.id)) throw new TRPCError({ code: "FORBIDDEN" });
+    return { id: await db.createConsentRecord({ campaignId: voter.campaignId, voterId: input.voterId, purpose: input.purpose, source: input.source, evidence: input.evidence ?? null, consentedAt: input.consentedAt, expiresAt: input.expiresAt ?? null, createdByUserId: ctx.user.id }) };
+  }),
+  revoke: protectedProcedure.input(z.object({ consentId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const record = await db.getConsentRecord(input.consentId); if (!record) throw new TRPCError({ code: "NOT_FOUND" });
+    const voter = await db.getVoter(record.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, voter.campaignId); requireCapability(access, "manage");
+    await db.revokeConsentRecord({ consentId: input.consentId, revokedAt: new Date() }); return { success: true };
+  }),
+});
+
+export const crisisRouter = router({
+  list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listCrisisCases(input.campaignId); }),
+  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(220), description: z.string().max(5000).optional(), severity: z.enum(["low", "medium", "high", "critical"]), assignedToId: z.number().int().positive().optional(), dueAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+    return { id: await db.createCrisisCase({ campaignId: input.campaignId, title: input.title, description: input.description ?? null, severity: input.severity, assignedToId: input.assignedToId ?? null, dueAt: input.dueAt ?? null, createdByUserId: ctx.user.id }) };
+  }),
+  update: protectedProcedure.input(z.object({ crisisId: z.number().int().positive(), status: z.enum(["open", "assessing", "responding", "resolved", "closed"]), assignedToId: z.number().int().positive().optional(), dueAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+    const crisis = await db.getCrisisCase(input.crisisId); if (!crisis) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, crisis.campaignId); requireCapability(access, "manage");
+    await db.updateCrisisCase(input.crisisId, { status: input.status, assignedToId: input.assignedToId ?? null, dueAt: input.dueAt ?? null }); return { success: true };
+  }),
+  decisions: protectedProcedure.input(z.object({ crisisId: z.number().int().positive() })).query(async ({ ctx, input }) => { const crisis = await db.getCrisisCase(input.crisisId); if (!crisis) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, crisis.campaignId); requireCapability(access, "manage"); return db.listCrisisDecisions(input.crisisId); }),
+  addDecision: protectedProcedure.input(z.object({ crisisId: z.number().int().positive(), decision: z.string().min(3).max(5000) })).mutation(async ({ ctx, input }) => { const crisis = await db.getCrisisCase(input.crisisId); if (!crisis) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, crisis.campaignId); requireCapability(access, "manage"); return { id: await db.addCrisisDecision({ crisisCaseId: input.crisisId, decision: input.decision, createdByUserId: ctx.user.id }) }; }),
+});
+
+export const insightsRouter = router({
+  heatmap: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getTerritoryHeatmap(input.campaignId); }),
+  mobilization: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getMobilizationScores(input.campaignId); }),
+  surveys: router({
+    list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listCampaignSurveys(input.campaignId); }),
+    create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(220), question: z.string().min(3).max(3000), responseType: z.enum(["single_choice", "scale", "text"]), options: z.array(z.string().min(1).max(160)).max(12).optional(), status: z.enum(["draft", "active", "closed"]) })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return { id: await db.createCampaignSurvey({ ...input, options: input.options ?? null, createdByUserId: ctx.user.id }) }; }),
+    respond: protectedProcedure.input(z.object({ surveyId: z.number().int().positive(), campaignId: z.number().int().positive(), voterId: z.number().int().positive().optional(), response: z.string().min(1).max(3000), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional() })).mutation(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); if (!await db.getSurveySummary(input.campaignId, input.surveyId)) throw new TRPCError({ code: "NOT_FOUND", message: "Pesquisa não encontrada nesta campanha." }); return { id: await db.submitSurveyResponse({ ...input, voterId: input.voterId ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, submittedByUserId: ctx.user.id }) }; }),
+    summary: protectedProcedure.input(z.object({ surveyId: z.number().int().positive(), campaignId: z.number().int().positive() })).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getSurveySummary(input.campaignId, input.surveyId); }),
+  }),
 });

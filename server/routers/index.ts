@@ -1,3 +1,3 @@
 export { aiRouter } from "./ai";
-export { campaignRouter, contentsRouter, dashboardRouter, followupsRouter, goalsRouter, monitoringRouter, planningRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, votersRouter } from "./campaign";
+export { campaignRouter, consentRouter, contentsRouter, crisisRouter, dashboardRouter, fieldRouter, followupsRouter, goalsRouter, insightsRouter, monitoringRouter, planningRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, volunteersRouter, votersRouter } from "./campaign";
 export { organizationRouter } from "./organization";

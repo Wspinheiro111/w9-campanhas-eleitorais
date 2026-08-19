@@ -6,8 +6,12 @@ import {
   campaignContents,
   campaignMembers,
   campaigns,
+  consentRecords,
+  crisisCases,
+  crisisDecisionLogs,
   events,
   fieldIncidents,
+  fieldVisits,
   goals,
   organizationAuditLogs,
   organizationInvitations,
@@ -15,7 +19,11 @@ import {
   organizations,
   pipelineFollowups,
   routePerformanceEvents,
+  campaignSurveys,
+  surveyResponses,
   tasks,
+  volunteerAssignments,
+  volunteers,
   voterInteractions,
   voters,
 } from "../drizzle/schema";
@@ -286,6 +294,12 @@ export async function listMembers(campaignId: number) {
   return db.select().from(campaignMembers).where(eq(campaignMembers.campaignId, campaignId)).orderBy(desc(campaignMembers.createdAt));
 }
 
+export async function getCampaignMember(campaignId: number, memberId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(campaignMembers).where(and(eq(campaignMembers.campaignId, campaignId), eq(campaignMembers.id, memberId))).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function createMember(input: {
   campaignId: number;
   name: string;
@@ -419,6 +433,51 @@ export async function getTerritoryData(campaignId: number, filters?: { startsAt?
   return { territories: contactRows.map(row => ({ ...row, contacts: Number(row.contacts ?? 0) })), events: eventRows.map(row => ({ ...row, total: Number(row.total ?? 0) })), incidents: incidentRows.map(row => ({ ...row, total: Number(row.total ?? 0) })) };
 }
 
+export async function getTerritoryHeatmap(campaignId: number) {
+  const db = requireDb(await getDb());
+  const [contactRows, visitRows, interactionRows, responseRows] = await Promise.all([
+    db.select({ region: voters.region, neighborhood: voters.neighborhood, total: sql<number>`count(*)` }).from(voters).where(eq(voters.campaignId, campaignId)).groupBy(voters.region, voters.neighborhood),
+    db.select({ region: voters.region, neighborhood: voters.neighborhood, total: sql<number>`count(*)` }).from(fieldVisits).leftJoin(voters, eq(fieldVisits.voterId, voters.id)).where(eq(fieldVisits.campaignId, campaignId)).groupBy(voters.region, voters.neighborhood),
+    db.select({ region: voters.region, neighborhood: voters.neighborhood, total: sql<number>`count(*)` }).from(voterInteractions).leftJoin(voters, eq(voterInteractions.voterId, voters.id)).where(eq(voterInteractions.campaignId, campaignId)).groupBy(voters.region, voters.neighborhood),
+    db.select({ region: surveyResponses.region, neighborhood: surveyResponses.neighborhood, total: sql<number>`count(*)` }).from(surveyResponses).where(eq(surveyResponses.campaignId, campaignId)).groupBy(surveyResponses.region, surveyResponses.neighborhood),
+  ]);
+  const rows = new Map<string, { region: string | null; neighborhood: string | null; contacts: number; visits: number; interactions: number; responses: number }>();
+  const merge = (items: Array<{ region: string | null; neighborhood: string | null; total: number }>, key: "contacts" | "visits" | "interactions" | "responses") => items.forEach(item => { const id = `${item.region ?? "Sem região"}::${item.neighborhood ?? "Sem bairro"}`; const current = rows.get(id) ?? { region: item.region, neighborhood: item.neighborhood, contacts: 0, visits: 0, interactions: 0, responses: 0 }; current[key] += Number(item.total ?? 0); rows.set(id, current); });
+  merge(contactRows, "contacts"); merge(visitRows, "visits"); merge(interactionRows, "interactions"); merge(responseRows, "responses");
+  return Array.from(rows.values()).map(item => ({ ...item, intensity: item.contacts + item.visits * 3 + item.interactions * 2 + item.responses * 2 })).sort((a, b) => b.intensity - a.intensity);
+}
+
+export async function getMobilizationScores(campaignId: number) {
+  const db = requireDb(await getDb());
+  const [contactRows, interactionRows, visitRows, consentRows] = await Promise.all([
+    db.select().from(voters).where(eq(voters.campaignId, campaignId)).limit(500),
+    db.select({ voterId: voterInteractions.voterId, total: sql<number>`count(*)` }).from(voterInteractions).where(eq(voterInteractions.campaignId, campaignId)).groupBy(voterInteractions.voterId),
+    db.select({ voterId: fieldVisits.voterId, total: sql<number>`count(*)` }).from(fieldVisits).where(eq(fieldVisits.campaignId, campaignId)).groupBy(fieldVisits.voterId),
+    db.select({ voterId: consentRecords.voterId, total: sql<number>`count(*)` }).from(consentRecords).where(and(eq(consentRecords.campaignId, campaignId), eq(consentRecords.status, "active"))).groupBy(consentRecords.voterId),
+  ]);
+  const interactions = new Map(interactionRows.map(row => [row.voterId, Number(row.total ?? 0)])); const visits = new Map(visitRows.map(row => [row.voterId, Number(row.total ?? 0)])); const consents = new Map(consentRows.map(row => [row.voterId, Number(row.total ?? 0)])); const stageScore = { identified: 10, approached: 30, engaged: 60, mobilized: 85 } as const;
+  return contactRows.map(voter => { const interactionCount = interactions.get(voter.id) ?? 0; const visitCount = visits.get(voter.id) ?? 0; const consent = (consents.get(voter.id) ?? 0) > 0; const score = Math.min(100, stageScore[voter.pipelineStage] + Math.min(15, interactionCount * 5) + Math.min(15, visitCount * 5) + (consent ? 10 : 0)); return { voter, interactions: interactionCount, visits: visitCount, consent, score }; }).sort((a, b) => b.score - a.score);
+}
+
+export async function listCampaignSurveys(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignSurveys).where(eq(campaignSurveys.campaignId, campaignId)).orderBy(desc(campaignSurveys.updatedAt));
+}
+
+export async function createCampaignSurvey(input: { campaignId: number; title: string; question: string; responseType: "single_choice" | "scale" | "text"; options?: string[] | null; status: "draft" | "active" | "closed"; createdByUserId: number }) {
+  const db = requireDb(await getDb()); const result = await db.insert(campaignSurveys).values({ ...input, options: input.options ?? null, organizationId: await organizationIdForCampaign(input.campaignId) }); return Number(result[0].insertId);
+}
+
+export async function submitSurveyResponse(input: { surveyId: number; campaignId: number; voterId?: number | null; response: string; neighborhood?: string | null; region?: string | null; submittedByUserId: number }) {
+  const db = requireDb(await getDb()); const result = await db.insert(surveyResponses).values({ ...input, voterId: input.voterId ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, organizationId: await organizationIdForCampaign(input.campaignId) }); return Number(result[0].insertId);
+}
+
+export async function getSurveySummary(campaignId: number, surveyId: number) {
+  const db = requireDb(await getDb()); const [survey] = await db.select().from(campaignSurveys).where(and(eq(campaignSurveys.id, surveyId), eq(campaignSurveys.campaignId, campaignId))).limit(1); if (!survey) return null;
+  const [totalRows, answers, territories] = await Promise.all([db.select({ total: sql<number>`count(*)` }).from(surveyResponses).where(and(eq(surveyResponses.surveyId, surveyId), eq(surveyResponses.campaignId, campaignId))), db.select({ response: surveyResponses.response, total: sql<number>`count(*)` }).from(surveyResponses).where(and(eq(surveyResponses.surveyId, surveyId), eq(surveyResponses.campaignId, campaignId))).groupBy(surveyResponses.response), db.select({ neighborhood: surveyResponses.neighborhood, region: surveyResponses.region, total: sql<number>`count(*)` }).from(surveyResponses).where(and(eq(surveyResponses.surveyId, surveyId), eq(surveyResponses.campaignId, campaignId))).groupBy(surveyResponses.neighborhood, surveyResponses.region)]);
+  return { survey, total: Number(totalRows[0]?.total ?? 0), answers: answers.map(row => ({ ...row, total: Number(row.total ?? 0) })), territories: territories.map(row => ({ ...row, total: Number(row.total ?? 0) })).sort((a, b) => b.total - a.total) };
+}
+
 export async function getTeamPerformance(campaignId: number) {
   const db = requireDb(await getDb());
   const [members, taskRows, eventRows] = await Promise.all([
@@ -432,9 +491,27 @@ export async function getTeamPerformance(campaignId: number) {
   });
 }
 
+export async function getTeamBenchmark(campaignId: number) {
+  const db = requireDb(await getDb());
+  const [members, taskRows, eventRows, visitRows] = await Promise.all([
+    db.select().from(campaignMembers).where(and(eq(campaignMembers.campaignId, campaignId), eq(campaignMembers.active, true))),
+    db.select().from(tasks).where(eq(tasks.campaignId, campaignId)),
+    db.select().from(events).where(eq(events.campaignId, campaignId)),
+    db.select().from(fieldVisits).where(eq(fieldVisits.campaignId, campaignId)),
+  ]);
+  const groups = new Map<string, { region: string; memberIds: Set<number>; tasks: number; completed: number; events: number; visits: number }>();
+  members.forEach(member => { const region = member.workRegion?.trim() || "Sem região definida"; const current = groups.get(region) ?? { region, memberIds: new Set<number>(), tasks: 0, completed: 0, events: 0, visits: 0 }; current.memberIds.add(member.id); groups.set(region, current); });
+  const memberToRegion = new Map(members.map(member => [member.id, member.workRegion?.trim() || "Sem região definida"]));
+  taskRows.forEach(task => { const region = task.assignedToId ? memberToRegion.get(task.assignedToId) : undefined; const current = region ? groups.get(region) : undefined; if (!current) return; current.tasks += 1; if (task.status === "done") current.completed += 1; });
+  eventRows.forEach(event => { const region = event.responsibleId ? memberToRegion.get(event.responsibleId) : undefined; const current = region ? groups.get(region) : undefined; if (current) current.events += 1; });
+  visitRows.forEach(visit => { const region = visit.memberId ? memberToRegion.get(visit.memberId) : undefined; const current = region ? groups.get(region) : undefined; if (current) current.visits += 1; });
+  return Array.from(groups.values()).map(group => { const memberCount = group.memberIds.size; const suppressed = memberCount < 2; const productivityIndex = Math.round((group.completed * 5 + group.events * 3 + group.visits * 2) / Math.max(memberCount, 1)); return { region: group.region, memberCount, suppressed, tasks: suppressed ? null : group.tasks, completed: suppressed ? null : group.completed, events: suppressed ? null : group.events, visits: suppressed ? null : group.visits, productivityIndex: suppressed ? null : productivityIndex }; }).sort((a, b) => (b.productivityIndex ?? -1) - (a.productivityIndex ?? -1));
+}
+
 export async function listCampaignContents(campaignId: number) {
   const db = requireDb(await getDb());
-  return db.select().from(campaignContents).where(eq(campaignContents.campaignId, campaignId)).orderBy(desc(campaignContents.updatedAt));
+  const rows = await db.select({ content: campaignContents, ownerName: campaignMembers.name }).from(campaignContents).leftJoin(campaignMembers, eq(campaignContents.ownerMemberId, campaignMembers.id)).where(eq(campaignContents.campaignId, campaignId)).orderBy(desc(campaignContents.updatedAt));
+  return rows.map(({ content, ownerName }) => ({ ...content, ownerName }));
 }
 
 export async function createCampaignContent(input: Omit<typeof campaignContents.$inferInsert, "organizationId">) {
@@ -443,7 +520,7 @@ export async function createCampaignContent(input: Omit<typeof campaignContents.
   return Number(result[0].insertId);
 }
 
-export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize" | "version" | "channel" | "status">) {
+export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize" | "version" | "channel" | "objective" | "scheduledAt" | "ownerMemberId" | "status">) {
   const db = requireDb(await getDb());
   await db.update(campaignContents).set(input).where(eq(campaignContents.id, id));
 }
@@ -463,6 +540,70 @@ export async function getPublicCampaign(campaignId: number) {
   const db = requireDb(await getDb());
   const rows = await db.select({ id: campaigns.id, name: campaigns.name, candidateName: campaigns.candidateName, electionLabel: campaigns.electionLabel, region: campaigns.region, status: campaigns.status }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
   return rows[0] && ["planning", "active"].includes(rows[0].status) ? rows[0] : null;
+}
+
+export async function listVolunteers(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(volunteers).where(eq(volunteers.campaignId, campaignId)).orderBy(desc(volunteers.createdAt));
+}
+
+export async function getVolunteer(volunteerId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(volunteers).where(eq(volunteers.id, volunteerId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getVolunteerByAccessTokenHash(accessTokenHash: string) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(volunteers).where(eq(volunteers.accessTokenHash, accessTokenHash)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getVolunteerByEmail(campaignId: number, email: string) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(volunteers).where(and(eq(volunteers.campaignId, campaignId), eq(volunteers.email, email.trim().toLowerCase()))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createVolunteer(input: Omit<typeof volunteers.$inferInsert, "organizationId">) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(volunteers).values({ ...input, email: input.email.trim().toLowerCase(), organizationId: await organizationIdForCampaign(input.campaignId) });
+  return Number(result[0].insertId);
+}
+
+export async function updateVolunteer(volunteerId: number, input: Pick<typeof volunteers.$inferInsert, "availability" | "skills" | "trainingStatus" | "status" | "notes" | "neighborhood" | "region" | "phone">) {
+  const db = requireDb(await getDb());
+  await db.update(volunteers).set(input).where(eq(volunteers.id, volunteerId));
+}
+
+export async function updateVolunteerPortalProfile(volunteerId: number, input: { availability?: string | null; skills?: string | null }) {
+  const db = requireDb(await getDb());
+  await db.update(volunteers).set(input).where(eq(volunteers.id, volunteerId));
+}
+
+export async function listVolunteerAssignments(campaignId: number, volunteerId?: number) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(volunteerAssignments.campaignId, campaignId)];
+  if (volunteerId) conditions.push(eq(volunteerAssignments.volunteerId, volunteerId));
+  const rows = await db.select({ assignment: volunteerAssignments, volunteerName: volunteers.name }).from(volunteerAssignments).innerJoin(volunteers, eq(volunteerAssignments.volunteerId, volunteers.id)).where(and(...conditions)).orderBy(desc(volunteerAssignments.scheduledAt), desc(volunteerAssignments.createdAt));
+  return rows.map(({ assignment, volunteerName }) => ({ ...assignment, volunteerName }));
+}
+
+export async function getVolunteerAssignment(assignmentId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(volunteerAssignments).where(eq(volunteerAssignments.id, assignmentId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createVolunteerAssignment(input: Omit<typeof volunteerAssignments.$inferInsert, "organizationId">) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(volunteerAssignments).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
+  return Number(result[0].insertId);
+}
+
+export async function updateVolunteerAssignmentStatus(assignmentId: number, status: "assigned" | "accepted" | "completed" | "cancelled") {
+  const db = requireDb(await getDb());
+  await db.update(volunteerAssignments).set({ status, completedAt: status === "completed" ? new Date() : null }).where(eq(volunteerAssignments.id, assignmentId));
 }
 
 export async function getComparativeReport(campaignId: number, startsAt: Date, endsAt: Date) {
@@ -535,6 +676,91 @@ export async function createVoterInteraction(input: Omit<typeof voterInteraction
 export async function listVoterInteractions(voterId: number) {
   const db = requireDb(await getDb());
   return db.select().from(voterInteractions).where(eq(voterInteractions.voterId, voterId)).orderBy(desc(voterInteractions.happenedAt));
+}
+
+export async function listFieldVisits(campaignId: number, memberId?: number | null) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(fieldVisits.campaignId, campaignId)];
+  if (memberId) conditions.push(eq(fieldVisits.memberId, memberId));
+  return db.select({ visit: fieldVisits, voter: voters, member: campaignMembers }).from(fieldVisits).leftJoin(voters, eq(fieldVisits.voterId, voters.id)).leftJoin(campaignMembers, eq(fieldVisits.memberId, campaignMembers.id)).where(and(...conditions)).orderBy(desc(fieldVisits.occurredAt)).limit(200);
+}
+
+export async function syncFieldVisits(input: Array<{ campaignId: number; voterId?: number | null; memberId?: number | null; clientReference: string; outcome: "contacted" | "absent" | "refused" | "follow_up" | "other"; notes?: string | null; occurredAt: Date }>) {
+  if (!input.length) return { created: 0, duplicates: 0 };
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input[0].campaignId);
+  let created = 0; let duplicates = 0;
+  for (const visit of input) {
+    const existing = await db.select({ id: fieldVisits.id }).from(fieldVisits).where(eq(fieldVisits.clientReference, visit.clientReference)).limit(1);
+    if (existing[0]) { duplicates += 1; continue; }
+    await db.insert(fieldVisits).values({ ...visit, voterId: visit.voterId ?? null, memberId: visit.memberId ?? null, notes: visit.notes ?? null, organizationId });
+    created += 1;
+  }
+  return { created, duplicates };
+}
+
+export async function listConsentRecords(voterId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(consentRecords).where(eq(consentRecords.voterId, voterId)).orderBy(desc(consentRecords.consentedAt));
+}
+
+export async function getConsentRecord(id: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(consentRecords).where(eq(consentRecords.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createConsentRecord(input: { campaignId: number; voterId: number; purpose: string; source: string; evidence?: string | null; consentedAt: Date; expiresAt?: Date | null; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(consentRecords).values({ ...input, evidence: input.evidence ?? null, expiresAt: input.expiresAt ?? null, organizationId, status: "active" });
+  await db.update(voters).set({ contactConsent: true, doNotContact: false }).where(eq(voters.id, input.voterId));
+  return Number(result[0].insertId);
+}
+
+export async function revokeConsentRecord(input: { consentId: number; revokedAt: Date }) {
+  const db = requireDb(await getDb());
+  const record = await db.select().from(consentRecords).where(eq(consentRecords.id, input.consentId)).limit(1);
+  if (!record[0]) throw new Error("CONSENT_NOT_FOUND");
+  await db.update(consentRecords).set({ status: "revoked", revokedAt: input.revokedAt }).where(eq(consentRecords.id, input.consentId));
+  const active = await db.select({ id: consentRecords.id }).from(consentRecords).where(and(eq(consentRecords.voterId, record[0].voterId), eq(consentRecords.status, "active"))).limit(1);
+  if (!active[0]) await db.update(voters).set({ contactConsent: false, doNotContact: true }).where(eq(voters.id, record[0].voterId));
+  return record[0];
+}
+
+export async function listCrisisCases(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ crisis: crisisCases, assignee: campaignMembers }).from(crisisCases).leftJoin(campaignMembers, eq(crisisCases.assignedToId, campaignMembers.id)).where(eq(crisisCases.campaignId, campaignId)).orderBy(desc(crisisCases.updatedAt)).limit(200);
+}
+
+export async function createCrisisCase(input: { campaignId: number; title: string; description?: string | null; severity: "low" | "medium" | "high" | "critical"; assignedToId?: number | null; dueAt?: Date | null; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(crisisCases).values({ ...input, description: input.description ?? null, assignedToId: input.assignedToId ?? null, dueAt: input.dueAt ?? null, organizationId: await organizationIdForCampaign(input.campaignId), status: "open" });
+  return Number(result[0].insertId);
+}
+
+export async function getCrisisCase(id: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(crisisCases).where(eq(crisisCases.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateCrisisCase(id: number, input: { status: "open" | "assessing" | "responding" | "resolved" | "closed"; assignedToId?: number | null; dueAt?: Date | null }) {
+  const db = requireDb(await getDb());
+  await db.update(crisisCases).set({ ...input, assignedToId: input.assignedToId ?? null, dueAt: input.dueAt ?? null, resolvedAt: ["resolved", "closed"].includes(input.status) ? new Date() : null }).where(eq(crisisCases.id, id));
+}
+
+export async function listCrisisDecisions(crisisCaseId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(crisisDecisionLogs).where(eq(crisisDecisionLogs.crisisCaseId, crisisCaseId)).orderBy(desc(crisisDecisionLogs.createdAt));
+}
+
+export async function addCrisisDecision(input: { crisisCaseId: number; decision: string; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const crisis = await getCrisisCase(input.crisisCaseId);
+  if (!crisis) throw new Error("CRISIS_NOT_FOUND");
+  const result = await db.insert(crisisDecisionLogs).values({ ...input, organizationId: crisis.organizationId });
+  return Number(result[0].insertId);
 }
 
 export async function saveAudioCrmLog(input: Omit<typeof audioCrmLogs.$inferInsert, "organizationId">) {

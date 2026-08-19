@@ -100,3 +100,26 @@
 - [x] Testar a agregação de volume, média, pico e taxa de erro das métricas por rota antes de consolidar a entrega.
 - [x] Conectar a agregação de métricas testada ao fluxo de produção do painel técnico para validar os cálculos efetivos por organização.
 - [x] Salvar checkpoint final pós-auditoria após as últimas correções e a atualização do relatório.
+- [x] Implementar canvassing de campo offline com registro de visitas e sincronização posterior.
+- [x] Implementar central de consentimento LGPD com origem, finalidade, evidência, validade e revogação.
+- [x] Implementar sala de crise com gravidade, responsáveis, prazos e histórico de decisões.
+- [x] Implementar mapa de calor eleitoral, pesquisas rápidas e score de mobilização.
+- [x] Criar mapa de calor territorial com intensidade de contatos, campo e interações por bairro e região.
+- [x] Implementar pesquisas rápidas por campanha com respostas de campo e consolidação territorial.
+- [x] Calcular e apresentar score de mobilização baseado em consentimento, pipeline, interações e visitas de campo.
+- [x] Implementar calendário editorial multicanal e simulador de cenários.
+- [x] Adicionar planejamento editorial com data, responsável, objetivo e status por canal de conteúdo.
+- [x] Implementar simulador de cenários com projeções explicáveis a partir de metas de contatos, visitas e eventos.
+- [x] Implementar portal do voluntário com autoinscrição consentida, disponibilidade, formação e tarefas territoriais.
+- [x] Implementar benchmark interno de equipe por região, com dados agregados e sem exposição de contatos pessoais.
+- [x] Ajustar a mensagem de pluralização da fila offline e ocultar controles de crise para perfis sem gestão.
+- [x] Adicionar validade do consentimento e sua exibição no histórico da Central de Consentimento.
+- [x] Adicionar responsável, prazo e histórico visível de decisões à Sala de Crise.
+- [x] Cobrir validade do consentimento e fluxos completos de crise em testes de contrato e interface.
+- [x] Exibir consolidação de pesquisas rápidas por bairro e região na Mobilização.
+- [x] Exibir o responsável editorial na biblioteca de conteúdos e validar seu vínculo com a campanha.
+- [x] Criar acesso individual seguro para o voluntário acompanhar formação, disponibilidade e tarefas territoriais.
+- [x] Tratar navegação e estados de acesso restrito no portal interno de voluntários e no benchmark.
+- [x] Ampliar a cobertura dos fluxos de revogação de consentimento e histórico completo de crise.
+- [x] Adicionar teste de interface para revogação e histórico de validade do consentimento.
+- [x] Adicionar teste de interface para abertura, atualização e histórico de decisões da sala de crise.
