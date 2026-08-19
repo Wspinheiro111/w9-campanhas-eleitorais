@@ -73,16 +73,23 @@ Depois que o último material é confirmado, a plataforma mostra uma celebraçã
 
 No painel administrativo de voluntários, a coordenação pode definir a **cor principal**, a **cor de destaque**, o logotipo, a assinatura visual, o nome da assinatura e sua função. O logotipo e a assinatura podem ser enviados diretamente no painel em PNG, JPEG ou WebP de até 2 MB; os arquivos são armazenados de forma segura por campanha. A configuração é exclusiva da campanha selecionada e é aplicada ao certificado exibido no portal, ao QR Code e à exportação em PDF.
 
+Antes do envio, o logotipo passa por uma etapa de **recorte quadrado**, com zoom e reposicionamento. Esse enquadramento garante uma apresentação consistente na visualização do certificado e no PDF.
+
 | Recurso | Acesso | Comportamento |
 |---|---|---|
 | Identidade visual | Coordenação com permissão de gestão | Altera cores, logotipo e assinatura apenas da campanha ativa. |
 | Progresso da trilha | Voluntário no portal privado | Mostra percentual, quantidade concluída e etapas restantes para a emissão. |
 | Histórico de certificados | Voluntário no portal privado | Lista os certificados emitidos no vínculo da campanha e permite baixar novamente o PDF. |
 | Lembrete de pendências | Voluntário no portal privado | Exibe aviso visual com quantidade de módulos pendentes e atalho para a trilha. |
+| Prazo de módulo | Coordenação com permissão de gestão | Define ou remove a data de vencimento de cada etapa publicada. |
+| Alerta de prazo | Voluntário no portal privado | Destaca módulos vencidos e etapas que vencem nos próximos três dias. |
+| Progresso gerencial | Coordenação com permissão de gestão | Consolida taxa de conclusão e vencimentos, com filtros por responsável de equipe e região. |
 
 > O histórico e os arquivos exportados continuam vinculados ao acesso privado do voluntário. A personalização visual não altera o código, a data ou as regras de validação do certificado.
 
 Quando a coordenação publica uma nova etapa em uma trilha já concluída, a formação volta a ficar pendente até que o voluntário conclua a etapa adicional. A nova conclusão gera uma **nova versão imutável** do certificado, com código e data próprios. As versões anteriores permanecem no histórico, podem ser exportadas novamente e continuam válidas para a consulta interna por QR Code.
+
+Para ativar os filtros de equipe no painel gerencial, associe cada voluntário a um responsável em **Responsáveis de equipe**. O painel apresenta apenas métricas operacionais de formação, sem reproduzir dados de contato no comparativo agregado.
 
 ## Benchmark interno de equipe
 

@@ -140,3 +140,6 @@
 - [x] Adicionar teste de interface para baixar em PDF uma versão anterior no histórico privado de certificados.
 - [x] Permitir upload direto de logotipo e assinatura visual para a identidade do certificado por campanha.
 - [x] Exibir notificações visuais no portal do voluntário para módulos de treinamento ainda pendentes.
+- [x] Adicionar recorte de imagem antes do upload do logotipo para o certificado.
+- [x] Configurar prazo por módulo de treinamento e alertar o voluntário sobre vencimentos.
+- [x] Criar painel gerencial de progresso e taxa de conclusão com filtros por equipe e região.

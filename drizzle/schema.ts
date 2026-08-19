@@ -200,6 +200,7 @@ export const volunteers = mysqlTable("volunteers", {
   phone: varchar("phone", { length: 32 }),
   neighborhood: varchar("neighborhood", { length: 120 }),
   region: varchar("region", { length: 120 }),
+  coordinatorMemberId: int("coordinatorMemberId").references(() => campaignMembers.id),
   availability: text("availability"),
   skills: text("skills"),
   trainingStatus: volunteerTrainingStatusEnum.notNull().default("not_started"),
@@ -209,7 +210,7 @@ export const volunteers = mysqlTable("volunteers", {
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [index("volunteer_campaign_status_idx").on(table.campaignId, table.status), index("volunteer_organization_idx").on(table.organizationId), uniqueIndex("volunteer_campaign_email_idx").on(table.campaignId, table.email)]);
+}, (table) => [index("volunteer_campaign_status_idx").on(table.campaignId, table.status), index("volunteer_campaign_coordinator_idx").on(table.campaignId, table.coordinatorMemberId), index("volunteer_organization_idx").on(table.organizationId), uniqueIndex("volunteer_campaign_email_idx").on(table.campaignId, table.email)]);
 
 export const volunteerAssignments = mysqlTable("volunteer_assignments", {
   id: int("id").autoincrement().primaryKey(),
@@ -237,6 +238,7 @@ export const volunteerTrainingMaterials = mysqlTable("volunteer_training_materia
   resourceUrl: varchar("resourceUrl", { length: 2000 }),
   content: text("content"),
   durationMinutes: int("durationMinutes").notNull().default(10),
+  dueAt: timestamp("dueAt"),
   position: int("position").notNull().default(0),
   active: boolean("active").notNull().default(true),
   createdByUserId: int("createdByUserId").references(() => users.id),

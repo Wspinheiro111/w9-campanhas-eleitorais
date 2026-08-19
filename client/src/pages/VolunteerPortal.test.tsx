@@ -31,4 +31,10 @@ describe("histórico e lembretes privados do voluntário", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Você tem 1 módulo pendente");
     expect(screen.getByRole("link", { name: "Continuar treinamento" })).toHaveAttribute("href", "#trilha-treinamento");
   });
+
+  it("prioriza visualmente o alerta quando um módulo pendente está com prazo vencido", () => {
+    mocks.portalData = portalData(true); mocks.portalData.trainingMaterials[0].dueAt = new Date("2020-01-01T12:00:00Z"); render(<VolunteerPortal />);
+    expect(screen.getByRole("status")).toHaveTextContent("1 módulo com prazo vencido");
+    expect(screen.getByText(/Prazo vencido em/i)).toBeInTheDocument();
+  });
 });
