@@ -69,6 +69,20 @@ O QR Code encaminha para uma rota de validação interna. A rota exige autentica
 
 Depois que o último material é confirmado, a plataforma mostra uma celebração visual e acessível, informa que o certificado foi emitido e direciona o voluntário à área em que pode visualizar, imprimir ou exportar o documento.
 
+### Identidade visual por campanha e histórico privado
+
+No painel administrativo de voluntários, a coordenação pode definir a **cor principal**, a **cor de destaque**, a URL do **logotipo**, o nome da assinatura e sua função. A configuração é exclusiva da campanha selecionada e é aplicada ao certificado exibido no portal, ao QR Code e à exportação em PDF.
+
+| Recurso | Acesso | Comportamento |
+|---|---|---|
+| Identidade visual | Coordenação com permissão de gestão | Altera cores, logotipo e assinatura apenas da campanha ativa. |
+| Progresso da trilha | Voluntário no portal privado | Mostra percentual, quantidade concluída e etapas restantes para a emissão. |
+| Histórico de certificados | Voluntário no portal privado | Lista os certificados emitidos no vínculo da campanha e permite baixar novamente o PDF. |
+
+> O histórico e os arquivos exportados continuam vinculados ao acesso privado do voluntário. A personalização visual não altera o código, a data ou as regras de validação do certificado.
+
+Quando a coordenação publica uma nova etapa em uma trilha já concluída, a formação volta a ficar pendente até que o voluntário conclua a etapa adicional. A nova conclusão gera uma **nova versão imutável** do certificado, com código e data próprios. As versões anteriores permanecem no histórico, podem ser exportadas novamente e continuam válidas para a consulta interna por QR Code.
+
 ## Benchmark interno de equipe
 
 O Benchmark regional consolida tarefas, entregas, eventos e visitas de campo por **região de trabalho**, sem apresentar nomes ou métricas individuais. Para reduzir risco de reidentificação, resultados de regiões com menos de dois integrantes ativos são suprimidos.

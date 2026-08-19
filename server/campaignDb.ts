@@ -4,6 +4,7 @@ import {
   aiMessages,
   audioCrmLogs,
   campaignIndicators,
+  campaignCertificateSettings,
   campaignContents,
   campaignMembers,
   campaigns,
@@ -25,6 +26,7 @@ import {
   tasks,
   volunteerAssignments,
   volunteerTrainingCertificates,
+  volunteerTrainingCertificateVersions,
   volunteerTrainingCompletions,
   volunteerTrainingMaterials,
   volunteers,
@@ -613,6 +615,7 @@ export async function getVolunteerTrainingMaterial(materialId: number) {
 export async function createVolunteerTrainingMaterial(input: Omit<typeof volunteerTrainingMaterials.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
   const result = await db.insert(volunteerTrainingMaterials).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
+  await db.update(volunteers).set({ trainingStatus: "in_progress" }).where(and(eq(volunteers.campaignId, input.campaignId), eq(volunteers.trainingStatus, "completed")));
   return Number(result[0].insertId);
 }
 
@@ -628,9 +631,21 @@ export async function completeVolunteerTrainingMaterial(input: { campaignId: num
   await db.update(volunteers).set({ trainingStatus }).where(eq(volunteers.id, input.volunteerId));
   let certificate: { certificateCode: string; issuedAt: Date; completedMaterials: number } | null = null;
   if (trainingStatus === "completed") {
-    await db.insert(volunteerTrainingCertificates).values({ organizationId, campaignId: input.campaignId, volunteerId: input.volunteerId, certificateCode: `W9-${randomUUID().replace(/-/g, "").toUpperCase()}`, completedMaterials: materials.length, issuedAt: new Date() }).onDuplicateKeyUpdate({ set: { completedMaterials: materials.length } });
-    const rows = await db.select({ certificateCode: volunteerTrainingCertificates.certificateCode, issuedAt: volunteerTrainingCertificates.issuedAt, completedMaterials: volunteerTrainingCertificates.completedMaterials }).from(volunteerTrainingCertificates).where(and(eq(volunteerTrainingCertificates.campaignId, input.campaignId), eq(volunteerTrainingCertificates.volunteerId, input.volunteerId))).limit(1);
-    certificate = rows[0] ?? null;
+    const currentRows = await db.select({ certificateCode: volunteerTrainingCertificates.certificateCode, issuedAt: volunteerTrainingCertificates.issuedAt, completedMaterials: volunteerTrainingCertificates.completedMaterials }).from(volunteerTrainingCertificates).where(and(eq(volunteerTrainingCertificates.campaignId, input.campaignId), eq(volunteerTrainingCertificates.volunteerId, input.volunteerId))).limit(1);
+    const versions = await db.select({ versionNumber: volunteerTrainingCertificateVersions.versionNumber, certificateCode: volunteerTrainingCertificateVersions.certificateCode, issuedAt: volunteerTrainingCertificateVersions.issuedAt, completedMaterials: volunteerTrainingCertificateVersions.completedMaterials }).from(volunteerTrainingCertificateVersions).where(and(eq(volunteerTrainingCertificateVersions.campaignId, input.campaignId), eq(volunteerTrainingCertificateVersions.volunteerId, input.volunteerId))).orderBy(desc(volunteerTrainingCertificateVersions.versionNumber));
+    const now = new Date(); let current = currentRows[0] ?? null;
+    if (!current) {
+      current = { certificateCode: `W9-${randomUUID().replace(/-/g, "").toUpperCase()}`, issuedAt: now, completedMaterials: materials.length };
+      await db.insert(volunteerTrainingCertificates).values({ organizationId, campaignId: input.campaignId, volunteerId: input.volunteerId, ...current });
+      await db.insert(volunteerTrainingCertificateVersions).values({ organizationId, campaignId: input.campaignId, volunteerId: input.volunteerId, versionNumber: 1, ...current });
+    } else if (current.completedMaterials !== materials.length) {
+      current = { certificateCode: `W9-${randomUUID().replace(/-/g, "").toUpperCase()}`, issuedAt: now, completedMaterials: materials.length };
+      await db.update(volunteerTrainingCertificates).set(current).where(and(eq(volunteerTrainingCertificates.campaignId, input.campaignId), eq(volunteerTrainingCertificates.volunteerId, input.volunteerId)));
+      await db.insert(volunteerTrainingCertificateVersions).values({ organizationId, campaignId: input.campaignId, volunteerId: input.volunteerId, versionNumber: (versions[0]?.versionNumber ?? 0) + 1, ...current });
+    } else if (!versions[0]) {
+      await db.insert(volunteerTrainingCertificateVersions).values({ organizationId, campaignId: input.campaignId, volunteerId: input.volunteerId, versionNumber: 1, ...current });
+    }
+    certificate = current;
   }
   return { completed: completions.length, total: materials.length, trainingStatus, certificate };
 }
@@ -641,10 +656,34 @@ export async function getVolunteerTrainingCertificate(campaignId: number, volunt
   return rows[0] ?? null;
 }
 
+export async function listVolunteerTrainingCertificates(campaignId: number, volunteerId: number) {
+  const db = requireDb(await getDb());
+  const versions = await db.select({ certificateCode: volunteerTrainingCertificateVersions.certificateCode, issuedAt: volunteerTrainingCertificateVersions.issuedAt, completedMaterials: volunteerTrainingCertificateVersions.completedMaterials, versionNumber: volunteerTrainingCertificateVersions.versionNumber }).from(volunteerTrainingCertificateVersions).where(and(eq(volunteerTrainingCertificateVersions.campaignId, campaignId), eq(volunteerTrainingCertificateVersions.volunteerId, volunteerId))).orderBy(desc(volunteerTrainingCertificateVersions.versionNumber));
+  if (versions.length) return versions;
+  const current = await getVolunteerTrainingCertificate(campaignId, volunteerId);
+  return current ? [{ ...current, versionNumber: 1 }] : [];
+}
+
+const defaultCertificateSettings = { primaryColor: "#103527", accentColor: "#c9a85b", logoUrl: null, signatureName: null, signatureRole: null };
+
+export async function getCampaignCertificateSettings(campaignId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ primaryColor: campaignCertificateSettings.primaryColor, accentColor: campaignCertificateSettings.accentColor, logoUrl: campaignCertificateSettings.logoUrl, signatureName: campaignCertificateSettings.signatureName, signatureRole: campaignCertificateSettings.signatureRole }).from(campaignCertificateSettings).where(eq(campaignCertificateSettings.campaignId, campaignId)).limit(1);
+  return rows[0] ?? defaultCertificateSettings;
+}
+
+export async function updateCampaignCertificateSettings(input: { campaignId: number; primaryColor: string; accentColor: string; logoUrl: string | null; signatureName: string | null; signatureRole: string | null; updatedByUserId: number }) {
+  const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId);
+  await db.insert(campaignCertificateSettings).values({ ...input, organizationId }).onDuplicateKeyUpdate({ set: { primaryColor: input.primaryColor, accentColor: input.accentColor, logoUrl: input.logoUrl, signatureName: input.signatureName, signatureRole: input.signatureRole, updatedByUserId: input.updatedByUserId } });
+  return getCampaignCertificateSettings(input.campaignId);
+}
+
 export async function getVolunteerTrainingCertificateByCode(certificateCode: string) {
   const db = requireDb(await getDb());
-  const rows = await db.select({ certificateCode: volunteerTrainingCertificates.certificateCode, issuedAt: volunteerTrainingCertificates.issuedAt, completedMaterials: volunteerTrainingCertificates.completedMaterials, campaignId: volunteerTrainingCertificates.campaignId, organizationId: volunteerTrainingCertificates.organizationId, volunteerName: volunteers.name, campaignName: campaigns.name, candidateName: campaigns.candidateName }).from(volunteerTrainingCertificates).innerJoin(volunteers, eq(volunteerTrainingCertificates.volunteerId, volunteers.id)).innerJoin(campaigns, eq(volunteerTrainingCertificates.campaignId, campaigns.id)).where(eq(volunteerTrainingCertificates.certificateCode, certificateCode)).limit(1);
-  return rows[0] ?? null;
+  const historical = await db.select({ certificateCode: volunteerTrainingCertificateVersions.certificateCode, issuedAt: volunteerTrainingCertificateVersions.issuedAt, completedMaterials: volunteerTrainingCertificateVersions.completedMaterials, campaignId: volunteerTrainingCertificateVersions.campaignId, organizationId: volunteerTrainingCertificateVersions.organizationId, volunteerName: volunteers.name, campaignName: campaigns.name, candidateName: campaigns.candidateName }).from(volunteerTrainingCertificateVersions).innerJoin(volunteers, eq(volunteerTrainingCertificateVersions.volunteerId, volunteers.id)).innerJoin(campaigns, eq(volunteerTrainingCertificateVersions.campaignId, campaigns.id)).where(eq(volunteerTrainingCertificateVersions.certificateCode, certificateCode)).limit(1);
+  if (historical[0]) return historical[0];
+  const current = await db.select({ certificateCode: volunteerTrainingCertificates.certificateCode, issuedAt: volunteerTrainingCertificates.issuedAt, completedMaterials: volunteerTrainingCertificates.completedMaterials, campaignId: volunteerTrainingCertificates.campaignId, organizationId: volunteerTrainingCertificates.organizationId, volunteerName: volunteers.name, campaignName: campaigns.name, candidateName: campaigns.candidateName }).from(volunteerTrainingCertificates).innerJoin(volunteers, eq(volunteerTrainingCertificates.volunteerId, volunteers.id)).innerJoin(campaigns, eq(volunteerTrainingCertificates.campaignId, campaigns.id)).where(eq(volunteerTrainingCertificates.certificateCode, certificateCode)).limit(1);
+  return current[0] ?? null;
 }
 
 export async function listVolunteerAssignments(campaignId: number, volunteerId?: number) {

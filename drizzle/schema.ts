@@ -264,6 +264,32 @@ export const volunteerTrainingCertificates = mysqlTable("volunteer_training_cert
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [uniqueIndex("training_certificate_volunteer_campaign_idx").on(table.volunteerId, table.campaignId), index("training_certificate_campaign_idx").on(table.campaignId), index("training_certificate_organization_idx").on(table.organizationId)]);
 
+export const volunteerTrainingCertificateVersions = mysqlTable("volunteer_training_certificate_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  volunteerId: int("volunteerId").notNull().references(() => volunteers.id),
+  versionNumber: int("versionNumber").notNull(),
+  certificateCode: varchar("certificateCode", { length: 50 }).notNull().unique(),
+  completedMaterials: int("completedMaterials").notNull(),
+  issuedAt: timestamp("issuedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("training_certificate_version_idx").on(table.volunteerId, table.campaignId, table.versionNumber), index("training_certificate_version_volunteer_idx").on(table.volunteerId, table.issuedAt), index("training_certificate_version_campaign_idx").on(table.campaignId)]);
+
+export const campaignCertificateSettings = mysqlTable("campaign_certificate_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  primaryColor: varchar("primaryColor", { length: 7 }).notNull().default("#103527"),
+  accentColor: varchar("accentColor", { length: 7 }).notNull().default("#c9a85b"),
+  logoUrl: varchar("logoUrl", { length: 2000 }),
+  signatureName: varchar("signatureName", { length: 180 }),
+  signatureRole: varchar("signatureRole", { length: 180 }),
+  updatedByUserId: int("updatedByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("certificate_settings_campaign_idx").on(table.campaignId), index("certificate_settings_organization_idx").on(table.organizationId)]);
+
 export const events = mysqlTable("events", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

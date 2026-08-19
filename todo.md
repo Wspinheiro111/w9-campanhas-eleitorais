@@ -132,3 +132,9 @@
 - [x] Adicionar exportação do certificado interno em formato PDF no portal privado do voluntário.
 - [x] Gerar QR Code com validação interna segura do código do certificado para a coordenação.
 - [x] Exibir uma celebração acessível quando a conclusão da trilha emitir o certificado.
+- [x] Permitir configurar cores, logotipo e assinatura do certificado por campanha.
+- [x] Exibir barra de progresso detalhada da trilha de treinamento no portal do voluntário.
+- [x] Criar histórico privado para o voluntário visualizar e exportar certificados emitidos anteriormente.
+- [x] Permitir histórico real de certificados por reemissão ou versão da trilha na mesma campanha.
+- [x] Cobrir em testes o histórico com múltiplos certificados e a reexportação de versões anteriores.
+- [x] Adicionar teste de interface para baixar em PDF uma versão anterior no histórico privado de certificados.

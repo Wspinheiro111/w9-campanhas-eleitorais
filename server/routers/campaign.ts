@@ -248,8 +248,8 @@ export const volunteersRouter = router({
   }),
   portal: publicProcedure.input(z.object({ token: z.string().min(32).max(128) })).query(async ({ input }) => {
     const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." });
-    const [assignments, trainingMaterials, certificate] = await Promise.all([db.listVolunteerAssignments(volunteer.campaignId, volunteer.id), db.listVolunteerTrainingMaterials(volunteer.campaignId, volunteer.id), db.getVolunteerTrainingCertificate(volunteer.campaignId, volunteer.id)]);
-    return { volunteer: { name: volunteer.name, neighborhood: volunteer.neighborhood, region: volunteer.region, availability: volunteer.availability, skills: volunteer.skills, trainingStatus: volunteer.trainingStatus, status: volunteer.status }, assignments: assignments.map(item => ({ id: item.id, title: item.title, description: item.description, territory: item.territory, scheduledAt: item.scheduledAt, status: item.status })), trainingMaterials: trainingMaterials.map(item => ({ id: item.id, title: item.title, description: item.description, materialType: item.materialType, resourceUrl: item.resourceUrl, content: item.content, durationMinutes: item.durationMinutes, completedAt: item.completedAt })), certificate };
+    const [assignments, trainingMaterials, certificate, certificateHistory, certificateSettings] = await Promise.all([db.listVolunteerAssignments(volunteer.campaignId, volunteer.id), db.listVolunteerTrainingMaterials(volunteer.campaignId, volunteer.id), db.getVolunteerTrainingCertificate(volunteer.campaignId, volunteer.id), db.listVolunteerTrainingCertificates(volunteer.campaignId, volunteer.id), db.getCampaignCertificateSettings(volunteer.campaignId)]);
+    return { volunteer: { name: volunteer.name, neighborhood: volunteer.neighborhood, region: volunteer.region, availability: volunteer.availability, skills: volunteer.skills, trainingStatus: volunteer.trainingStatus, status: volunteer.status }, assignments: assignments.map(item => ({ id: item.id, title: item.title, description: item.description, territory: item.territory, scheduledAt: item.scheduledAt, status: item.status })), trainingMaterials: trainingMaterials.map(item => ({ id: item.id, title: item.title, description: item.description, materialType: item.materialType, resourceUrl: item.resourceUrl, content: item.content, durationMinutes: item.durationMinutes, completedAt: item.completedAt })), certificate, certificateHistory, certificateSettings };
   }),
   updatePortalProfile: publicProcedure.input(z.object({ token: z.string().min(32).max(128), availability: z.string().max(2000).optional(), skills: z.string().max(1000).optional() })).mutation(async ({ input }) => {
     const volunteer = await db.getVolunteerByAccessTokenHash(hashVolunteerToken(input.token)); if (!volunteer) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de voluntário não encontrado." });
@@ -290,6 +290,12 @@ export const volunteersRouter = router({
       if (!certificate) throw new TRPCError({ code: "NOT_FOUND", message: "Certificado não encontrado." });
       const access = await requireAccess(ctx.user.id, certificate.campaignId); requireCapability(access, "manage");
       return { certificateCode: certificate.certificateCode, issuedAt: certificate.issuedAt, completedMaterials: certificate.completedMaterials, volunteerName: certificate.volunteerName, campaignName: certificate.campaignName, candidateName: certificate.candidateName };
+    }),
+    settings: router({
+      get: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getCampaignCertificateSettings(input.campaignId); }),
+      update: protectedProcedure.input(campaignIdInput.extend({ primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/), accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/), logoUrl: z.string().url().max(2000).optional(), signatureName: z.string().max(180).optional(), signatureRole: z.string().max(180).optional() })).mutation(async ({ ctx, input }) => {
+        const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.updateCampaignCertificateSettings({ campaignId: input.campaignId, primaryColor: input.primaryColor, accentColor: input.accentColor, logoUrl: input.logoUrl ?? null, signatureName: input.signatureName ?? null, signatureRole: input.signatureRole ?? null, updatedByUserId: ctx.user.id });
+      }),
     }),
   }),
 });
