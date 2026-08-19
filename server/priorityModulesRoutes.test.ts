@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 vi.mock("./campaignDb", () => ({
-  getCampaignAccess: vi.fn(), listFieldVisits: vi.fn(), syncFieldVisits: vi.fn(), getVoter: vi.fn(), listConsentRecords: vi.fn(), createConsentRecord: vi.fn(), getConsentRecord: vi.fn(), revokeConsentRecord: vi.fn(), listCrisisCases: vi.fn(), createCrisisCase: vi.fn(), getCrisisCase: vi.fn(), updateCrisisCase: vi.fn(), listCrisisDecisions: vi.fn(), addCrisisDecision: vi.fn(), getTerritoryHeatmap: vi.fn(), getMobilizationScores: vi.fn(), listCampaignSurveys: vi.fn(), createCampaignSurvey: vi.fn(), submitSurveyResponse: vi.fn(), getSurveySummary: vi.fn(), getPublicCampaign: vi.fn(), getVolunteerByEmail: vi.fn(), getVolunteerByAccessTokenHash: vi.fn(), createVolunteer: vi.fn(), listVolunteers: vi.fn(), getVolunteer: vi.fn(), updateVolunteer: vi.fn(), updateVolunteerPortalProfile: vi.fn(), listVolunteerAssignments: vi.fn(), createVolunteerAssignment: vi.fn(), getVolunteerAssignment: vi.fn(), updateVolunteerAssignmentStatus: vi.fn(), listVolunteerTrainingMaterials: vi.fn(), getVolunteerTrainingMaterial: vi.fn(), completeVolunteerTrainingMaterial: vi.fn(), getVolunteerTrainingCertificate: vi.fn(), createVolunteerTrainingMaterial: vi.fn(), getTeamBenchmark: vi.fn(),
+  getCampaignAccess: vi.fn(), listFieldVisits: vi.fn(), syncFieldVisits: vi.fn(), getVoter: vi.fn(), listConsentRecords: vi.fn(), createConsentRecord: vi.fn(), getConsentRecord: vi.fn(), revokeConsentRecord: vi.fn(), listCrisisCases: vi.fn(), createCrisisCase: vi.fn(), getCrisisCase: vi.fn(), updateCrisisCase: vi.fn(), listCrisisDecisions: vi.fn(), addCrisisDecision: vi.fn(), getTerritoryHeatmap: vi.fn(), getMobilizationScores: vi.fn(), listCampaignSurveys: vi.fn(), createCampaignSurvey: vi.fn(), submitSurveyResponse: vi.fn(), getSurveySummary: vi.fn(), getPublicCampaign: vi.fn(), getVolunteerByEmail: vi.fn(), getVolunteerByAccessTokenHash: vi.fn(), createVolunteer: vi.fn(), listVolunteers: vi.fn(), getVolunteer: vi.fn(), updateVolunteer: vi.fn(), updateVolunteerPortalProfile: vi.fn(), listVolunteerAssignments: vi.fn(), createVolunteerAssignment: vi.fn(), getVolunteerAssignment: vi.fn(), updateVolunteerAssignmentStatus: vi.fn(), listVolunteerTrainingMaterials: vi.fn(), getVolunteerTrainingMaterial: vi.fn(), completeVolunteerTrainingMaterial: vi.fn(), getVolunteerTrainingCertificate: vi.fn(), getVolunteerTrainingCertificateByCode: vi.fn(), createVolunteerTrainingMaterial: vi.fn(), getTeamBenchmark: vi.fn(),
 }));
 
 import * as db from "./campaignDb";
@@ -95,6 +95,14 @@ describe("módulos prioritários", () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never); vi.mocked(db.createVolunteerTrainingMaterial).mockResolvedValue(101);
     await expect(appRouter.createCaller(context()).volunteers.training.create({ campaignId: 1, title: "Guia de campo", content: "Leia antes da visita.", durationMinutes: 12 })).resolves.toEqual({ id: 101 });
     expect(db.createVolunteerTrainingMaterial).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, title: "Guia de campo", createdByUserId: 99 }));
+  });
+
+  it("valida o certificado pelo QR Code somente para a coordenação da campanha", async () => {
+    const certificate = { certificateCode: "W9-CERTIFICADO", campaignId: 1, organizationId: 1, volunteerName: "Ana Voluntária", campaignName: "Campanha", candidateName: "Candidata", completedMaterials: 3, issuedAt: new Date("2026-08-19T12:00:00Z") };
+    vi.mocked(db.getVolunteerTrainingCertificateByCode).mockResolvedValue(certificate as never); vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: partnerMember, organizationMember: { role: "operator" } } as never);
+    await expect(appRouter.createCaller(context(12)).volunteers.certificates.validate({ certificateCode: "W9-CERTIFICADO" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never);
+    await expect(appRouter.createCaller(context()).volunteers.certificates.validate({ certificateCode: "W9-CERTIFICADO" })).resolves.toEqual(expect.objectContaining({ certificateCode: "W9-CERTIFICADO", volunteerName: "Ana Voluntária", completedMaterials: 3 }));
   });
 
   it("restringe benchmark regional a gestores e retorna somente agregados", async () => {

@@ -129,3 +129,6 @@
 - [x] Emitir automaticamente certificado interno quando o voluntário concluir todos os materiais ativos.
 - [x] Disponibilizar visualização e impressão segura do certificado no portal individual do voluntário.
 - [x] Registrar a validação do certificado e sua consulta pela coordenação autorizada.
+- [x] Adicionar exportação do certificado interno em formato PDF no portal privado do voluntário.
+- [x] Gerar QR Code com validação interna segura do código do certificado para a coordenação.
+- [x] Exibir uma celebração acessível quando a conclusão da trilha emitir o certificado.

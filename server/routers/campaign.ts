@@ -284,6 +284,14 @@ export const volunteersRouter = router({
       const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return { id: await db.createVolunteerTrainingMaterial({ campaignId: input.campaignId, title: input.title, description: input.description ?? null, materialType: input.materialType, resourceUrl: input.resourceUrl ?? null, content: input.content ?? null, durationMinutes: input.durationMinutes, position: input.position, active: true, createdByUserId: ctx.user.id }) };
     }),
   }),
+  certificates: router({
+    validate: protectedProcedure.input(z.object({ certificateCode: z.string().min(10).max(50) })).query(async ({ ctx, input }) => {
+      const certificate = await db.getVolunteerTrainingCertificateByCode(input.certificateCode.trim().toUpperCase());
+      if (!certificate) throw new TRPCError({ code: "NOT_FOUND", message: "Certificado não encontrado." });
+      const access = await requireAccess(ctx.user.id, certificate.campaignId); requireCapability(access, "manage");
+      return { certificateCode: certificate.certificateCode, issuedAt: certificate.issuedAt, completedMaterials: certificate.completedMaterials, volunteerName: certificate.volunteerName, campaignName: certificate.campaignName, candidateName: certificate.candidateName };
+    }),
+  }),
 });
 
 export const reportsRouter = router({

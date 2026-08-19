@@ -61,6 +61,14 @@ Ao confirmar todos os materiais ativos da trilha, o sistema emite automaticament
 
 > O certificado é um registro interno da plataforma e não representa diploma, certificação profissional ou credencial externa.
 
+### PDF, QR Code e celebração
+
+O voluntário pode selecionar **Exportar PDF** no certificado para baixar uma cópia com a mesma identificação interna exibida no portal. O PDF contém o nome do participante, data, quantidade de materiais concluídos, código único e QR Code.
+
+O QR Code encaminha para uma rota de validação interna. A rota exige autenticação e permissão de coordenação na própria campanha antes de mostrar dados do certificado, evitando que o código exponha informações pessoais em consultas públicas.
+
+Depois que o último material é confirmado, a plataforma mostra uma celebração visual e acessível, informa que o certificado foi emitido e direciona o voluntário à área em que pode visualizar, imprimir ou exportar o documento.
+
 ## Benchmark interno de equipe
 
 O Benchmark regional consolida tarefas, entregas, eventos e visitas de campo por **região de trabalho**, sem apresentar nomes ou métricas individuais. Para reduzir risco de reidentificação, resultados de regiões com menos de dois integrantes ativos são suprimidos.

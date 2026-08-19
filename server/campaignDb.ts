@@ -641,6 +641,12 @@ export async function getVolunteerTrainingCertificate(campaignId: number, volunt
   return rows[0] ?? null;
 }
 
+export async function getVolunteerTrainingCertificateByCode(certificateCode: string) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ certificateCode: volunteerTrainingCertificates.certificateCode, issuedAt: volunteerTrainingCertificates.issuedAt, completedMaterials: volunteerTrainingCertificates.completedMaterials, campaignId: volunteerTrainingCertificates.campaignId, organizationId: volunteerTrainingCertificates.organizationId, volunteerName: volunteers.name, campaignName: campaigns.name, candidateName: campaigns.candidateName }).from(volunteerTrainingCertificates).innerJoin(volunteers, eq(volunteerTrainingCertificates.volunteerId, volunteers.id)).innerJoin(campaigns, eq(volunteerTrainingCertificates.campaignId, campaigns.id)).where(eq(volunteerTrainingCertificates.certificateCode, certificateCode)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function listVolunteerAssignments(campaignId: number, volunteerId?: number) {
   const db = requireDb(await getDb());
   const conditions = [eq(volunteerAssignments.campaignId, campaignId)];
