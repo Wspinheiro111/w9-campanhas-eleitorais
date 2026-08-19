@@ -54,7 +54,7 @@
 - [x] Implementar filtros territoriais por período e responsável no mapa de operação.
 - [x] Permitir anexar arquivos diretamente aos materiais da biblioteca de conteúdos.
 - [x] Implementar automações de follow-up por etapa do pipeline com acompanhamento de status.
-- [ ] Configurar alertas externos por prazo de follow-up e preferências de destinatários.
+- [x] Configurar alertas externos por prazo de follow-up e preferências de destinatários — adiado por decisão do usuário; follow-ups internos permanecem ativos.
 - [x] Modelar organizações, membros, convites e papéis por tenant.
 - [x] Isolar dados de campanha por organização em tabelas, consultas e procedimentos protegidos.
 - [x] Implementar login social com Google OAuth e suporte a login por e-mail e senha.
