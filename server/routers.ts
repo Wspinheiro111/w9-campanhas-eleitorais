@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
@@ -17,6 +17,10 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => db.toPublicUser(opts.ctx.user)),
+    updateThemePreference: protectedProcedure.input(z.object({ themePreference: z.enum(["red", "green_yellow", "blue", "emerald", "orange", "violet", "navy_red", "neutral"]) })).mutation(async ({ ctx, input }) => {
+      await db.updateUserThemePreference(ctx.user.id, input.themePreference);
+      return { success: true, themePreference: input.themePreference };
+    }),
     register: publicProcedure.input(z.object({ name: z.string().min(2).max(160), email: z.string().email(), password: z.string().min(10).max(128) })).mutation(async ({ ctx, input }) => {
       const user = await db.registerLocalUser(input);
       await establishSession(ctx, user);

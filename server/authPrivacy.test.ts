@@ -14,6 +14,7 @@ describe("auth.me privacy", () => {
         googleId: "google-subject-id",
         avatarUrl: null,
         loginMethod: "password",
+        themePreference: "violet",
         role: "user",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -25,7 +26,7 @@ describe("auth.me privacy", () => {
 
     const result = await appRouter.createCaller(ctx).auth.me();
 
-    expect(result).toMatchObject({ id: 7, email: "private@example.com" });
+    expect(result).toMatchObject({ id: 7, email: "private@example.com", themePreference: "violet" });
     expect(result).not.toHaveProperty("passwordHash");
     expect(result).not.toHaveProperty("googleId");
     expect(result).not.toHaveProperty("openId");

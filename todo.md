@@ -180,3 +180,9 @@
 - [x] Adicionar lembretes manuais de mobilização para eventos próximos abaixo da meta de presença.
 - [x] Permitir categorizar os materiais PDF de playbook por tipo e tema.
 - [x] Exportar o comparativo de eventos como gráfico de tendência.
+- [x] Permitir configurar o prazo de alerta de mobilização individual por evento.
+- [x] Adicionar filtros por tipo e tema na consulta de materiais PDF do módulo de campo.
+- [x] Gerar e exportar uma apresentação semanal de mobilização baseada nos indicadores de eventos.
+- [x] Criar tokens de cor acessíveis para temas dinâmicos em toda a aplicação.
+- [x] Disponibilizar oito paletas visuais de campanha com amostras no seletor de tema.
+- [x] Persistir o tema no navegador e sincronizar a preferência no perfil do usuário entre dispositivos.

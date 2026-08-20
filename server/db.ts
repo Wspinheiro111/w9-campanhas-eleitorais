@@ -110,6 +110,12 @@ export async function authenticateLocalUser(emailInput: string, password: string
   return user;
 }
 
+export async function updateUserThemePreference(userId: number, themePreference: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ themePreference }).where(eq(users.id, userId));
+}
+
 export function toPublicUser(user: User | null | undefined) {
   if (!user) return null;
   const { passwordHash: _passwordHash, googleId: _googleId, openId: _openId, ...safeUser } = user;

@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `themePreference` varchar(32) DEFAULT 'neutral';

@@ -152,6 +152,12 @@ Tanto a gestão de voluntários quanto o benchmark são módulos de coordenaçã
 | Índice operacional | Tarefas concluídas, eventos e visitas de campo, normalizados pelo número de integrantes da região. |
 | Grupos protegidos | Regiões com menos de dois integrantes ativos; nenhum indicador de desempenho é exibido. |
 
+## Identidade visual da aplicação
+
+O seletor de identidade visual fica no cabeçalho da navegação lateral e disponibiliza oito paletas: **Vermelho e branco**, **Verde e amarelo**, **Azul e branco**, **Verde esmeralda**, **Laranja**, **Roxo e violeta**, **Azul escuro e vermelho** e **Padrão neutro**. As amostras exibem as três cores predominantes de cada opção antes da seleção.
+
+A escolha é aplicada imediatamente por tokens globais de interface — fundo, superfície, texto, bordas, destaques, botões, gráficos e navegação — e fica salva primeiro no navegador para evitar mudança visual no carregamento. Para usuários autenticados, a mesma preferência também é registrada no perfil e sincronizada nos próximos acessos em outros dispositivos. As paletas usam pares de primeiro plano e fundo com contraste reforçado em textos, botões, foco e itens ativos; não se deve inserir cores fixas em novos componentes quando houver token semântico disponível.
+
 ## Validação desta entrega
 
 A entrega foi validada por checagem de tipos e por suíte automatizada de regressão. A suíte cobre contratos de acesso e fluxos dos módulos prioritários, incluindo inscrição consentida de voluntário, pesquisa territorial e acesso administrativo ao benchmark regional.

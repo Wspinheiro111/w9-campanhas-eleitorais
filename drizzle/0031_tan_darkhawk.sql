@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `mobilizationAlertHours` int DEFAULT 48 NOT NULL;

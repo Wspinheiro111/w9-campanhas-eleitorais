@@ -449,9 +449,9 @@ export async function getEventIndicators(input: { campaignId: number; startsAt?:
 
 export async function getUpcomingEventTargetAlerts(campaignId: number) {
   const db = requireDb(await getDb());
-  const now = new Date(); const horizon = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const now = new Date(); const horizon = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const rows = await db.select({ event: events, checkedIn: sql<number>`coalesce(sum(case when ${eventRegistrations.status} = 'checked_in' then 1 else 0 end), 0)` }).from(events).leftJoin(eventRegistrations, eq(eventRegistrations.eventId, events.id)).where(and(eq(events.campaignId, campaignId), eq(events.status, "scheduled"), gte(events.startsAt, now), lte(events.startsAt, horizon))).groupBy(events.id);
-  return rows.filter(row => row.event.attendanceTarget && Number(row.checkedIn) < row.event.attendanceTarget).map(row => ({ event: row.event, checkedIn: Number(row.checkedIn), remaining: Math.max(0, row.event.attendanceTarget! - Number(row.checkedIn)) }));
+  return rows.filter(row => row.event.attendanceTarget && Number(row.checkedIn) < row.event.attendanceTarget && row.event.startsAt.getTime() - now.getTime() <= (row.event.mobilizationAlertHours ?? 48) * 60 * 60 * 1000).map(row => ({ event: row.event, checkedIn: Number(row.checkedIn), remaining: Math.max(0, row.event.attendanceTarget! - Number(row.checkedIn)) }));
 }
 
 export async function compareEventIndicators(input: { campaignId: number; startsAt: Date; endsAt: Date; neighborhood?: string; region?: string }) {
