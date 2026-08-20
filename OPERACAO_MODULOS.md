@@ -158,6 +158,8 @@ O seletor de identidade visual fica no cabeçalho da navegação lateral e dispo
 
 A escolha é aplicada imediatamente por tokens globais de interface — fundo, superfície, texto, bordas, destaques, botões, gráficos e navegação — e fica salva primeiro no navegador para evitar mudança visual no carregamento. Para usuários autenticados, a mesma preferência também é registrada no perfil e sincronizada nos próximos acessos em outros dispositivos. As paletas usam pares de primeiro plano e fundo com contraste reforçado em textos, botões, foco e itens ativos; não se deve inserir cores fixas em novos componentes quando houver token semântico disponível.
 
+Além das paletas predefinidas, a opção **Paleta personalizada** permite definir manualmente principal, secundária, destaque, fundo, superfície, texto e borda. O formulário só permite aplicar combinações que atinjam o contraste mínimo para texto e ações. A mesma identidade passa a ser usada nos gráficos do painel de eventos, no PNG de tendência, no PDF de indicadores e na apresentação semanal de mobilização, preservando cor de fundo, títulos, cartões e séries gráficas na exportação.
+
 ## Validação desta entrega
 
 A entrega foi validada por checagem de tipos e por suíte automatizada de regressão. A suíte cobre contratos de acesso e fluxos dos módulos prioritários, incluindo inscrição consentida de voluntário, pesquisa territorial e acesso administrativo ao benchmark regional.

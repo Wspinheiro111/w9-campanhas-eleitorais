@@ -46,6 +46,7 @@ export const users = mysqlTable("users", {
   avatarUrl: varchar("avatarUrl", { length: 1200 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   themePreference: varchar("themePreference", { length: 32 }).default("neutral"),
+  themePalette: json("themePalette"),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -15,6 +15,7 @@ describe("auth.me privacy", () => {
         avatarUrl: null,
         loginMethod: "password",
         themePreference: "violet",
+        themePalette: { primary: "#1F4E79", secondary: "#E8F0F7", accent: "#E1AD32", background: "#F7F9FC", surface: "#FFFFFF", text: "#17212B", border: "#C9D5E1" },
         role: "user",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -26,7 +27,7 @@ describe("auth.me privacy", () => {
 
     const result = await appRouter.createCaller(ctx).auth.me();
 
-    expect(result).toMatchObject({ id: 7, email: "private@example.com", themePreference: "violet" });
+    expect(result).toMatchObject({ id: 7, email: "private@example.com", themePreference: "violet", themePalette: { primary: "#1F4E79" } });
     expect(result).not.toHaveProperty("passwordHash");
     expect(result).not.toHaveProperty("googleId");
     expect(result).not.toHaveProperty("openId");

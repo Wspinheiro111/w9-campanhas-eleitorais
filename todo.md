@@ -186,3 +186,6 @@
 - [x] Criar tokens de cor acessíveis para temas dinâmicos em toda a aplicação.
 - [x] Disponibilizar oito paletas visuais de campanha com amostras no seletor de tema.
 - [x] Persistir o tema no navegador e sincronizar a preferência no perfil do usuário entre dispositivos.
+- [x] Permitir configurar manualmente uma paleta personalizada com cores principais acessíveis.
+- [x] Persistir a paleta personalizada no navegador e no perfil do usuário.
+- [x] Aplicar a paleta ativa aos gráficos, tendências e apresentações semanais exportadas.

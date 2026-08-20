@@ -110,10 +110,10 @@ export async function authenticateLocalUser(emailInput: string, password: string
   return user;
 }
 
-export async function updateUserThemePreference(userId: number, themePreference: string) {
+export async function updateUserThemePreference(userId: number, themePreference: string, themePalette: Record<string, string> | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(users).set({ themePreference }).where(eq(users.id, userId));
+  await db.update(users).set({ themePreference, themePalette }).where(eq(users.id, userId));
 }
 
 export function toPublicUser(user: User | null | undefined) {
