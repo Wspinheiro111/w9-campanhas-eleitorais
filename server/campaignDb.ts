@@ -5,6 +5,7 @@ import {
   audioCrmLogs,
   campaignIndicators,
   campaignCertificateSettings,
+  campaignTrainingRecognitionRules,
   campaignContents,
   campaignMembers,
   campaigns,
@@ -30,6 +31,7 @@ import {
   volunteerTrainingCompletions,
   volunteerTrainingMaterials,
   volunteerTrainingTeamGoals,
+  volunteerTrainingTeamRecognitionHistory,
   volunteers,
   voterInteractions,
   voters,
@@ -641,7 +643,36 @@ export async function getVolunteerTrainingTeamRanking(campaignId: number, month:
     db.select().from(volunteerTrainingTeamGoals).where(and(eq(volunteerTrainingTeamGoals.campaignId, campaignId), eq(volunteerTrainingTeamGoals.month, month))),
   ]);
   const targetByMember = new Map(targets.map(item => [item.coordinatorMemberId, item.targetCompletions])); const volunteerToMember = new Map(volunteerRows.filter(item => item.coordinatorMemberId).map(item => [item.id, item.coordinatorMemberId!])); const assignedCount = new Map<number, number>(); volunteerRows.forEach(item => { if (item.coordinatorMemberId) assignedCount.set(item.coordinatorMemberId, (assignedCount.get(item.coordinatorMemberId) ?? 0) + 1); }); const completedVolunteers = new Set(certificateVersions.map(item => item.volunteerId)); const completedCount = new Map<number, number>(); completedVolunteers.forEach(volunteerId => { const memberId = volunteerToMember.get(volunteerId); if (memberId) completedCount.set(memberId, (completedCount.get(memberId) ?? 0) + 1); });
-  return members.map(member => { const assignedVolunteers = assignedCount.get(member.id) ?? 0; const completedTrainingsThisMonth = completedCount.get(member.id) ?? 0; const targetCompletions = targetByMember.get(member.id) ?? 0; const goalProgress = targetCompletions > 0 ? Math.min(100, Math.round((completedTrainingsThisMonth / targetCompletions) * 100)) : 0; return { coordinatorMemberId: member.id, name: member.name, region: member.workRegion ?? null, assignedVolunteers, completedTrainingsThisMonth, targetCompletions, goalProgress, hasGoal: targetCompletions > 0 }; }).filter(item => item.assignedVolunteers > 0 || item.hasGoal).sort((a, b) => b.goalProgress - a.goalProgress || b.completedTrainingsThisMonth - a.completedTrainingsThisMonth || a.name.localeCompare(b.name));
+  return members.map(member => { const assignedVolunteers = assignedCount.get(member.id) ?? 0; const completedTrainingsThisMonth = completedCount.get(member.id) ?? 0; const targetCompletions = targetByMember.get(member.id) ?? 0; const goalProgress = targetCompletions > 0 ? Math.round((completedTrainingsThisMonth / targetCompletions) * 100) : 0; return { coordinatorMemberId: member.id, name: member.name, region: member.workRegion ?? null, assignedVolunteers, completedTrainingsThisMonth, targetCompletions, goalProgress, hasGoal: targetCompletions > 0 }; }).filter(item => item.assignedVolunteers > 0 || item.hasGoal).sort((a, b) => b.goalProgress - a.goalProgress || b.completedTrainingsThisMonth - a.completedTrainingsThisMonth || a.name.localeCompare(b.name));
+}
+
+export async function getCampaignTrainingRecognitionRules(campaignId: number) {
+  const db = requireDb(await getDb()); const rows = await db.select().from(campaignTrainingRecognitionRules).where(eq(campaignTrainingRecognitionRules.campaignId, campaignId)).limit(1);
+  return rows[0] ?? { campaignId, achievedThreshold: 100, standoutThreshold: 125, updatedByUserId: null };
+}
+
+export async function updateCampaignTrainingRecognitionRules(input: { campaignId: number; achievedThreshold: number; standoutThreshold: number; updatedByUserId: number }) {
+  const db = requireDb(await getDb()); const existing = await db.select({ id: campaignTrainingRecognitionRules.id }).from(campaignTrainingRecognitionRules).where(eq(campaignTrainingRecognitionRules.campaignId, input.campaignId)).limit(1);
+  if (existing[0]) { await db.update(campaignTrainingRecognitionRules).set({ achievedThreshold: input.achievedThreshold, standoutThreshold: input.standoutThreshold, updatedByUserId: input.updatedByUserId }).where(eq(campaignTrainingRecognitionRules.id, existing[0].id)); return existing[0].id; }
+  const result = await db.insert(campaignTrainingRecognitionRules).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) }); return Number(result[0].insertId);
+}
+
+function recognitionMedal(item: { hasGoal: boolean; goalProgress: number }, rankPosition: number, rules: { achievedThreshold: number; standoutThreshold: number }) {
+  if (!item.hasGoal || item.goalProgress < rules.achievedThreshold) return "none";
+  if (item.goalProgress >= rules.standoutThreshold) return "standout";
+  if (rankPosition === 1) return "leader";
+  return "achieved";
+}
+
+export async function recordVolunteerTrainingRecognitionHistory(campaignId: number, month: string) {
+  const db = requireDb(await getDb()); const [rules, ranking] = await Promise.all([getCampaignTrainingRecognitionRules(campaignId), getVolunteerTrainingTeamRanking(campaignId, month)]); const organizationId = await organizationIdForCampaign(campaignId);
+  await Promise.all(ranking.map(async (item, index) => { const rankPosition = index + 1; const medal = recognitionMedal(item, rankPosition, rules); const existing = await db.select({ id: volunteerTrainingTeamRecognitionHistory.id }).from(volunteerTrainingTeamRecognitionHistory).where(and(eq(volunteerTrainingTeamRecognitionHistory.campaignId, campaignId), eq(volunteerTrainingTeamRecognitionHistory.coordinatorMemberId, item.coordinatorMemberId), eq(volunteerTrainingTeamRecognitionHistory.month, month))).limit(1); const snapshot = { rankPosition, completedTrainings: item.completedTrainingsThisMonth, targetCompletions: item.targetCompletions, goalProgress: item.goalProgress, medal }; if (existing[0]) await db.update(volunteerTrainingTeamRecognitionHistory).set(snapshot).where(eq(volunteerTrainingTeamRecognitionHistory.id, existing[0].id)); else await db.insert(volunteerTrainingTeamRecognitionHistory).values({ organizationId, campaignId, coordinatorMemberId: item.coordinatorMemberId, month, ...snapshot }); }));
+  return { recorded: ranking.length };
+}
+
+export async function listVolunteerTrainingRecognitionHistory(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ id: volunteerTrainingTeamRecognitionHistory.id, month: volunteerTrainingTeamRecognitionHistory.month, rankPosition: volunteerTrainingTeamRecognitionHistory.rankPosition, completedTrainings: volunteerTrainingTeamRecognitionHistory.completedTrainings, targetCompletions: volunteerTrainingTeamRecognitionHistory.targetCompletions, goalProgress: volunteerTrainingTeamRecognitionHistory.goalProgress, medal: volunteerTrainingTeamRecognitionHistory.medal, recordedAt: volunteerTrainingTeamRecognitionHistory.recordedAt, coordinatorMemberId: campaignMembers.id, name: campaignMembers.name, region: campaignMembers.workRegion }).from(volunteerTrainingTeamRecognitionHistory).innerJoin(campaignMembers, eq(volunteerTrainingTeamRecognitionHistory.coordinatorMemberId, campaignMembers.id)).where(eq(volunteerTrainingTeamRecognitionHistory.campaignId, campaignId)).orderBy(desc(volunteerTrainingTeamRecognitionHistory.month), volunteerTrainingTeamRecognitionHistory.rankPosition);
 }
 
 export async function getVolunteerTrainingMaterial(materialId: number) {

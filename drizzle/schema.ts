@@ -289,6 +289,31 @@ export const volunteerTrainingTeamGoals = mysqlTable("volunteer_training_team_go
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [uniqueIndex("training_team_goal_month_idx").on(table.campaignId, table.coordinatorMemberId, table.month), index("training_team_goal_organization_idx").on(table.organizationId), index("training_team_goal_campaign_month_idx").on(table.campaignId, table.month)]);
 
+export const campaignTrainingRecognitionRules = mysqlTable("campaign_training_recognition_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  achievedThreshold: int("achievedThreshold").notNull().default(100),
+  standoutThreshold: int("standoutThreshold").notNull().default(125),
+  updatedByUserId: int("updatedByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("training_recognition_rules_campaign_idx").on(table.campaignId), index("training_recognition_rules_organization_idx").on(table.organizationId)]);
+
+export const volunteerTrainingTeamRecognitionHistory = mysqlTable("volunteer_training_team_recognition_history", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  coordinatorMemberId: int("coordinatorMemberId").notNull().references(() => campaignMembers.id),
+  month: varchar("month", { length: 7 }).notNull(),
+  rankPosition: int("rankPosition").notNull(),
+  completedTrainings: int("completedTrainings").notNull(),
+  targetCompletions: int("targetCompletions").notNull(),
+  goalProgress: int("goalProgress").notNull(),
+  medal: varchar("medal", { length: 32 }).notNull().default("none"),
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("training_recognition_history_month_idx").on(table.campaignId, table.coordinatorMemberId, table.month), index("training_recognition_history_campaign_idx").on(table.campaignId, table.month), index("training_recognition_history_organization_idx").on(table.organizationId)]);
+
 export const campaignCertificateSettings = mysqlTable("campaign_certificate_settings", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

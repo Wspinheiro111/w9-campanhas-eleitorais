@@ -155,3 +155,10 @@
 - [x] Cobrir no painel de ranking a exibição positiva de trilhas concluídas no mês.
 - [x] Criar medalhas internas para equipes que atingirem ou superarem a meta mensal de formação.
 - [x] Permitir exportar o ranking mensal de formação em PDF e CSV.
+- [x] Criar histórico mensal de medalhas por equipe.
+- [x] Exibir comparação automática de conclusão e posição com o mês anterior.
+- [x] Permitir configurar regras de medalha personalizadas por campanha.
+- [x] Exibir erro e nova tentativa quando o histórico de medalhas não puder ser carregado.
+- [x] Comparar a posição de cada equipe no ranking com o mês anterior, incluindo exportações.
+- [x] Exibir aviso claro quando a comparação com o mês anterior não puder ser carregada.
+- [x] Cobrir em testes a comparação de posição e falhas de histórico e referência anterior.

@@ -107,6 +107,8 @@ O ranking mensal consolida os voluntários que concluíram integralmente a trilh
 
 As medalhas são internas e calculadas automaticamente a partir da meta mensal: **Meta atingida** para equipes com ao menos 100% da meta, **Liderança de meta** para a primeira equipe que atingiu a meta e **Destaque mensal** para equipes com 125% ou mais. A coordenação pode exportar o ranking do mês selecionado em CSV ou PDF; os arquivos incluem posição, equipe, região, metas, progresso e medalha, sem contatos ou outros dados pessoais dos voluntários.
 
+As regras podem ser ajustadas por campanha na seção **Regras de reconhecimento**. O percentual de **Meta atingida** define o início da elegibilidade, e o de **Destaque mensal** define a faixa superior. O painel compara automaticamente as trilhas concluídas e a posição de cada equipe com o mês anterior, exibindo subida, queda ou estabilidade; as exportações CSV e PDF preservam as duas variações. Caso o período anterior ou o histórico não possam ser carregados, a coordenação visualiza um aviso explícito e uma ação de nova tentativa, sem que resultados ausentes sejam tratados como zero. Ao selecionar **Registrar mês**, a coordenação grava um retrato agregado do ranking e das medalhas do período; o histórico preserva somente equipe, mês, posição, metas, progresso e reconhecimento.
+
 ## Benchmark interno de equipe
 
 O Benchmark regional consolida tarefas, entregas, eventos e visitas de campo por **região de trabalho**, sem apresentar nomes ou métricas individuais. Para reduzir risco de reidentificação, resultados de regiões com menos de dois integrantes ativos são suprimidos.
