@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, Si
 import { startLogin } from "@/const";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Activity, BarChart3, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, Mic, PanelLeft, Radar, ShieldCheck, Siren, UsersRound } from "lucide-react";
+import { Activity, BarChart3, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, PanelLeft, Radar, ShieldCheck, Siren, UsersRound } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -22,6 +22,7 @@ const menuItems = [
   { icon: CalendarDays, label: "Agenda", path: "/agenda" },
   { icon: CheckSquare, label: "Tarefas", path: "/tarefas" },
   { icon: ContactRound, label: "Contatos", path: "/contatos" },
+  { icon: MessageSquare, label: "Comunicação", path: "/comunicacao", requiresManage: true },
   { icon: ClipboardCheck, label: "Campo offline", path: "/campo" },
   { icon: ShieldCheck, label: "Consentimentos", path: "/consentimentos" },
   { icon: Siren, label: "Sala de crise", path: "/crise" },

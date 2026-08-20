@@ -1,6 +1,7 @@
 export type OfflineVisit = {
   campaignId: number;
   voterId?: number;
+  playbookId?: number;
   memberId?: number | null;
   clientReference: string;
   outcome: "contacted" | "absent" | "refused" | "follow_up" | "other";

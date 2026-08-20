@@ -31,6 +31,9 @@ export const crisisStatusEnum = mysqlEnum("crisis_status", ["open", "assessing",
 export const volunteerStatusEnum = mysqlEnum("volunteer_status", ["pending", "active", "inactive"]);
 export const volunteerTrainingStatusEnum = mysqlEnum("volunteer_training_status", ["not_started", "in_progress", "completed"]);
 export const volunteerAssignmentStatusEnum = mysqlEnum("volunteer_assignment_status", ["assigned", "accepted", "completed", "cancelled"]);
+export const eventRegistrationStatusEnum = mysqlEnum("event_registration_status", ["registered", "checked_in", "cancelled", "no_show"]);
+export const communicationChannelEnum = mysqlEnum("communication_channel", ["email", "whatsapp", "phone"]);
+export const fieldPlaybookStatusEnum = mysqlEnum("field_playbook_status", ["draft", "active", "archived"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -106,12 +109,31 @@ export const routePerformanceEvents = mysqlTable("route_performance_events", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("performance_route_created_idx").on(table.route, table.createdAt), index("performance_organization_created_idx").on(table.organizationId, table.createdAt), index("performance_error_created_idx").on(table.hasError, table.createdAt)]);
 
+export const fieldPlaybooks = mysqlTable("field_playbooks", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  title: varchar("title", { length: 220 }).notNull(),
+  objective: varchar("objective", { length: 400 }),
+  territory: varchar("territory", { length: 160 }),
+  version: int("version").notNull().default(1),
+  openingScript: text("openingScript"),
+  talkingPoints: json("talkingPoints").$type<string[]>().notNull(),
+  checklist: json("checklist").$type<string[]>().notNull(),
+  status: fieldPlaybookStatusEnum.notNull().default("draft"),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("field_playbook_campaign_idx").on(table.campaignId, table.status), index("field_playbook_organization_idx").on(table.organizationId)]);
+
 export const fieldVisits = mysqlTable("field_visits", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   voterId: int("voterId").references(() => voters.id),
   memberId: int("memberId").references(() => campaignMembers.id),
+  playbookId: int("playbookId").references(() => fieldPlaybooks.id),
+  playbookVersion: int("playbookVersion"),
   clientReference: varchar("clientReference", { length: 96 }).notNull().unique(),
   outcome: fieldVisitOutcomeEnum.notNull().default("contacted"),
   notes: text("notes"),
@@ -343,9 +365,39 @@ export const events = mysqlTable("events", {
   responsibleId: int("responsibleId").references(() => campaignMembers.id),
   status: mysqlEnum("event_status", ["scheduled", "completed", "cancelled"]).default("scheduled").notNull(),
   notes: text("notes"),
+  publicRegistrationEnabled: boolean("publicRegistrationEnabled").default(false).notNull(),
+  registrationClosesAt: timestamp("registrationClosesAt"),
+  capacity: int("capacity"),
+  postEventSurveyPrompt: text("postEventSurveyPrompt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("event_campaign_start_idx").on(table.campaignId, table.startsAt)]);
+
+export const eventRegistrations = mysqlTable("event_registrations", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  eventId: int("eventId").notNull().references(() => events.id),
+  voterId: int("voterId").references(() => voters.id),
+  volunteerId: int("volunteerId").references(() => volunteers.id),
+  name: varchar("name", { length: 180 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 32 }),
+  accessTokenHash: varchar("accessTokenHash", { length: 128 }).notNull().unique(),
+  status: eventRegistrationStatusEnum.notNull().default("registered"),
+  registeredAt: timestamp("registeredAt").defaultNow().notNull(),
+  checkedInAt: timestamp("checkedInAt"),
+  feedbackRating: int("feedbackRating"),
+  feedbackComment: text("feedbackComment"),
+  feedbackSubmittedAt: timestamp("feedbackSubmittedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("event_registration_email_idx").on(table.eventId, table.email),
+  index("event_registration_event_status_idx").on(table.eventId, table.status),
+  index("event_registration_campaign_idx").on(table.campaignId, table.registeredAt),
+  index("event_registration_organization_idx").on(table.organizationId),
+]);
 
 export const goals = mysqlTable("goals", {
   id: int("id").autoincrement().primaryKey(),
@@ -406,6 +458,46 @@ export const voters = mysqlTable("voters", {
   index("voter_pipeline_idx").on(table.campaignId, table.pipelineStage),
   index("voter_segment_idx").on(table.campaignId, table.neighborhood, table.region, table.contactProfile),
 ]);
+
+export const voterCommunicationPreferences = mysqlTable("voter_communication_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  voterId: int("voterId").notNull().references(() => voters.id),
+  emailAllowed: boolean("emailAllowed").notNull().default(false),
+  whatsappAllowed: boolean("whatsappAllowed").notNull().default(false),
+  phoneAllowed: boolean("phoneAllowed").notNull().default(false),
+  updatedByUserId: int("updatedByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("voter_comm_pref_voter_idx").on(table.voterId), index("voter_comm_pref_campaign_idx").on(table.campaignId), index("voter_comm_pref_organization_idx").on(table.organizationId)]);
+
+export const campaignCommunicationTemplates = mysqlTable("campaign_communication_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  title: varchar("title", { length: 180 }).notNull(),
+  channel: communicationChannelEnum.notNull(),
+  subject: varchar("subject", { length: 220 }),
+  body: text("body").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("communication_template_campaign_idx").on(table.campaignId, table.channel, table.active), index("communication_template_organization_idx").on(table.organizationId)]);
+
+export const campaignCommunicationLogs = mysqlTable("campaign_communication_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  voterId: int("voterId").notNull().references(() => voters.id),
+  templateId: int("templateId").references(() => campaignCommunicationTemplates.id),
+  channel: communicationChannelEnum.notNull(),
+  action: varchar("action", { length: 40 }).notNull().default("manual_contact_logged"),
+  notes: text("notes"),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("communication_log_campaign_idx").on(table.campaignId, table.createdAt), index("communication_log_voter_idx").on(table.voterId, table.createdAt), index("communication_log_organization_idx").on(table.organizationId)]);
 
 export const voterInteractions = mysqlTable("voter_interactions", {
   id: int("id").autoincrement().primaryKey(),

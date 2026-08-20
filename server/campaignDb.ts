@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, gte, lt, lte, ne, or, sql } from "drizzle-orm";
 import {
   aiMessages,
   audioCrmLogs,
   campaignIndicators,
   campaignCertificateSettings,
+  campaignCommunicationLogs,
+  campaignCommunicationTemplates,
   campaignTrainingRecognitionRules,
   campaignContents,
   campaignMembers,
@@ -13,7 +16,9 @@ import {
   crisisCases,
   crisisDecisionLogs,
   events,
+  eventRegistrations,
   fieldIncidents,
+  fieldPlaybooks,
   fieldVisits,
   goals,
   organizationAuditLogs,
@@ -33,6 +38,7 @@ import {
   volunteerTrainingTeamGoals,
   volunteerTrainingTeamRecognitionHistory,
   volunteers,
+  voterCommunicationPreferences,
   voterInteractions,
   voters,
 } from "../drizzle/schema";
@@ -348,6 +354,117 @@ export async function getEvent(eventId: number) {
   return rows[0] ?? null;
 }
 
+export async function deleteEventIfEmpty(eventId: number) {
+  const db = requireDb(await getDb());
+  const countRows = await db.select({ total: sql<number>`count(*)` }).from(eventRegistrations).where(eq(eventRegistrations.eventId, eventId));
+  if (Number(countRows[0]?.total ?? 0) > 0) throw new Error("EVENT_HAS_REGISTRATIONS");
+  await db.delete(events).where(eq(events.id, eventId));
+}
+
+function hashPublicToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function getPublicEvent(eventId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ event: events, campaign: { id: campaigns.id, name: campaigns.name, candidateName: campaigns.candidateName, region: campaigns.region } })
+    .from(events)
+    .innerJoin(campaigns, eq(campaigns.id, events.campaignId))
+    .where(and(eq(events.id, eventId), eq(events.publicRegistrationEnabled, true), ne(events.status, "cancelled")))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const countRows = await db.select({ total: sql<number>`count(*)` }).from(eventRegistrations)
+    .where(and(eq(eventRegistrations.eventId, eventId), ne(eventRegistrations.status, "cancelled")));
+  return { ...row, registrationCount: Number(countRows[0]?.total ?? 0) };
+}
+
+export async function listEventRegistrations(campaignId: number, eventId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ registration: eventRegistrations, voter: voters, volunteer: volunteers })
+    .from(eventRegistrations)
+    .leftJoin(voters, eq(voters.id, eventRegistrations.voterId))
+    .leftJoin(volunteers, eq(volunteers.id, eventRegistrations.volunteerId))
+    .where(and(eq(eventRegistrations.campaignId, campaignId), eq(eventRegistrations.eventId, eventId)))
+    .orderBy(desc(eventRegistrations.registeredAt));
+}
+
+export async function getEventParticipationSummary(campaignId: number, eventId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ status: eventRegistrations.status, total: sql<number>`count(*)` })
+    .from(eventRegistrations)
+    .where(and(eq(eventRegistrations.campaignId, campaignId), eq(eventRegistrations.eventId, eventId)))
+    .groupBy(eventRegistrations.status);
+  const totals = { registered: 0, checkedIn: 0, cancelled: 0, noShow: 0 };
+  rows.forEach(row => {
+    const total = Number(row.total ?? 0);
+    if (row.status === "registered") totals.registered += total;
+    if (row.status === "checked_in") totals.checkedIn += total;
+    if (row.status === "cancelled") totals.cancelled += total;
+    if (row.status === "no_show") totals.noShow += total;
+  });
+  return { ...totals, total: totals.registered + totals.checkedIn + totals.cancelled + totals.noShow };
+}
+
+export async function registerForPublicEvent(input: { eventId: number; name: string; email: string; phone?: string | null }) {
+  const db = requireDb(await getDb());
+  const publicEvent = await getPublicEvent(input.eventId);
+  if (!publicEvent) throw new Error("EVENT_UNAVAILABLE");
+  const now = new Date();
+  if (publicEvent.event.registrationClosesAt && publicEvent.event.registrationClosesAt < now) throw new Error("REGISTRATION_CLOSED");
+  if (publicEvent.event.capacity && publicEvent.registrationCount >= publicEvent.event.capacity) throw new Error("EVENT_FULL");
+  const email = input.email.trim().toLowerCase();
+  const existing = await db.select({ id: eventRegistrations.id }).from(eventRegistrations)
+    .where(and(eq(eventRegistrations.eventId, input.eventId), eq(eventRegistrations.email, email))).limit(1);
+  if (existing[0]) return { id: existing[0].id, accessToken: null, alreadyRegistered: true };
+  const [voter] = await db.select({ id: voters.id }).from(voters).where(and(eq(voters.campaignId, publicEvent.event.campaignId), eq(voters.email, email))).limit(1);
+  const [volunteer] = await db.select({ id: volunteers.id }).from(volunteers).where(and(eq(volunteers.campaignId, publicEvent.event.campaignId), eq(volunteers.email, email))).limit(1);
+  const accessToken = randomBytes(24).toString("base64url");
+  const result = await db.insert(eventRegistrations).values({
+    organizationId: publicEvent.event.organizationId,
+    campaignId: publicEvent.event.campaignId,
+    eventId: input.eventId,
+    voterId: voter?.id ?? null,
+    volunteerId: volunteer?.id ?? null,
+    name: input.name.trim(),
+    email,
+    phone: input.phone?.trim() || null,
+    accessTokenHash: hashPublicToken(accessToken),
+  });
+  return { id: Number(result[0].insertId), accessToken, alreadyRegistered: false };
+}
+
+export async function updateEventRegistrationStatus(input: { campaignId: number; eventId: number; registrationId: number; status: "registered" | "checked_in" | "cancelled" | "no_show"; actorUserId: number }) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(eventRegistrations).where(and(eq(eventRegistrations.id, input.registrationId), eq(eventRegistrations.eventId, input.eventId), eq(eventRegistrations.campaignId, input.campaignId))).limit(1);
+  const registration = rows[0];
+  if (!registration) throw new Error("EVENT_REGISTRATION_NOT_FOUND");
+  const isNewCheckIn = input.status === "checked_in" && registration.status !== "checked_in";
+  await db.update(eventRegistrations).set({ status: input.status, checkedInAt: input.status === "checked_in" ? new Date() : null }).where(eq(eventRegistrations.id, input.registrationId));
+  if (isNewCheckIn && registration.voterId) {
+    await db.insert(voterInteractions).values({ organizationId: registration.organizationId, campaignId: registration.campaignId, voterId: registration.voterId, type: "event", notes: `Presença confirmada no evento #${registration.eventId}.`, memberId: null });
+  }
+}
+
+export async function getEventRegistrationByAccessToken(token: string) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ registration: eventRegistrations, event: events, campaign: campaigns })
+    .from(eventRegistrations)
+    .innerJoin(events, eq(events.id, eventRegistrations.eventId))
+    .innerJoin(campaigns, eq(campaigns.id, eventRegistrations.campaignId))
+    .where(eq(eventRegistrations.accessTokenHash, hashPublicToken(token)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function submitEventFeedback(input: { token: string; rating: number; comment?: string | null }) {
+  const registration = await getEventRegistrationByAccessToken(input.token);
+  if (!registration) throw new Error("EVENT_REGISTRATION_NOT_FOUND");
+  const db = requireDb(await getDb());
+  await db.update(eventRegistrations).set({ feedbackRating: input.rating, feedbackComment: input.comment?.trim() || null, feedbackSubmittedAt: new Date() }).where(eq(eventRegistrations.id, registration.registration.id));
+  return registration;
+}
+
 export async function listGoals(campaignId: number) {
   const db = requireDb(await getDb());
   return db.select().from(goals).where(eq(goals.campaignId, campaignId)).orderBy(goals.deadline);
@@ -549,6 +666,64 @@ export async function getPublicCampaign(campaignId: number) {
   const db = requireDb(await getDb());
   const rows = await db.select({ id: campaigns.id, name: campaigns.name, candidateName: campaigns.candidateName, electionLabel: campaigns.electionLabel, region: campaigns.region, status: campaigns.status }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
   return rows[0] && ["planning", "active"].includes(rows[0].status) ? rows[0] : null;
+}
+
+export async function listCommunicationCandidates(input: { campaignId: number; channel?: "email" | "whatsapp" | "phone"; neighborhood?: string; region?: string }) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(voters.campaignId, input.campaignId), eq(voters.contactConsent, true), eq(voters.doNotContact, false)];
+  if (input.neighborhood) conditions.push(eq(voters.neighborhood, input.neighborhood));
+  if (input.region) conditions.push(eq(voters.region, input.region));
+  const rows = await db.select({ voter: voters, preference: voterCommunicationPreferences }).from(voters)
+    .leftJoin(voterCommunicationPreferences, eq(voterCommunicationPreferences.voterId, voters.id))
+    .where(and(...conditions)).orderBy(desc(voters.updatedAt)).limit(500);
+  const allows = (preference: typeof voterCommunicationPreferences.$inferSelect | null, channel: "email" | "whatsapp" | "phone") => channel === "email" ? preference?.emailAllowed : channel === "whatsapp" ? preference?.whatsappAllowed : preference?.phoneAllowed;
+  return rows.filter(row => !input.channel || (allows(row.preference, input.channel) && (input.channel === "email" ? Boolean(row.voter.email) : Boolean(row.voter.phone))));
+}
+
+export async function upsertVoterCommunicationPreference(input: { campaignId: number; voterId: number; emailAllowed: boolean; whatsappAllowed: boolean; phoneAllowed: boolean; updatedByUserId: number }) {
+  const db = requireDb(await getDb());
+  const voter = await getVoter(input.voterId); if (!voter || voter.campaignId !== input.campaignId) throw new Error("VOTER_NOT_FOUND");
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  await db.insert(voterCommunicationPreferences).values({ ...input, organizationId }).onDuplicateKeyUpdate({ set: { emailAllowed: input.emailAllowed, whatsappAllowed: input.whatsappAllowed, phoneAllowed: input.phoneAllowed, updatedByUserId: input.updatedByUserId } });
+}
+
+export async function listCommunicationTemplates(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignCommunicationTemplates).where(eq(campaignCommunicationTemplates.campaignId, campaignId)).orderBy(desc(campaignCommunicationTemplates.updatedAt));
+}
+
+export async function createCommunicationTemplate(input: { campaignId: number; title: string; channel: "email" | "whatsapp" | "phone"; subject?: string | null; body: string; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(campaignCommunicationTemplates).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId), subject: input.subject ?? null, active: true });
+  return Number(result[0].insertId);
+}
+
+export async function updateCommunicationTemplate(input: { id: number; title: string; channel: "email" | "whatsapp" | "phone"; subject?: string | null; body: string; active: boolean }) {
+  const db = requireDb(await getDb());
+  await db.update(campaignCommunicationTemplates).set({ title: input.title, channel: input.channel, subject: input.subject ?? null, body: input.body, active: input.active }).where(eq(campaignCommunicationTemplates.id, input.id));
+}
+
+export async function getCommunicationTemplate(id: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(campaignCommunicationTemplates).where(eq(campaignCommunicationTemplates.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function logManualCommunication(input: { campaignId: number; voterId: number; templateId?: number | null; channel: "email" | "whatsapp" | "phone"; notes?: string | null; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const voter = await getVoter(input.voterId); if (!voter || voter.campaignId !== input.campaignId || !voter.contactConsent || voter.doNotContact) throw new Error("CONTACT_NOT_ELIGIBLE");
+  const preferences = await db.select().from(voterCommunicationPreferences).where(eq(voterCommunicationPreferences.voterId, input.voterId)).limit(1); const preference = preferences[0];
+  const allowed = input.channel === "email" ? preference?.emailAllowed && voter.email : input.channel === "whatsapp" ? preference?.whatsappAllowed && voter.phone : preference?.phoneAllowed && voter.phone;
+  if (!allowed) throw new Error("CHANNEL_NOT_ALLOWED");
+  const result = await db.insert(campaignCommunicationLogs).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId), templateId: input.templateId ?? null, notes: input.notes ?? null });
+  return Number(result[0].insertId);
+}
+
+export async function listCommunicationLogs(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ log: campaignCommunicationLogs, voter: { id: voters.id, name: voters.name }, template: { id: campaignCommunicationTemplates.id, title: campaignCommunicationTemplates.title } })
+    .from(campaignCommunicationLogs).innerJoin(voters, eq(voters.id, campaignCommunicationLogs.voterId)).leftJoin(campaignCommunicationTemplates, eq(campaignCommunicationTemplates.id, campaignCommunicationLogs.templateId))
+    .where(eq(campaignCommunicationLogs.campaignId, campaignId)).orderBy(desc(campaignCommunicationLogs.createdAt)).limit(100);
 }
 
 export async function listVolunteers(campaignId: number) {
@@ -871,18 +1046,42 @@ export async function listFieldVisits(campaignId: number, memberId?: number | nu
   const db = requireDb(await getDb());
   const conditions = [eq(fieldVisits.campaignId, campaignId)];
   if (memberId) conditions.push(eq(fieldVisits.memberId, memberId));
-  return db.select({ visit: fieldVisits, voter: voters, member: campaignMembers }).from(fieldVisits).leftJoin(voters, eq(fieldVisits.voterId, voters.id)).leftJoin(campaignMembers, eq(fieldVisits.memberId, campaignMembers.id)).where(and(...conditions)).orderBy(desc(fieldVisits.occurredAt)).limit(200);
+  return db.select({ visit: fieldVisits, voter: voters, member: campaignMembers, playbook: fieldPlaybooks }).from(fieldVisits).leftJoin(voters, eq(fieldVisits.voterId, voters.id)).leftJoin(campaignMembers, eq(fieldVisits.memberId, campaignMembers.id)).leftJoin(fieldPlaybooks, eq(fieldVisits.playbookId, fieldPlaybooks.id)).where(and(...conditions)).orderBy(desc(fieldVisits.occurredAt)).limit(200);
 }
 
-export async function syncFieldVisits(input: Array<{ campaignId: number; voterId?: number | null; memberId?: number | null; clientReference: string; outcome: "contacted" | "absent" | "refused" | "follow_up" | "other"; notes?: string | null; occurredAt: Date }>) {
+export async function listFieldPlaybooks(campaignId: number, includeInactive = false) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(fieldPlaybooks.campaignId, campaignId)]; if (!includeInactive) conditions.push(eq(fieldPlaybooks.status, "active"));
+  return db.select().from(fieldPlaybooks).where(and(...conditions)).orderBy(desc(fieldPlaybooks.updatedAt));
+}
+
+export async function getFieldPlaybook(playbookId: number) {
+  const db = requireDb(await getDb()); const rows = await db.select().from(fieldPlaybooks).where(eq(fieldPlaybooks.id, playbookId)).limit(1); return rows[0] ?? null;
+}
+
+export async function createFieldPlaybook(input: { campaignId: number; title: string; objective?: string | null; territory?: string | null; openingScript?: string | null; talkingPoints: string[]; checklist: string[]; status: "draft" | "active" | "archived"; createdByUserId: number }) {
+  const db = requireDb(await getDb()); const result = await db.insert(fieldPlaybooks).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId), version: 1, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null }); return Number(result[0].insertId);
+}
+
+export async function updateFieldPlaybook(input: { id: number; title: string; objective?: string | null; territory?: string | null; openingScript?: string | null; talkingPoints: string[]; checklist: string[]; status: "draft" | "active" | "archived" }) {
+  const db = requireDb(await getDb()); const current = await getFieldPlaybook(input.id); if (!current) throw new Error("FIELD_PLAYBOOK_NOT_FOUND");
+  await db.update(fieldPlaybooks).set({ ...input, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null, version: current.version + 1 }).where(eq(fieldPlaybooks.id, input.id));
+}
+
+export async function syncFieldVisits(input: Array<{ campaignId: number; voterId?: number | null; memberId?: number | null; playbookId?: number | null; clientReference: string; outcome: "contacted" | "absent" | "refused" | "follow_up" | "other"; notes?: string | null; occurredAt: Date }>) {
   if (!input.length) return { created: 0, duplicates: 0 };
   const db = requireDb(await getDb());
   const organizationId = await organizationIdForCampaign(input[0].campaignId);
+  const playbookIds = Array.from(new Set(input.map(visit => visit.playbookId).filter((id): id is number => Boolean(id))));
+  const playbookRows = playbookIds.length ? await db.select().from(fieldPlaybooks).where(eq(fieldPlaybooks.campaignId, input[0].campaignId)) : [];
+  const playbooksById = new Map(playbookRows.map(playbook => [playbook.id, playbook]));
   let created = 0; let duplicates = 0;
   for (const visit of input) {
     const existing = await db.select({ id: fieldVisits.id }).from(fieldVisits).where(eq(fieldVisits.clientReference, visit.clientReference)).limit(1);
     if (existing[0]) { duplicates += 1; continue; }
-    await db.insert(fieldVisits).values({ ...visit, voterId: visit.voterId ?? null, memberId: visit.memberId ?? null, notes: visit.notes ?? null, organizationId });
+    const playbook = visit.playbookId ? playbooksById.get(visit.playbookId) : null;
+    if (visit.playbookId && (!playbook || playbook.status !== "active")) throw new Error("FIELD_PLAYBOOK_INVALID");
+    await db.insert(fieldVisits).values({ ...visit, voterId: visit.voterId ?? null, memberId: visit.memberId ?? null, playbookId: visit.playbookId ?? null, playbookVersion: playbook?.version ?? null, notes: visit.notes ?? null, organizationId });
     created += 1;
   }
   return { created, duplicates };

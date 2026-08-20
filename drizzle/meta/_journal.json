@@ -169,6 +169,34 @@
       "when": 1787187050232,
       "tag": "0023_conscious_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1787194630212,
+      "tag": "0024_flashy_sumo",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1787194708621,
+      "tag": "0025_rapid_nekra",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1787195081794,
+      "tag": "0026_steady_stone_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1787195586587,
+      "tag": "0027_luxuriant_captain_stacy",
+      "breakpoints": true
     }
   ]
 }

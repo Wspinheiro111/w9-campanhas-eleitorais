@@ -109,6 +109,18 @@ As medalhas são internas e calculadas automaticamente a partir da meta mensal: 
 
 As regras podem ser ajustadas por campanha na seção **Regras de reconhecimento**. O percentual de **Meta atingida** define o início da elegibilidade, e o de **Destaque mensal** define a faixa superior. O painel compara automaticamente as trilhas concluídas e a posição de cada equipe com o mês anterior, exibindo subida, queda ou estabilidade; as exportações CSV e PDF preservam as duas variações. Caso o período anterior ou o histórico não possam ser carregados, a coordenação visualiza um aviso explícito e uma ação de nova tentativa, sem que resultados ausentes sejam tratados como zero. Ao selecionar **Registrar mês**, a coordenação grava um retrato agregado do ranking e das medalhas do período; o histórico preserva somente equipe, mês, posição, metas, progresso e reconhecimento.
 
+## Eventos e participação
+
+A agenda pode habilitar RSVP público, limite de vagas e uma pergunta de retorno pós-evento. A coordenação acompanha inscrições, realiza check-in, marca ausências e consulta os indicadores de participação no próprio evento. Cada participante recebe um acesso privado para enviar sua avaliação sem acesso ao painel operacional. Eventos sem inscrições podem ser excluídos após confirmação; quando houver participantes registrados, o sistema bloqueia a exclusão e orienta o cancelamento para preservar o histórico.
+
+## Central assistida de comunicação
+
+A central assistida prepara comunicações sem realizar qualquer disparo automático. A coordenação define preferências explícitas de e-mail, WhatsApp e telefone em contatos com consentimento ativo, cria modelos com as variáveis `{{nome}}` e `{{campanha}}`, escolhe um contato elegível e registra a ação antes de abrir o canal manualmente. O histórico registra a ação iniciada, o canal, o modelo e a observação, permitindo auditoria sem alegar entrega da mensagem.
+
+## Playbooks de campo
+
+Playbooks padronizam roteiro de abertura, objetivo, território, pontos de fala e checklist para a equipe de campo. A coordenação cria, edita, ativa ou arquiva cada playbook. Toda edição incrementa sua versão; quando uma visita é sincronizada, o sistema guarda o playbook e a versão usados, inclusive se o registro permanecer temporariamente na fila offline. Perfis parceiros podem consultar somente playbooks ativos durante o canvassing.
+
 ## Benchmark interno de equipe
 
 O Benchmark regional consolida tarefas, entregas, eventos e visitas de campo por **região de trabalho**, sem apresentar nomes ou métricas individuais. Para reduzir risco de reidentificação, resultados de regiões com menos de dois integrantes ativos são suprimidos.

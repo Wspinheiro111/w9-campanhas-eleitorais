@@ -1,0 +1,2 @@
+ALTER TABLE `event_registrations` ADD `accessTokenHash` varchar(128) NOT NULL;--> statement-breakpoint
+ALTER TABLE `event_registrations` ADD CONSTRAINT `event_registrations_accessTokenHash_unique` UNIQUE(`accessTokenHash`);

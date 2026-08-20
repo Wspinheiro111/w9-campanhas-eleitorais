@@ -83,15 +83,57 @@ export const teamRouter = router({
 
 export const planningRouter = router({
   list: protectedProcedure.input(campaignIdInput.extend({ startsAt: z.date().optional(), endsAt: z.date().optional() })).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listEvents(input.campaignId, input.startsAt, input.endsAt); }),
-  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional() })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional(), publicRegistrationEnabled: z.boolean().default(false), registrationClosesAt: z.date().optional(), capacity: z.number().int().min(1).max(100000).optional(), postEventSurveyPrompt: z.string().max(1200).optional() })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     requireCapability(access, "manage");
-    return { id: await db.createEvent({ ...input, endsAt: input.endsAt ?? null, location: input.location ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, responsibleId: input.responsibleId ?? null, notes: input.notes ?? null }) };
+    return { id: await db.createEvent({ ...input, endsAt: input.endsAt ?? null, location: input.location ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, responsibleId: input.responsibleId ?? null, notes: input.notes ?? null, registrationClosesAt: input.registrationClosesAt ?? null, capacity: input.capacity ?? null, postEventSurveyPrompt: input.postEventSurveyPrompt ?? null }) };
   }),
-  update: protectedProcedure.input(z.object({ eventId: z.number().int().positive(), title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional(), status: z.enum(["scheduled", "completed", "cancelled"]) })).mutation(async ({ ctx, input }) => {
+  update: protectedProcedure.input(z.object({ eventId: z.number().int().positive(), title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional(), status: z.enum(["scheduled", "completed", "cancelled"]), publicRegistrationEnabled: z.boolean().default(false), registrationClosesAt: z.date().optional(), capacity: z.number().int().min(1).max(100000).optional(), postEventSurveyPrompt: z.string().max(1200).optional() })).mutation(async ({ ctx, input }) => {
     const event = await db.getEvent(input.eventId); if (!event) throw new TRPCError({ code: "NOT_FOUND" });
     const access = await requireAccess(ctx.user.id, event.campaignId); requireCapability(access, "manage");
-    const { eventId, ...changes } = input; await db.updateEvent(eventId, { ...changes, endsAt: changes.endsAt ?? null, location: changes.location ?? null, neighborhood: changes.neighborhood ?? null, region: changes.region ?? null, responsibleId: changes.responsibleId ?? null, notes: changes.notes ?? null }); return { success: true };
+    const { eventId, ...changes } = input; await db.updateEvent(eventId, { ...changes, endsAt: changes.endsAt ?? null, location: changes.location ?? null, neighborhood: changes.neighborhood ?? null, region: changes.region ?? null, responsibleId: changes.responsibleId ?? null, notes: changes.notes ?? null, registrationClosesAt: changes.registrationClosesAt ?? null, capacity: changes.capacity ?? null, postEventSurveyPrompt: changes.postEventSurveyPrompt ?? null }); return { success: true };
+  }),
+  remove: protectedProcedure.input(z.object({ eventId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const event = await db.getEvent(input.eventId); if (!event) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, event.campaignId); requireCapability(access, "manage");
+    try { await db.deleteEventIfEmpty(input.eventId); return { success: true }; }
+    catch (error) { if (error instanceof Error && error.message === "EVENT_HAS_REGISTRATIONS") throw new TRPCError({ code: "CONFLICT", message: "Este evento possui inscrições. Cancele-o para preservar o histórico de participação." }); throw error; }
+  }),
+  participation: protectedProcedure.input(z.object({ eventId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    const event = await db.getEvent(input.eventId); if (!event) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, event.campaignId); requireCapability(access, "manage");
+    const [summary, registrations] = await Promise.all([db.getEventParticipationSummary(event.campaignId, event.id), db.listEventRegistrations(event.campaignId, event.id)]);
+    return { event, summary, registrations };
+  }),
+  updateRegistrationStatus: protectedProcedure.input(z.object({ eventId: z.number().int().positive(), registrationId: z.number().int().positive(), status: z.enum(["registered", "checked_in", "cancelled", "no_show"]) })).mutation(async ({ ctx, input }) => {
+    const event = await db.getEvent(input.eventId); if (!event) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, event.campaignId); requireCapability(access, "manage");
+    await db.updateEventRegistrationStatus({ campaignId: event.campaignId, eventId: event.id, registrationId: input.registrationId, status: input.status, actorUserId: ctx.user.id });
+    return { success: true };
+  }),
+});
+
+export const publicEventsRouter = router({
+  details: publicProcedure.input(z.object({ eventId: z.number().int().positive() })).query(async ({ input }) => {
+    const event = await db.getPublicEvent(input.eventId);
+    if (!event) throw new TRPCError({ code: "NOT_FOUND", message: "Este evento não está disponível para inscrição." });
+    return event;
+  }),
+  register: publicProcedure.input(z.object({ eventId: z.number().int().positive(), name: z.string().min(2).max(180), email: z.string().email().max(320), phone: z.string().max(32).optional() })).mutation(async ({ input }) => {
+    try { return await db.registerForPublicEvent({ ...input, phone: input.phone ?? null }); }
+    catch (error) {
+      const message = error instanceof Error ? error.message : "EVENT_REGISTRATION_FAILED";
+      const messages: Record<string, string> = { EVENT_UNAVAILABLE: "Este evento não está disponível para inscrição.", REGISTRATION_CLOSED: "As inscrições para este evento foram encerradas.", EVENT_FULL: "As vagas deste evento foram preenchidas." };
+      throw new TRPCError({ code: "BAD_REQUEST", message: messages[message] ?? "Não foi possível concluir a inscrição." });
+    }
+  }),
+  feedback: publicProcedure.input(z.object({ token: z.string().min(20).max(128) })).query(async ({ input }) => {
+    const registration = await db.getEventRegistrationByAccessToken(input.token);
+    if (!registration) throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de participação não encontrado." });
+    return { registration: { name: registration.registration.name, status: registration.registration.status, feedbackRating: registration.registration.feedbackRating, feedbackComment: registration.registration.feedbackComment }, event: registration.event, campaign: registration.campaign };
+  }),
+  submitFeedback: publicProcedure.input(z.object({ token: z.string().min(20).max(128), rating: z.number().int().min(1).max(5), comment: z.string().max(1500).optional() })).mutation(async ({ input }) => {
+    try { await db.submitEventFeedback({ token: input.token, rating: input.rating, comment: input.comment ?? null }); return { success: true }; }
+    catch { throw new TRPCError({ code: "NOT_FOUND", message: "Acesso de participação não encontrado." }); }
   }),
 });
 
@@ -337,11 +379,16 @@ export const fieldRouter = router({
     const access = await requireAccess(ctx.user.id, input.campaignId);
     return db.listFieldVisits(input.campaignId, access.member?.role === "partner" ? access.member.id : null);
   }),
-  sync: protectedProcedure.input(campaignIdInput.extend({ visits: z.array(z.object({ voterId: z.number().int().positive().optional(), clientReference: z.string().uuid(), outcome: z.enum(["contacted", "absent", "refused", "follow_up", "other"]), notes: z.string().max(3000).optional(), occurredAt: z.date() })).min(1).max(100) })).mutation(async ({ ctx, input }) => {
+  playbooks: router({
+    list: protectedProcedure.input(campaignIdInput.extend({ includeInactive: z.boolean().optional() })).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); return db.listFieldPlaybooks(input.campaignId, Boolean(input.includeInactive && access.member?.role !== "partner")); }),
+    create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(220), objective: z.string().max(400).optional(), territory: z.string().max(160).optional(), openingScript: z.string().max(5000).optional(), talkingPoints: z.array(z.string().min(1).max(600)).min(1).max(20), checklist: z.array(z.string().min(1).max(600)).max(20), status: z.enum(["draft", "active", "archived"]).default("draft") })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return { id: await db.createFieldPlaybook({ ...input, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null, createdByUserId: ctx.user.id }) }; }),
+    update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(220), objective: z.string().max(400).optional(), territory: z.string().max(160).optional(), openingScript: z.string().max(5000).optional(), talkingPoints: z.array(z.string().min(1).max(600)).min(1).max(20), checklist: z.array(z.string().min(1).max(600)).max(20), status: z.enum(["draft", "active", "archived"]) })).mutation(async ({ ctx, input }) => { const playbook = await db.getFieldPlaybook(input.id); if (!playbook) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, playbook.campaignId); requireCapability(access, "manage"); await db.updateFieldPlaybook({ ...input, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null }); return { success: true }; }),
+  }),
+  sync: protectedProcedure.input(campaignIdInput.extend({ visits: z.array(z.object({ voterId: z.number().int().positive().optional(), playbookId: z.number().int().positive().optional(), clientReference: z.string().uuid(), outcome: z.enum(["contacted", "absent", "refused", "follow_up", "other"]), notes: z.string().max(3000).optional(), occurredAt: z.date() })).min(1).max(100) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     const memberId = access.member?.id ?? null;
     if (access.member?.role === "partner" && !memberId) throw new TRPCError({ code: "FORBIDDEN", message: "Membro de campo não encontrado." });
-    return db.syncFieldVisits(input.visits.map(visit => ({ ...visit, campaignId: input.campaignId, memberId, notes: visit.notes ?? null })));
+    return db.syncFieldVisits(input.visits.map(visit => ({ ...visit, campaignId: input.campaignId, memberId, playbookId: visit.playbookId ?? null, notes: visit.notes ?? null })));
   }),
 });
 
@@ -364,6 +411,35 @@ export const consentRouter = router({
     const access = await requireAccess(ctx.user.id, voter.campaignId); requireCapability(access, "manage");
     await db.revokeConsentRecord({ consentId: input.consentId, revokedAt: new Date() }); return { success: true };
   }),
+});
+
+export const communicationRouter = router({
+  candidates: protectedProcedure.input(campaignIdInput.extend({ channel: z.enum(["email", "whatsapp", "phone"]).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional() })).query(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+    return db.listCommunicationCandidates(input);
+  }),
+  savePreference: protectedProcedure.input(campaignIdInput.extend({ voterId: z.number().int().positive(), emailAllowed: z.boolean(), whatsappAllowed: z.boolean(), phoneAllowed: z.boolean() })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+    await db.upsertVoterCommunicationPreference({ ...input, updatedByUserId: ctx.user.id }); return { success: true };
+  }),
+  templates: router({
+    list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listCommunicationTemplates(input.campaignId); }),
+    create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(180), channel: z.enum(["email", "whatsapp", "phone"]), subject: z.string().max(220).optional(), body: z.string().min(3).max(5000) })).mutation(async ({ ctx, input }) => {
+      const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+      return { id: await db.createCommunicationTemplate({ ...input, subject: input.subject ?? null, createdByUserId: ctx.user.id }) };
+    }),
+    update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(180), channel: z.enum(["email", "whatsapp", "phone"]), subject: z.string().max(220).optional(), body: z.string().min(3).max(5000), active: z.boolean() })).mutation(async ({ ctx, input }) => {
+      const template = await db.getCommunicationTemplate(input.id); if (!template) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, template.campaignId); requireCapability(access, "manage");
+      await db.updateCommunicationTemplate({ ...input, subject: input.subject ?? null }); return { success: true };
+    }),
+  }),
+  logManual: protectedProcedure.input(campaignIdInput.extend({ voterId: z.number().int().positive(), templateId: z.number().int().positive().optional(), channel: z.enum(["email", "whatsapp", "phone"]), notes: z.string().max(1500).optional() })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+    if (input.templateId) { const template = await db.getCommunicationTemplate(input.templateId); if (!template || template.campaignId !== input.campaignId || template.channel !== input.channel) throw new TRPCError({ code: "BAD_REQUEST", message: "Modelo de mensagem inválido para este canal." }); }
+    try { return { id: await db.logManualCommunication({ ...input, templateId: input.templateId ?? null, notes: input.notes ?? null, createdByUserId: ctx.user.id }) }; }
+    catch (error) { const code = error instanceof Error ? error.message : ""; throw new TRPCError({ code: "BAD_REQUEST", message: code === "CHANNEL_NOT_ALLOWED" ? "Este canal não possui preferência consentida para o contato." : "Este contato não está elegível para comunicação." }); }
+  }),
+  logs: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listCommunicationLogs(input.campaignId); }),
 });
 
 export const crisisRouter = router({

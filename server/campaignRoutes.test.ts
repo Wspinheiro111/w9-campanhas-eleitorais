@@ -8,6 +8,26 @@ vi.mock("./campaignDb", () => ({
   getEvent: vi.fn(),
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
+  getPublicEvent: vi.fn(),
+  registerForPublicEvent: vi.fn(),
+  getEventParticipationSummary: vi.fn(),
+  listEventRegistrations: vi.fn(),
+  updateEventRegistrationStatus: vi.fn(),
+  getEventRegistrationByAccessToken: vi.fn(),
+  submitEventFeedback: vi.fn(),
+  deleteEventIfEmpty: vi.fn(),
+  listFieldPlaybooks: vi.fn(),
+  getFieldPlaybook: vi.fn(),
+  createFieldPlaybook: vi.fn(),
+  updateFieldPlaybook: vi.fn(),
+  listCommunicationCandidates: vi.fn(),
+  upsertVoterCommunicationPreference: vi.fn(),
+  listCommunicationTemplates: vi.fn(),
+  createCommunicationTemplate: vi.fn(),
+  getCommunicationTemplate: vi.fn(),
+  updateCommunicationTemplate: vi.fn(),
+  logManualCommunication: vi.fn(),
+  listCommunicationLogs: vi.fn(),
   saveIndicator: vi.fn(),
   getDashboardData: vi.fn(),
   getReportData: vi.fn(),
@@ -78,6 +98,65 @@ describe("routers operacionais da campanha", () => {
     const caller = appRouter.createCaller(context());
     await expect(caller.planning.create({ campaignId: 1, title: "Visita", type: "visit", startsAt: new Date() })).resolves.toEqual({ id: 19 });
     expect(db.createEvent).toHaveBeenCalled();
+  });
+
+  it("permite RSVP público apenas para evento disponível", async () => {
+    vi.mocked(db.registerForPublicEvent).mockResolvedValue({ id: 31, accessToken: "token-publico-de-evento-comprido", alreadyRegistered: false } as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.publicEvents.register({ eventId: 7, name: "Participante", email: "participante@example.com" })).resolves.toMatchObject({ id: 31, alreadyRegistered: false });
+    expect(db.registerForPublicEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: 7, email: "participante@example.com" }));
+  });
+
+  it("impede parceiro de alterar check-in do evento", async () => {
+    vi.mocked(db.getEvent).mockResolvedValue({ id: 7, campaignId: 1 } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("partner") as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.planning.updateRegistrationStatus({ eventId: 7, registrationId: 12, status: "checked_in" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(db.updateEventRegistrationStatus).not.toHaveBeenCalled();
+  });
+
+  it("permite avaliação apenas por token de inscrição válido", async () => {
+    vi.mocked(db.getEventRegistrationByAccessToken).mockResolvedValue({ registration: { name: "Participante", status: "checked_in" }, event: { id: 7, title: "Encontro" }, campaign: { id: 1, name: "Campanha" } } as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.publicEvents.feedback({ token: "token-publico-de-evento-comprido" })).resolves.toMatchObject({ registration: { name: "Participante" } });
+  });
+
+  it("restringe a central assistida de comunicação à coordenação", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("partner") as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.communication.candidates({ campaignId: 1, channel: "email" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(db.listCommunicationCandidates).not.toHaveBeenCalled();
+  });
+
+  it("permite à coordenação criar modelo para comunicação manual", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.createCommunicationTemplate).mockResolvedValue(42);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.communication.templates.create({ campaignId: 1, title: "Convite", channel: "email", subject: "Convite", body: "Olá, {{nome}}" })).resolves.toEqual({ id: 42 });
+    expect(db.createCommunicationTemplate).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, createdByUserId: 99 }));
+  });
+
+  it("reserva a criação de playbook de campo para a coordenação", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("partner") as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.field.playbooks.create({ campaignId: 1, title: "Abordagem territorial", talkingPoints: ["Apresentar proposta"], checklist: [] })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(db.createFieldPlaybook).not.toHaveBeenCalled();
+  });
+
+  it("permite à coordenação criar playbook versionado de campo", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.createFieldPlaybook).mockResolvedValue(8);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.field.playbooks.create({ campaignId: 1, title: "Abordagem territorial", talkingPoints: ["Apresentar proposta"], checklist: ["Registrar demanda"], status: "active" })).resolves.toEqual({ id: 8 });
+    expect(db.createFieldPlaybook).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, createdByUserId: 99, status: "active" }));
+  });
+
+  it("bloqueia exclusão de evento com inscrições e orienta cancelamento", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.getEvent).mockResolvedValue({ id: 9, campaignId: 1 } as never);
+    vi.mocked(db.deleteEventIfEmpty).mockRejectedValue(new Error("EVENT_HAS_REGISTRATIONS"));
+    const caller = appRouter.createCaller(context());
+    await expect(caller.planning.remove({ eventId: 9 })).rejects.toMatchObject({ code: "CONFLICT", message: expect.stringContaining("Cancele-o") });
   });
 
   it("permite que coordenador atualize um indicador da campanha", async () => {

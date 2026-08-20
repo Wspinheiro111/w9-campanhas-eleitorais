@@ -162,3 +162,10 @@
 - [x] Comparar a posição de cada equipe no ranking com o mês anterior, incluindo exportações.
 - [x] Exibir aviso claro quando a comparação com o mês anterior não puder ser carregada.
 - [x] Cobrir em testes a comparação de posição e falhas de histórico e referência anterior.
+- [x] Comparar o W9 Campanhas com plataformas de campanha, CRM político e mobilização de referência.
+- [x] Priorizar lacunas competitivas por impacto eleitoral, esforço e aderência ao contexto brasileiro.
+- [x] Cruzar as prioridades competitivas com uma análise independente via Gemini.
+- [x] Implementar ciclo completo de eventos com RSVP, check-in, pesquisa pós-evento e follow-up.
+- [x] Criar central assistida de preferências e comunicação consentida com segmentação e histórico auditável, sem disparo externo automático.
+- [x] Implementar playbooks de campo configuráveis com roteiros, versões e pontos de fala por campanha.
+- [x] Permitir excluir eventos sem inscrições e orientar o cancelamento quando houver participantes vinculados.
