@@ -153,3 +153,5 @@
 - [x] Cobrir em testes o critério de conclusão integral e o estado de erro do ranking mensal.
 - [x] Adicionar teste direto da lógica de ranking mensal com certificados emitidos e conclusões isoladas de módulos.
 - [x] Cobrir no painel de ranking a exibição positiva de trilhas concluídas no mês.
+- [x] Criar medalhas internas para equipes que atingirem ou superarem a meta mensal de formação.
+- [x] Permitir exportar o ranking mensal de formação em PDF e CSV.

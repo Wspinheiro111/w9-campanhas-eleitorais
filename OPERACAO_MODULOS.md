@@ -105,6 +105,8 @@ Os relatórios de progresso podem ser exportados em CSV para tratamento em plani
 
 O ranking mensal consolida os voluntários que concluíram integralmente a trilha e receberam uma emissão de certificado no mês selecionado. Cada voluntário é contado uma única vez por equipe no período, mesmo que a trilha tenha sido atualizada. A coordenação pode definir uma meta de conclusões para cada equipe; o painel calcula automaticamente o percentual de avanço e ordena o comparativo por atingimento da meta, seguido pelo número de trilhas concluídas. Apenas indicadores agregados são apresentados: o ranking não mostra e-mails, telefones ou detalhes de progresso individual dos voluntários.
 
+As medalhas são internas e calculadas automaticamente a partir da meta mensal: **Meta atingida** para equipes com ao menos 100% da meta, **Liderança de meta** para a primeira equipe que atingiu a meta e **Destaque mensal** para equipes com 125% ou mais. A coordenação pode exportar o ranking do mês selecionado em CSV ou PDF; os arquivos incluem posição, equipe, região, metas, progresso e medalha, sem contatos ou outros dados pessoais dos voluntários.
+
 ## Benchmark interno de equipe
 
 O Benchmark regional consolida tarefas, entregas, eventos e visitas de campo por **região de trabalho**, sem apresentar nomes ou métricas individuais. Para reduzir risco de reidentificação, resultados de regiões com menos de dois integrantes ativos são suprimidos.
