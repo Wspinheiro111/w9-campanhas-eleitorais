@@ -119,6 +119,8 @@ A página **Indicadores de eventos** consolida eventos, inscrições, presenças
 
 Os indicadores podem ser exportados em **CSV** ou **PDF** com os filtros ativos. Os arquivos trazem somente recorte agregado, eventos, inscrições, presenças, comparecimento e avaliação; não incluem dados pessoais. A coordenação também pode definir uma **meta de presença** por evento. O painel soma metas do período e mostra o percentual de avanço com base em check-ins confirmados.
 
+Antes de gerar o PDF de indicadores ou a apresentação semanal, a coordenação usa **Pré-visualizar** para conferir título, período, identidade visual, métricas e escopo agregado. A exportação só é baixada após o botão **Confirmar exportação em PDF**; a ação **Voltar e ajustar** fecha a prévia sem baixar arquivo e permite revisar filtros ou dados.
+
 Quando um evento agendado para as próximas 48 horas tem meta de presença e ainda não atingiu o objetivo, o painel exibe um alerta com o total restante. O relatório comparativo usa um período anterior de mesma duração e mostra a variação de eventos, inscrições e presenças; filtros territoriais permanecem aplicados nos dois períodos.
 
 O botão **Preparar lembrete** abre o cliente de e-mail da coordenação com assunto e texto prontos para mobilização. O destinatário é sempre escolhido manualmente pela pessoa responsável, que deve utilizar apenas contatos elegíveis e consentidos. Não há envio automático, importação de endereços ou registro de entrega nessa ação. O comparativo também pode ser baixado em **PNG** como gráfico de tendência de eventos, inscrições e presenças.

@@ -189,3 +189,6 @@
 - [x] Permitir configurar manualmente uma paleta personalizada com cores principais acessíveis.
 - [x] Persistir a paleta personalizada no navegador e no perfil do usuário.
 - [x] Aplicar a paleta ativa aos gráficos, tendências e apresentações semanais exportadas.
+- [x] Criar pré-visualização interativa dos relatórios de indicadores antes da exportação.
+- [x] Criar pré-visualização da apresentação semanal antes da exportação.
+- [x] Exigir confirmação explícita do usuário antes de baixar cada relatório ou apresentação.
