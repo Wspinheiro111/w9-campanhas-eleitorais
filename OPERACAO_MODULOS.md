@@ -84,12 +84,21 @@ Antes do envio, o logotipo passa por uma etapa de **recorte quadrado**, com zoom
 | Prazo de módulo | Coordenação com permissão de gestão | Define ou remove a data de vencimento de cada etapa publicada. |
 | Alerta de prazo | Voluntário no portal privado | Destaca módulos vencidos e etapas que vencem nos próximos três dias. |
 | Progresso gerencial | Coordenação com permissão de gestão | Consolida taxa de conclusão e vencimentos, com filtros por responsável de equipe e região. |
+| Lembrete assistido | Coordenação com permissão de gestão | Filtra voluntários ativos com formação pendente, permite copiar e-mails e abrir uma mensagem manual no cliente de e-mail. |
+| Gestão da trilha | Coordenação com permissão de gestão | Edita título, conteúdo, duração, prazo e status do módulo; as setas reorganizam a ordem da trilha. |
+| Exportações | Coordenação com permissão de gestão | Gera PDF da trilha e relatórios PDF ou CSV do painel de progresso conforme os filtros ativos. |
 
 > O histórico e os arquivos exportados continuam vinculados ao acesso privado do voluntário. A personalização visual não altera o código, a data ou as regras de validação do certificado.
 
 Quando a coordenação publica uma nova etapa em uma trilha já concluída, a formação volta a ficar pendente até que o voluntário conclua a etapa adicional. A nova conclusão gera uma **nova versão imutável** do certificado, com código e data próprios. As versões anteriores permanecem no histórico, podem ser exportadas novamente e continuam válidas para a consulta interna por QR Code.
 
 Para ativar os filtros de equipe no painel gerencial, associe cada voluntário a um responsável em **Responsáveis de equipe**. O painel apresenta apenas métricas operacionais de formação, sem reproduzir dados de contato no comparativo agregado.
+
+## Lembretes manuais e relatórios
+
+A campanha está configurada para **lembretes manuais assistidos**, sem disparos automáticos. A seção correspondente reúne apenas voluntários ativos com formação pendente ou prazos vencidos. A coordenação pode copiar os e-mails ou abrir uma mensagem individual, mantendo a revisão humana antes de qualquer contato.
+
+Os relatórios de progresso podem ser exportados em CSV para tratamento em planilhas ou em PDF para compartilhamento interno. A exportação respeita os filtros de responsável de equipe e região selecionados no painel. A trilha também possui um PDF próprio, útil para revisão, treinamento presencial e arquivamento operacional.
 
 ## Benchmark interno de equipe
 

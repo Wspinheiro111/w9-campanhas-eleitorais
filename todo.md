@@ -143,3 +143,6 @@
 - [x] Adicionar recorte de imagem antes do upload do logotipo para o certificado.
 - [x] Configurar prazo por módulo de treinamento e alertar o voluntário sobre vencimentos.
 - [x] Criar painel gerencial de progresso e taxa de conclusão com filtros por equipe e região.
+- [x] Implementar lista manual assistida de lembretes para voluntários com módulos pendentes ou próximos do vencimento.
+- [x] Permitir editar, reordenar e exportar em PDF a trilha de módulos de treinamento.
+- [x] Permitir exportar o painel gerencial de formação em PDF e CSV.

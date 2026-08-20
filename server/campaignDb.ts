@@ -636,6 +636,16 @@ export async function updateVolunteerTrainingMaterialDeadline(materialId: number
   await db.update(volunteerTrainingMaterials).set({ dueAt }).where(eq(volunteerTrainingMaterials.id, materialId));
 }
 
+export async function updateVolunteerTrainingMaterial(materialId: number, input: Partial<Pick<typeof volunteerTrainingMaterials.$inferInsert, "title" | "description" | "materialType" | "resourceUrl" | "content" | "durationMinutes" | "dueAt" | "active">>) {
+  const db = requireDb(await getDb());
+  await db.update(volunteerTrainingMaterials).set(input).where(eq(volunteerTrainingMaterials.id, materialId));
+}
+
+export async function reorderVolunteerTrainingMaterials(campaignId: number, materialIds: number[]) {
+  const db = requireDb(await getDb());
+  await Promise.all(materialIds.map((id, position) => db.update(volunteerTrainingMaterials).set({ position }).where(and(eq(volunteerTrainingMaterials.id, id), eq(volunteerTrainingMaterials.campaignId, campaignId)))));
+}
+
 export async function createVolunteerTrainingMaterial(input: Omit<typeof volunteerTrainingMaterials.$inferInsert, "organizationId">) {
   const db = requireDb(await getDb());
   const result = await db.insert(volunteerTrainingMaterials).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
