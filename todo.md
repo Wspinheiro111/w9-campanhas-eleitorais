@@ -169,3 +169,5 @@
 - [x] Criar central assistida de preferências e comunicação consentida com segmentação e histórico auditável, sem disparo externo automático.
 - [x] Implementar playbooks de campo configuráveis com roteiros, versões e pontos de fala por campanha.
 - [x] Permitir excluir eventos sem inscrições e orientar o cancelamento quando houver participantes vinculados.
+- [x] Criar painel de indicadores de eventos com gráficos e filtros por bairro e região.
+- [x] Adicionar modelos prontos de playbook para diferentes abordagens no módulo de campo.

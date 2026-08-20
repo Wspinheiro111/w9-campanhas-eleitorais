@@ -20,6 +20,7 @@ const menuItems = [
   { icon: UsersRound, label: "Equipe", path: "/equipe" },
   { icon: HeartHandshake, label: "Voluntários", path: "/voluntarios", requiresManage: true },
   { icon: CalendarDays, label: "Agenda", path: "/agenda" },
+  { icon: BarChart3, label: "Indicadores de eventos", path: "/eventos/indicadores", requiresManage: true },
   { icon: CheckSquare, label: "Tarefas", path: "/tarefas" },
   { icon: ContactRound, label: "Contatos", path: "/contatos" },
   { icon: MessageSquare, label: "Comunicação", path: "/comunicacao", requiresManage: true },

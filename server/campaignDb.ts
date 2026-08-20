@@ -406,6 +406,44 @@ export async function getEventParticipationSummary(campaignId: number, eventId: 
   return { ...totals, total: totals.registered + totals.checkedIn + totals.cancelled + totals.noShow };
 }
 
+export async function getEventIndicators(input: { campaignId: number; startsAt?: Date; endsAt?: Date; neighborhood?: string; region?: string }) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(events.campaignId, input.campaignId)];
+  if (input.startsAt) conditions.push(gte(events.startsAt, input.startsAt));
+  if (input.endsAt) conditions.push(lte(events.startsAt, input.endsAt));
+  if (input.neighborhood) conditions.push(eq(events.neighborhood, input.neighborhood));
+  if (input.region) conditions.push(eq(events.region, input.region));
+  const rows = await db.select({
+    id: events.id,
+    type: events.type,
+    neighborhood: events.neighborhood,
+    region: events.region,
+    startsAt: events.startsAt,
+    registrations: sql<number>`count(${eventRegistrations.id})`,
+    checkedIn: sql<number>`coalesce(sum(case when ${eventRegistrations.status} = 'checked_in' then 1 else 0 end), 0)`,
+    feedbackCount: sql<number>`coalesce(sum(case when ${eventRegistrations.feedbackRating} is not null then 1 else 0 end), 0)`,
+    feedbackSum: sql<number>`coalesce(sum(${eventRegistrations.feedbackRating}), 0)`,
+  }).from(events).leftJoin(eventRegistrations, eq(eventRegistrations.eventId, events.id)).where(and(...conditions)).groupBy(events.id, events.type, events.neighborhood, events.region, events.startsAt);
+  const normalize = (value: unknown) => Number(value ?? 0);
+  const totalEvents = rows.length;
+  const registrations = rows.reduce((total, row) => total + normalize(row.registrations), 0);
+  const checkedIn = rows.reduce((total, row) => total + normalize(row.checkedIn), 0);
+  const feedbackCount = rows.reduce((total, row) => total + normalize(row.feedbackCount), 0);
+  const feedbackSum = rows.reduce((total, row) => total + normalize(row.feedbackSum), 0);
+  const group = (selector: (row: typeof rows[number]) => string | null) => Object.values(rows.reduce<Record<string, { label: string; events: number; registrations: number; checkedIn: number; feedbackSum: number; feedbackCount: number }>>((accumulator, row) => {
+    const label = selector(row) || "Não informado";
+    const current = accumulator[label] ?? { label, events: 0, registrations: 0, checkedIn: 0, feedbackSum: 0, feedbackCount: 0 };
+    current.events += 1; current.registrations += normalize(row.registrations); current.checkedIn += normalize(row.checkedIn); current.feedbackSum += normalize(row.feedbackSum); current.feedbackCount += normalize(row.feedbackCount);
+    accumulator[label] = current; return accumulator;
+  }, {})).map(item => ({ ...item, attendanceRate: item.registrations ? Math.round((item.checkedIn / item.registrations) * 100) : 0, averageRating: item.feedbackCount ? Number((item.feedbackSum / item.feedbackCount).toFixed(1)) : null })).sort((a, b) => b.checkedIn - a.checkedIn || b.registrations - a.registrations);
+  return {
+    summary: { totalEvents, registrations, checkedIn, attendanceRate: registrations ? Math.round((checkedIn / registrations) * 100) : 0, averageRating: feedbackCount ? Number((feedbackSum / feedbackCount).toFixed(1)) : null, feedbackCount },
+    byNeighborhood: group(row => row.neighborhood),
+    byRegion: group(row => row.region),
+    byType: group(row => row.type),
+  };
+}
+
 export async function registerForPublicEvent(input: { eventId: number; name: string; email: string; phone?: string | null }) {
   const db = requireDb(await getDb());
   const publicEvent = await getPublicEvent(input.eventId);

@@ -83,6 +83,7 @@ export const teamRouter = router({
 
 export const planningRouter = router({
   list: protectedProcedure.input(campaignIdInput.extend({ startsAt: z.date().optional(), endsAt: z.date().optional() })).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listEvents(input.campaignId, input.startsAt, input.endsAt); }),
+  indicators: protectedProcedure.input(campaignIdInput.extend({ startsAt: z.date().optional(), endsAt: z.date().optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional() })).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getEventIndicators(input); }),
   create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), type: z.enum(["meeting", "rally", "visit", "debate", "internal", "other"]), startsAt: z.date(), endsAt: z.date().optional(), location: z.string().max(240).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), responsibleId: z.number().int().positive().optional(), notes: z.string().max(3000).optional(), publicRegistrationEnabled: z.boolean().default(false), registrationClosesAt: z.date().optional(), capacity: z.number().int().min(1).max(100000).optional(), postEventSurveyPrompt: z.string().max(1200).optional() })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     requireCapability(access, "manage");

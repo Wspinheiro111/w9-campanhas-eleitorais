@@ -11,6 +11,7 @@ vi.mock("./campaignDb", () => ({
   getPublicEvent: vi.fn(),
   registerForPublicEvent: vi.fn(),
   getEventParticipationSummary: vi.fn(),
+  getEventIndicators: vi.fn(),
   listEventRegistrations: vi.fn(),
   updateEventRegistrationStatus: vi.fn(),
   getEventRegistrationByAccessToken: vi.fn(),
@@ -157,6 +158,22 @@ describe("routers operacionais da campanha", () => {
     vi.mocked(db.deleteEventIfEmpty).mockRejectedValue(new Error("EVENT_HAS_REGISTRATIONS"));
     const caller = appRouter.createCaller(context());
     await expect(caller.planning.remove({ eventId: 9 })).rejects.toMatchObject({ code: "CONFLICT", message: expect.stringContaining("Cancele-o") });
+  });
+
+  it("reserva indicadores territoriais de eventos para a coordenação", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("partner") as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.planning.indicators({ campaignId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(db.getEventIndicators).not.toHaveBeenCalled();
+  });
+
+  it("entrega indicadores territoriais agregados à coordenação", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    const result = { summary: { totalEvents: 2, registrations: 8, checkedIn: 6, attendanceRate: 75, averageRating: 4.5, feedbackCount: 2 }, byNeighborhood: [], byRegion: [], byType: [] };
+    vi.mocked(db.getEventIndicators).mockResolvedValue(result as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.planning.indicators({ campaignId: 1, region: "Norte" })).resolves.toEqual(result);
+    expect(db.getEventIndicators).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, region: "Norte" }));
   });
 
   it("permite que coordenador atualize um indicador da campanha", async () => {

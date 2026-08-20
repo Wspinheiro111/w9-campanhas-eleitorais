@@ -113,6 +113,10 @@ As regras podem ser ajustadas por campanha na seção **Regras de reconhecimento
 
 A agenda pode habilitar RSVP público, limite de vagas e uma pergunta de retorno pós-evento. A coordenação acompanha inscrições, realiza check-in, marca ausências e consulta os indicadores de participação no próprio evento. Cada participante recebe um acesso privado para enviar sua avaliação sem acesso ao painel operacional. Eventos sem inscrições podem ser excluídos após confirmação; quando houver participantes registrados, o sistema bloqueia a exclusão e orienta o cancelamento para preservar o histórico.
 
+### Indicadores territoriais de eventos
+
+A página **Indicadores de eventos** consolida eventos, inscrições, presenças confirmadas, taxa de comparecimento e avaliação média no intervalo selecionado. Os filtros de data, bairro e região atualizam as leituras por território e por formato de evento. Os gráficos em barras usam presença confirmada como intensidade; resultados são agregados e não expõem nomes, telefones ou e-mails de participantes.
+
 ## Central assistida de comunicação
 
 A central assistida prepara comunicações sem realizar qualquer disparo automático. A coordenação define preferências explícitas de e-mail, WhatsApp e telefone em contatos com consentimento ativo, cria modelos com as variáveis `{{nome}}` e `{{campanha}}`, escolhe um contato elegível e registra a ação antes de abrir o canal manualmente. O histórico registra a ação iniciada, o canal, o modelo e a observação, permitindo auditoria sem alegar entrega da mensagem.
@@ -120,6 +124,8 @@ A central assistida prepara comunicações sem realizar qualquer disparo automá
 ## Playbooks de campo
 
 Playbooks padronizam roteiro de abertura, objetivo, território, pontos de fala e checklist para a equipe de campo. A coordenação cria, edita, ativa ou arquiva cada playbook. Toda edição incrementa sua versão; quando uma visita é sincronizada, o sistema guarda o playbook e a versão usados, inclusive se o registro permanecer temporariamente na fila offline. Perfis parceiros podem consultar somente playbooks ativos durante o canvassing.
+
+Ao criar um playbook, a coordenação pode partir de modelos editáveis para **escuta territorial**, **convite para evento**, **retorno de demanda** e **mobilização voluntária**. Cada modelo preenche um objetivo, roteiro inicial, pontos de fala e checklist; a revisão do conteúdo, do território e do status antes da ativação continua obrigatória.
 
 ## Benchmark interno de equipe
 
