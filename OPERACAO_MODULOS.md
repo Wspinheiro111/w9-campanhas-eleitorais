@@ -87,6 +87,7 @@ Antes do envio, o logotipo passa por uma etapa de **recorte quadrado**, com zoom
 | Lembrete assistido | Coordenação com permissão de gestão | Filtra voluntários ativos com formação pendente, permite copiar e-mails e abrir uma mensagem manual no cliente de e-mail. |
 | Gestão da trilha | Coordenação com permissão de gestão | Edita título, conteúdo, duração, prazo e status do módulo; as setas reorganizam a ordem da trilha. |
 | Exportações | Coordenação com permissão de gestão | Gera PDF da trilha e relatórios PDF ou CSV do painel de progresso conforme os filtros ativos. |
+| Ranking mensal | Coordenação com permissão de gestão | Compara equipes responsáveis por conclusões mensais e avanço sobre as metas configuradas. |
 
 > O histórico e os arquivos exportados continuam vinculados ao acesso privado do voluntário. A personalização visual não altera o código, a data ou as regras de validação do certificado.
 
@@ -99,6 +100,10 @@ Para ativar os filtros de equipe no painel gerencial, associe cada voluntário a
 A campanha está configurada para **lembretes manuais assistidos**, sem disparos automáticos. A seção correspondente reúne apenas voluntários ativos com formação pendente ou prazos vencidos. A coordenação pode copiar os e-mails ou abrir uma mensagem individual, mantendo a revisão humana antes de qualquer contato.
 
 Os relatórios de progresso podem ser exportados em CSV para tratamento em planilhas ou em PDF para compartilhamento interno. A exportação respeita os filtros de responsável de equipe e região selecionados no painel. A trilha também possui um PDF próprio, útil para revisão, treinamento presencial e arquivamento operacional.
+
+## Ranking mensal por equipe
+
+O ranking mensal consolida os voluntários que concluíram integralmente a trilha e receberam uma emissão de certificado no mês selecionado. Cada voluntário é contado uma única vez por equipe no período, mesmo que a trilha tenha sido atualizada. A coordenação pode definir uma meta de conclusões para cada equipe; o painel calcula automaticamente o percentual de avanço e ordena o comparativo por atingimento da meta, seguido pelo número de trilhas concluídas. Apenas indicadores agregados são apresentados: o ranking não mostra e-mails, telefones ou detalhes de progresso individual dos voluntários.
 
 ## Benchmark interno de equipe
 

@@ -146,3 +146,10 @@
 - [x] Implementar lista manual assistida de lembretes para voluntários com módulos pendentes ou próximos do vencimento.
 - [x] Permitir editar, reordenar e exportar em PDF a trilha de módulos de treinamento.
 - [x] Permitir exportar o painel gerencial de formação em PDF e CSV.
+- [x] Criar ranking mensal agregado de conclusão de treinamento por equipe.
+- [x] Permitir configurar metas mensais de conclusão para cada equipe da campanha.
+- [x] Alinhar ranking e metas mensais a voluntários que concluíram integralmente a trilha no mês.
+- [x] Exibir erro e opção de nova tentativa no painel de ranking mensal quando o carregamento falhar.
+- [x] Cobrir em testes o critério de conclusão integral e o estado de erro do ranking mensal.
+- [x] Adicionar teste direto da lógica de ranking mensal com certificados emitidos e conclusões isoladas de módulos.
+- [x] Cobrir no painel de ranking a exibição positiva de trilhas concluídas no mês.

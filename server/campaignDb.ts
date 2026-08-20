@@ -29,6 +29,7 @@ import {
   volunteerTrainingCertificateVersions,
   volunteerTrainingCompletions,
   volunteerTrainingMaterials,
+  volunteerTrainingTeamGoals,
   volunteers,
   voterInteractions,
   voters,
@@ -623,6 +624,24 @@ export async function getVolunteerTrainingDashboard(campaignId: number, filters:
   const completedVolunteers = volunteerProgress.filter(item => totalMaterials > 0 && item.completed >= totalMaterials).length; const overdueVolunteers = volunteerProgress.filter(item => item.overdue > 0).length;
   const byRegion = Array.from(new Set(volunteerProgress.map(item => item.region || "Sem região"))).map(region => { const group = volunteerProgress.filter(item => (item.region || "Sem região") === region); return { region, volunteers: group.length, completionRate: group.length ? Math.round(group.reduce((sum, item) => sum + item.progress, 0) / group.length) : 0, overdue: group.filter(item => item.overdue > 0).length }; }).sort((a, b) => b.completionRate - a.completionRate);
   return { summary: { volunteers: volunteerProgress.length, totalMaterials, completedVolunteers, completionRate: volunteerProgress.length ? Math.round((completedVolunteers / volunteerProgress.length) * 100) : 0, overdueVolunteers }, byRegion, volunteers: volunteerProgress };
+}
+
+export async function setVolunteerTrainingTeamGoal(input: { campaignId: number; coordinatorMemberId: number; month: string; targetCompletions: number }) {
+  const db = requireDb(await getDb()); const existing = await db.select({ id: volunteerTrainingTeamGoals.id }).from(volunteerTrainingTeamGoals).where(and(eq(volunteerTrainingTeamGoals.campaignId, input.campaignId), eq(volunteerTrainingTeamGoals.coordinatorMemberId, input.coordinatorMemberId), eq(volunteerTrainingTeamGoals.month, input.month))).limit(1);
+  if (existing[0]) { await db.update(volunteerTrainingTeamGoals).set({ targetCompletions: input.targetCompletions }).where(eq(volunteerTrainingTeamGoals.id, existing[0].id)); return existing[0].id; }
+  const result = await db.insert(volunteerTrainingTeamGoals).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) }); return Number(result[0].insertId);
+}
+
+export async function getVolunteerTrainingTeamRanking(campaignId: number, month: string) {
+  const db = requireDb(await getDb()); const [year, monthNumber] = month.split("-").map(Number); const startsAt = new Date(Date.UTC(year, monthNumber - 1, 1)); const endsAt = new Date(Date.UTC(year, monthNumber, 1));
+  const [members, volunteerRows, certificateVersions, targets] = await Promise.all([
+    db.select().from(campaignMembers).where(and(eq(campaignMembers.campaignId, campaignId), eq(campaignMembers.active, true))),
+    db.select().from(volunteers).where(and(eq(volunteers.campaignId, campaignId), eq(volunteers.status, "active"))),
+    db.select({ volunteerId: volunteerTrainingCertificateVersions.volunteerId }).from(volunteerTrainingCertificateVersions).where(and(eq(volunteerTrainingCertificateVersions.campaignId, campaignId), gte(volunteerTrainingCertificateVersions.issuedAt, startsAt), lt(volunteerTrainingCertificateVersions.issuedAt, endsAt))),
+    db.select().from(volunteerTrainingTeamGoals).where(and(eq(volunteerTrainingTeamGoals.campaignId, campaignId), eq(volunteerTrainingTeamGoals.month, month))),
+  ]);
+  const targetByMember = new Map(targets.map(item => [item.coordinatorMemberId, item.targetCompletions])); const volunteerToMember = new Map(volunteerRows.filter(item => item.coordinatorMemberId).map(item => [item.id, item.coordinatorMemberId!])); const assignedCount = new Map<number, number>(); volunteerRows.forEach(item => { if (item.coordinatorMemberId) assignedCount.set(item.coordinatorMemberId, (assignedCount.get(item.coordinatorMemberId) ?? 0) + 1); }); const completedVolunteers = new Set(certificateVersions.map(item => item.volunteerId)); const completedCount = new Map<number, number>(); completedVolunteers.forEach(volunteerId => { const memberId = volunteerToMember.get(volunteerId); if (memberId) completedCount.set(memberId, (completedCount.get(memberId) ?? 0) + 1); });
+  return members.map(member => { const assignedVolunteers = assignedCount.get(member.id) ?? 0; const completedTrainingsThisMonth = completedCount.get(member.id) ?? 0; const targetCompletions = targetByMember.get(member.id) ?? 0; const goalProgress = targetCompletions > 0 ? Math.min(100, Math.round((completedTrainingsThisMonth / targetCompletions) * 100)) : 0; return { coordinatorMemberId: member.id, name: member.name, region: member.workRegion ?? null, assignedVolunteers, completedTrainingsThisMonth, targetCompletions, goalProgress, hasGoal: targetCompletions > 0 }; }).filter(item => item.assignedVolunteers > 0 || item.hasGoal).sort((a, b) => b.goalProgress - a.goalProgress || b.completedTrainingsThisMonth - a.completedTrainingsThisMonth || a.name.localeCompare(b.name));
 }
 
 export async function getVolunteerTrainingMaterial(materialId: number) {

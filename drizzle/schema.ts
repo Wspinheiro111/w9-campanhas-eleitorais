@@ -278,6 +278,17 @@ export const volunteerTrainingCertificateVersions = mysqlTable("volunteer_traini
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [uniqueIndex("training_certificate_version_idx").on(table.volunteerId, table.campaignId, table.versionNumber), index("training_certificate_version_volunteer_idx").on(table.volunteerId, table.issuedAt), index("training_certificate_version_campaign_idx").on(table.campaignId)]);
 
+export const volunteerTrainingTeamGoals = mysqlTable("volunteer_training_team_goals", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  coordinatorMemberId: int("coordinatorMemberId").notNull().references(() => campaignMembers.id),
+  month: varchar("month", { length: 7 }).notNull(),
+  targetCompletions: int("targetCompletions").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("training_team_goal_month_idx").on(table.campaignId, table.coordinatorMemberId, table.month), index("training_team_goal_organization_idx").on(table.organizationId), index("training_team_goal_campaign_month_idx").on(table.campaignId, table.month)]);
+
 export const campaignCertificateSettings = mysqlTable("campaign_certificate_settings", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),
