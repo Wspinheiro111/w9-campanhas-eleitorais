@@ -121,6 +121,8 @@ Os indicadores podem ser exportados em **CSV** ou **PDF** com os filtros ativos.
 
 Quando um evento agendado para as próximas 48 horas tem meta de presença e ainda não atingiu o objetivo, o painel exibe um alerta com o total restante. O relatório comparativo usa um período anterior de mesma duração e mostra a variação de eventos, inscrições e presenças; filtros territoriais permanecem aplicados nos dois períodos.
 
+O botão **Preparar lembrete** abre o cliente de e-mail da coordenação com assunto e texto prontos para mobilização. O destinatário é sempre escolhido manualmente pela pessoa responsável, que deve utilizar apenas contatos elegíveis e consentidos. Não há envio automático, importação de endereços ou registro de entrega nessa ação. O comparativo também pode ser baixado em **PNG** como gráfico de tendência de eventos, inscrições e presenças.
+
 ## Central assistida de comunicação
 
 A central assistida prepara comunicações sem realizar qualquer disparo automático. A coordenação define preferências explícitas de e-mail, WhatsApp e telefone em contatos com consentimento ativo, cria modelos com as variáveis `{{nome}}` e `{{campanha}}`, escolhe um contato elegível e registra a ação antes de abrir o canal manualmente. O histórico registra a ação iniciada, o canal, o modelo e a observação, permitindo auditoria sem alegar entrega da mensagem.
@@ -134,6 +136,8 @@ Ao criar um playbook, a coordenação pode partir de modelos editáveis para **e
 Cada playbook também pode receber um link opcional para um **vídeo de orientação** próprio da campanha. O vídeo é salvo junto da versão do playbook e fica disponível à equipe que selecionar aquela orientação durante o trabalho de campo. A coordenação deve usar somente vídeos institucionais ou de treinamento autorizados e revisar o link antes da ativação.
 
 Guias e roteiros complementares podem ser anexados em **PDF** de até 5 MB. O arquivo é validado no servidor, armazenado com chave privada por campanha e preserva a versão do playbook no momento do envio. A coordenação gerencia os anexos, enquanto a equipe pode abrir os materiais do playbook selecionado durante a visita.
+
+No envio, a coordenação classifica cada material por **tipo** — guia, roteiro, checklist, norma, apresentação ou outro — e pode informar um **tema** livre. Tipo e tema aparecem nas listas administrativa e operacional para tornar a consulta de documentos mais rápida no campo.
 
 ## Benchmark interno de equipe
 

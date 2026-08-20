@@ -1129,10 +1129,10 @@ export async function listFieldPlaybookMaterials(playbookId: number) {
   return db.select().from(fieldPlaybookMaterials).where(eq(fieldPlaybookMaterials.playbookId, playbookId)).orderBy(desc(fieldPlaybookMaterials.createdAt));
 }
 
-export async function createFieldPlaybookMaterial(input: { campaignId: number; playbookId: number; playbookVersion: number; fileName: string; storageKey: string; url: string; sizeBytes: number; createdByUserId: number }) {
+export async function createFieldPlaybookMaterial(input: { campaignId: number; playbookId: number; playbookVersion: number; fileName: string; materialType: string; topic?: string | null; storageKey: string; url: string; sizeBytes: number; createdByUserId: number }) {
   const db = requireDb(await getDb());
   const organizationId = await organizationIdForCampaign(input.campaignId);
-  const result = await db.insert(fieldPlaybookMaterials).values({ ...input, organizationId });
+  const result = await db.insert(fieldPlaybookMaterials).values({ ...input, organizationId, topic: input.topic ?? null });
   return Number(result[0].insertId);
 }
 

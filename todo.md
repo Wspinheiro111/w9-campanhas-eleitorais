@@ -177,3 +177,6 @@
 - [x] Exibir alerta visual quando um evento próximo estiver abaixo da meta de presença.
 - [x] Permitir anexar materiais PDF aos playbooks com armazenamento seguro por campanha.
 - [x] Criar relatório comparativo de eventos por período.
+- [x] Adicionar lembretes manuais de mobilização para eventos próximos abaixo da meta de presença.
+- [x] Permitir categorizar os materiais PDF de playbook por tipo e tema.
+- [x] Exportar o comparativo de eventos como gráfico de tendência.

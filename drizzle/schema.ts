@@ -134,6 +134,8 @@ export const fieldPlaybookMaterials = mysqlTable("field_playbook_materials", {
   playbookId: int("playbookId").notNull().references(() => fieldPlaybooks.id),
   playbookVersion: int("playbookVersion").notNull(),
   fileName: varchar("fileName", { length: 255 }).notNull(),
+  materialType: varchar("materialType", { length: 80 }).notNull().default("Guia"),
+  topic: varchar("topic", { length: 160 }),
   storageKey: varchar("storageKey", { length: 1000 }).notNull(),
   url: varchar("url", { length: 1200 }).notNull(),
   sizeBytes: int("sizeBytes").notNull(),

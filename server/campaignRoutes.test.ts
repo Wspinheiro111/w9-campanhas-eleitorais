@@ -23,6 +23,7 @@ vi.mock("./campaignDb", () => ({
   getFieldPlaybook: vi.fn(),
   createFieldPlaybook: vi.fn(),
   updateFieldPlaybook: vi.fn(),
+  listFieldPlaybookMaterials: vi.fn(),
   listCommunicationCandidates: vi.fn(),
   upsertVoterCommunicationPreference: vi.fn(),
   listCommunicationTemplates: vi.fn(),
@@ -152,6 +153,15 @@ describe("routers operacionais da campanha", () => {
     const caller = appRouter.createCaller(context());
     await expect(caller.field.playbooks.create({ campaignId: 1, title: "Abordagem territorial", videoUrl: "https://video.exemplo.test/orientacao", talkingPoints: ["Apresentar proposta"], checklist: ["Registrar demanda"], status: "active" })).resolves.toEqual({ id: 8 });
     expect(db.createFieldPlaybook).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, createdByUserId: 99, status: "active", videoUrl: "https://video.exemplo.test/orientacao" }));
+  });
+
+  it("lista materiais categorizados do playbook somente no escopo da campanha", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("partner") as never);
+    vi.mocked(db.getFieldPlaybook).mockResolvedValue({ id: 8, campaignId: 1 } as never);
+    vi.mocked(db.listFieldPlaybookMaterials).mockResolvedValue([{ id: 4, fileName: "guia.pdf", materialType: "Guia", topic: "Mobilização" }] as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.field.playbooks.materials.list({ playbookId: 8 })).resolves.toEqual([{ id: 4, fileName: "guia.pdf", materialType: "Guia", topic: "Mobilização" }]);
+    expect(db.listFieldPlaybookMaterials).toHaveBeenCalledWith(8);
   });
 
   it("bloqueia exclusão de evento com inscrições e orienta cancelamento", async () => {
