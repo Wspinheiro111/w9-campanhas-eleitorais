@@ -97,8 +97,8 @@ describe("routers operacionais da campanha", () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
     vi.mocked(db.createEvent).mockResolvedValue(19);
     const caller = appRouter.createCaller(context());
-    await expect(caller.planning.create({ campaignId: 1, title: "Visita", type: "visit", startsAt: new Date() })).resolves.toEqual({ id: 19 });
-    expect(db.createEvent).toHaveBeenCalled();
+    await expect(caller.planning.create({ campaignId: 1, title: "Visita", type: "visit", startsAt: new Date(), attendanceTarget: 45 })).resolves.toEqual({ id: 19 });
+    expect(db.createEvent).toHaveBeenCalledWith(expect.objectContaining({ attendanceTarget: 45 }));
   });
 
   it("permite RSVP público apenas para evento disponível", async () => {
@@ -148,8 +148,8 @@ describe("routers operacionais da campanha", () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
     vi.mocked(db.createFieldPlaybook).mockResolvedValue(8);
     const caller = appRouter.createCaller(context());
-    await expect(caller.field.playbooks.create({ campaignId: 1, title: "Abordagem territorial", talkingPoints: ["Apresentar proposta"], checklist: ["Registrar demanda"], status: "active" })).resolves.toEqual({ id: 8 });
-    expect(db.createFieldPlaybook).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, createdByUserId: 99, status: "active" }));
+    await expect(caller.field.playbooks.create({ campaignId: 1, title: "Abordagem territorial", videoUrl: "https://video.exemplo.test/orientacao", talkingPoints: ["Apresentar proposta"], checklist: ["Registrar demanda"], status: "active" })).resolves.toEqual({ id: 8 });
+    expect(db.createFieldPlaybook).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, createdByUserId: 99, status: "active", videoUrl: "https://video.exemplo.test/orientacao" }));
   });
 
   it("bloqueia exclusão de evento com inscrições e orienta cancelamento", async () => {

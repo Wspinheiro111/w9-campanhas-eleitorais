@@ -171,3 +171,6 @@
 - [x] Permitir excluir eventos sem inscrições e orientar o cancelamento quando houver participantes vinculados.
 - [x] Criar painel de indicadores de eventos com gráficos e filtros por bairro e região.
 - [x] Adicionar modelos prontos de playbook para diferentes abordagens no módulo de campo.
+- [x] Permitir exportar os indicadores de eventos em PDF e CSV.
+- [x] Permitir definir e acompanhar metas de presença por evento.
+- [x] Adicionar materiais em vídeo aos modelos e playbooks de campo.

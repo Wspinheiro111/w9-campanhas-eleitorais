@@ -419,6 +419,7 @@ export async function getEventIndicators(input: { campaignId: number; startsAt?:
     neighborhood: events.neighborhood,
     region: events.region,
     startsAt: events.startsAt,
+    attendanceTarget: events.attendanceTarget,
     registrations: sql<number>`count(${eventRegistrations.id})`,
     checkedIn: sql<number>`coalesce(sum(case when ${eventRegistrations.status} = 'checked_in' then 1 else 0 end), 0)`,
     feedbackCount: sql<number>`coalesce(sum(case when ${eventRegistrations.feedbackRating} is not null then 1 else 0 end), 0)`,
@@ -428,6 +429,7 @@ export async function getEventIndicators(input: { campaignId: number; startsAt?:
   const totalEvents = rows.length;
   const registrations = rows.reduce((total, row) => total + normalize(row.registrations), 0);
   const checkedIn = rows.reduce((total, row) => total + normalize(row.checkedIn), 0);
+  const attendanceTarget = rows.reduce((total, row) => total + normalize(row.attendanceTarget), 0);
   const feedbackCount = rows.reduce((total, row) => total + normalize(row.feedbackCount), 0);
   const feedbackSum = rows.reduce((total, row) => total + normalize(row.feedbackSum), 0);
   const group = (selector: (row: typeof rows[number]) => string | null) => Object.values(rows.reduce<Record<string, { label: string; events: number; registrations: number; checkedIn: number; feedbackSum: number; feedbackCount: number }>>((accumulator, row) => {
@@ -437,7 +439,7 @@ export async function getEventIndicators(input: { campaignId: number; startsAt?:
     accumulator[label] = current; return accumulator;
   }, {})).map(item => ({ ...item, attendanceRate: item.registrations ? Math.round((item.checkedIn / item.registrations) * 100) : 0, averageRating: item.feedbackCount ? Number((item.feedbackSum / item.feedbackCount).toFixed(1)) : null })).sort((a, b) => b.checkedIn - a.checkedIn || b.registrations - a.registrations);
   return {
-    summary: { totalEvents, registrations, checkedIn, attendanceRate: registrations ? Math.round((checkedIn / registrations) * 100) : 0, averageRating: feedbackCount ? Number((feedbackSum / feedbackCount).toFixed(1)) : null, feedbackCount },
+    summary: { totalEvents, registrations, checkedIn, attendanceTarget, targetProgress: attendanceTarget ? Math.round((checkedIn / attendanceTarget) * 100) : null, attendanceRate: registrations ? Math.round((checkedIn / registrations) * 100) : 0, averageRating: feedbackCount ? Number((feedbackSum / feedbackCount).toFixed(1)) : null, feedbackCount },
     byNeighborhood: group(row => row.neighborhood),
     byRegion: group(row => row.region),
     byType: group(row => row.type),
@@ -1097,13 +1099,13 @@ export async function getFieldPlaybook(playbookId: number) {
   const db = requireDb(await getDb()); const rows = await db.select().from(fieldPlaybooks).where(eq(fieldPlaybooks.id, playbookId)).limit(1); return rows[0] ?? null;
 }
 
-export async function createFieldPlaybook(input: { campaignId: number; title: string; objective?: string | null; territory?: string | null; openingScript?: string | null; talkingPoints: string[]; checklist: string[]; status: "draft" | "active" | "archived"; createdByUserId: number }) {
-  const db = requireDb(await getDb()); const result = await db.insert(fieldPlaybooks).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId), version: 1, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null }); return Number(result[0].insertId);
+export async function createFieldPlaybook(input: { campaignId: number; title: string; objective?: string | null; territory?: string | null; openingScript?: string | null; videoUrl?: string | null; talkingPoints: string[]; checklist: string[]; status: "draft" | "active" | "archived"; createdByUserId: number }) {
+  const db = requireDb(await getDb()); const result = await db.insert(fieldPlaybooks).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId), version: 1, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null, videoUrl: input.videoUrl ?? null }); return Number(result[0].insertId);
 }
 
-export async function updateFieldPlaybook(input: { id: number; title: string; objective?: string | null; territory?: string | null; openingScript?: string | null; talkingPoints: string[]; checklist: string[]; status: "draft" | "active" | "archived" }) {
+export async function updateFieldPlaybook(input: { id: number; title: string; objective?: string | null; territory?: string | null; openingScript?: string | null; videoUrl?: string | null; talkingPoints: string[]; checklist: string[]; status: "draft" | "active" | "archived" }) {
   const db = requireDb(await getDb()); const current = await getFieldPlaybook(input.id); if (!current) throw new Error("FIELD_PLAYBOOK_NOT_FOUND");
-  await db.update(fieldPlaybooks).set({ ...input, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null, version: current.version + 1 }).where(eq(fieldPlaybooks.id, input.id));
+  await db.update(fieldPlaybooks).set({ ...input, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null, videoUrl: input.videoUrl ?? null, version: current.version + 1 }).where(eq(fieldPlaybooks.id, input.id));
 }
 
 export async function syncFieldVisits(input: Array<{ campaignId: number; voterId?: number | null; memberId?: number | null; playbookId?: number | null; clientReference: string; outcome: "contacted" | "absent" | "refused" | "follow_up" | "other"; notes?: string | null; occurredAt: Date }>) {

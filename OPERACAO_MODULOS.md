@@ -117,6 +117,8 @@ A agenda pode habilitar RSVP público, limite de vagas e uma pergunta de retorno
 
 A página **Indicadores de eventos** consolida eventos, inscrições, presenças confirmadas, taxa de comparecimento e avaliação média no intervalo selecionado. Os filtros de data, bairro e região atualizam as leituras por território e por formato de evento. Os gráficos em barras usam presença confirmada como intensidade; resultados são agregados e não expõem nomes, telefones ou e-mails de participantes.
 
+Os indicadores podem ser exportados em **CSV** ou **PDF** com os filtros ativos. Os arquivos trazem somente recorte agregado, eventos, inscrições, presenças, comparecimento e avaliação; não incluem dados pessoais. A coordenação também pode definir uma **meta de presença** por evento. O painel soma metas do período e mostra o percentual de avanço com base em check-ins confirmados.
+
 ## Central assistida de comunicação
 
 A central assistida prepara comunicações sem realizar qualquer disparo automático. A coordenação define preferências explícitas de e-mail, WhatsApp e telefone em contatos com consentimento ativo, cria modelos com as variáveis `{{nome}}` e `{{campanha}}`, escolhe um contato elegível e registra a ação antes de abrir o canal manualmente. O histórico registra a ação iniciada, o canal, o modelo e a observação, permitindo auditoria sem alegar entrega da mensagem.
@@ -126,6 +128,8 @@ A central assistida prepara comunicações sem realizar qualquer disparo automá
 Playbooks padronizam roteiro de abertura, objetivo, território, pontos de fala e checklist para a equipe de campo. A coordenação cria, edita, ativa ou arquiva cada playbook. Toda edição incrementa sua versão; quando uma visita é sincronizada, o sistema guarda o playbook e a versão usados, inclusive se o registro permanecer temporariamente na fila offline. Perfis parceiros podem consultar somente playbooks ativos durante o canvassing.
 
 Ao criar um playbook, a coordenação pode partir de modelos editáveis para **escuta territorial**, **convite para evento**, **retorno de demanda** e **mobilização voluntária**. Cada modelo preenche um objetivo, roteiro inicial, pontos de fala e checklist; a revisão do conteúdo, do território e do status antes da ativação continua obrigatória.
+
+Cada playbook também pode receber um link opcional para um **vídeo de orientação** próprio da campanha. O vídeo é salvo junto da versão do playbook e fica disponível à equipe que selecionar aquela orientação durante o trabalho de campo. A coordenação deve usar somente vídeos institucionais ou de treinamento autorizados e revisar o link antes da ativação.
 
 ## Benchmark interno de equipe
 
