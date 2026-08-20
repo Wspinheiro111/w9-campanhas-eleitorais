@@ -145,6 +145,21 @@ export const fieldPlaybookMaterials = mysqlTable("field_playbook_materials", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("playbook_material_playbook_idx").on(table.playbookId, table.createdAt), index("playbook_material_campaign_idx").on(table.campaignId), index("playbook_material_organization_idx").on(table.organizationId)]);
 
+export const campaignExportVersions = mysqlTable("campaign_export_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  exportType: varchar("exportType", { length: 48 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  periodStart: timestamp("periodStart"),
+  periodEnd: timestamp("periodEnd"),
+  sections: json("sections").$type<string[]>().notNull(),
+  strategicNotes: text("strategicNotes"),
+  snapshot: json("snapshot").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("export_version_campaign_created_idx").on(table.campaignId, table.createdAt), index("export_version_organization_idx").on(table.organizationId)]);
+
 export const fieldVisits = mysqlTable("field_visits", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

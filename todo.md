@@ -192,3 +192,6 @@
 - [x] Criar pré-visualização interativa dos relatórios de indicadores antes da exportação.
 - [x] Criar pré-visualização da apresentação semanal antes da exportação.
 - [x] Exigir confirmação explícita do usuário antes de baixar cada relatório ou apresentação.
+- [x] Permitir selecionar os blocos incluídos na apresentação semanal durante a pré-visualização.
+- [x] Permitir adicionar notas estratégicas da coordenação antes de exportar a apresentação.
+- [x] Criar histórico seguro de relatórios e apresentações exportados, com acesso rápido por campanha.

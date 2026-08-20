@@ -5,6 +5,7 @@ import {
   aiMessages,
   audioCrmLogs,
   campaignIndicators,
+  campaignExportVersions,
   campaignCertificateSettings,
   campaignCommunicationLogs,
   campaignCommunicationTemplates,
@@ -460,6 +461,18 @@ export async function compareEventIndicators(input: { campaignId: number; starts
   const previousStartsAt = new Date(previousEndsAt.getTime() - span);
   const [current, previous] = await Promise.all([getEventIndicators(input), getEventIndicators({ ...input, startsAt: previousStartsAt, endsAt: previousEndsAt })]);
   return { current, previous, previousStartsAt, previousEndsAt };
+}
+
+export async function createCampaignExportVersion(input: { campaignId: number; createdByUserId: number; exportType: string; title: string; periodStart?: Date | null; periodEnd?: Date | null; sections: string[]; strategicNotes?: string | null; snapshot: unknown }) {
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignExportVersions).values({ ...input, organizationId, periodStart: input.periodStart ?? null, periodEnd: input.periodEnd ?? null, strategicNotes: input.strategicNotes ?? null });
+  return Number(result[0].insertId);
+}
+
+export async function listCampaignExportVersions(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignExportVersions).where(eq(campaignExportVersions.campaignId, campaignId)).orderBy(desc(campaignExportVersions.createdAt));
 }
 
 export async function registerForPublicEvent(input: { eventId: number; name: string; email: string; phone?: string | null }) {
