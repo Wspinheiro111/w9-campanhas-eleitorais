@@ -12,6 +12,8 @@ vi.mock("./campaignDb", () => ({
   registerForPublicEvent: vi.fn(),
   getEventParticipationSummary: vi.fn(),
   getEventIndicators: vi.fn(),
+  getUpcomingEventTargetAlerts: vi.fn(),
+  compareEventIndicators: vi.fn(),
   listEventRegistrations: vi.fn(),
   updateEventRegistrationStatus: vi.fn(),
   getEventRegistrationByAccessToken: vi.fn(),
@@ -174,6 +176,16 @@ describe("routers operacionais da campanha", () => {
     const caller = appRouter.createCaller(context());
     await expect(caller.planning.indicators({ campaignId: 1, region: "Norte" })).resolves.toEqual(result);
     expect(db.getEventIndicators).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, region: "Norte" }));
+  });
+
+  it("protege alertas de meta e comparativo de eventos por período", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.getUpcomingEventTargetAlerts).mockResolvedValue([] as never);
+    vi.mocked(db.compareEventIndicators).mockResolvedValue({ current: { summary: {} }, previous: { summary: {} } } as never);
+    const caller = appRouter.createCaller(context()); const startsAt = new Date("2026-08-01T00:00:00Z"); const endsAt = new Date("2026-08-15T00:00:00Z");
+    await expect(caller.planning.targetAlerts({ campaignId: 1 })).resolves.toEqual([]);
+    await expect(caller.planning.compareIndicators({ campaignId: 1, startsAt, endsAt })).resolves.toEqual({ current: { summary: {} }, previous: { summary: {} } });
+    expect(db.getUpcomingEventTargetAlerts).toHaveBeenCalledWith(1); expect(db.compareEventIndicators).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, startsAt, endsAt }));
   });
 
   it("permite que coordenador atualize um indicador da campanha", async () => {

@@ -127,6 +127,20 @@ export const fieldPlaybooks = mysqlTable("field_playbooks", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("field_playbook_campaign_idx").on(table.campaignId, table.status), index("field_playbook_organization_idx").on(table.organizationId)]);
 
+export const fieldPlaybookMaterials = mysqlTable("field_playbook_materials", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  playbookId: int("playbookId").notNull().references(() => fieldPlaybooks.id),
+  playbookVersion: int("playbookVersion").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  storageKey: varchar("storageKey", { length: 1000 }).notNull(),
+  url: varchar("url", { length: 1200 }).notNull(),
+  sizeBytes: int("sizeBytes").notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("playbook_material_playbook_idx").on(table.playbookId, table.createdAt), index("playbook_material_campaign_idx").on(table.campaignId), index("playbook_material_organization_idx").on(table.organizationId)]);
+
 export const fieldVisits = mysqlTable("field_visits", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

@@ -174,3 +174,6 @@
 - [x] Permitir exportar os indicadores de eventos em PDF e CSV.
 - [x] Permitir definir e acompanhar metas de presença por evento.
 - [x] Adicionar materiais em vídeo aos modelos e playbooks de campo.
+- [x] Exibir alerta visual quando um evento próximo estiver abaixo da meta de presença.
+- [x] Permitir anexar materiais PDF aos playbooks com armazenamento seguro por campanha.
+- [x] Criar relatório comparativo de eventos por período.

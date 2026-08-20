@@ -18,6 +18,7 @@ import {
   events,
   eventRegistrations,
   fieldIncidents,
+  fieldPlaybookMaterials,
   fieldPlaybooks,
   fieldVisits,
   goals,
@@ -444,6 +445,21 @@ export async function getEventIndicators(input: { campaignId: number; startsAt?:
     byRegion: group(row => row.region),
     byType: group(row => row.type),
   };
+}
+
+export async function getUpcomingEventTargetAlerts(campaignId: number) {
+  const db = requireDb(await getDb());
+  const now = new Date(); const horizon = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const rows = await db.select({ event: events, checkedIn: sql<number>`coalesce(sum(case when ${eventRegistrations.status} = 'checked_in' then 1 else 0 end), 0)` }).from(events).leftJoin(eventRegistrations, eq(eventRegistrations.eventId, events.id)).where(and(eq(events.campaignId, campaignId), eq(events.status, "scheduled"), gte(events.startsAt, now), lte(events.startsAt, horizon))).groupBy(events.id);
+  return rows.filter(row => row.event.attendanceTarget && Number(row.checkedIn) < row.event.attendanceTarget).map(row => ({ event: row.event, checkedIn: Number(row.checkedIn), remaining: Math.max(0, row.event.attendanceTarget! - Number(row.checkedIn)) }));
+}
+
+export async function compareEventIndicators(input: { campaignId: number; startsAt: Date; endsAt: Date; neighborhood?: string; region?: string }) {
+  const span = Math.max(24 * 60 * 60 * 1000, input.endsAt.getTime() - input.startsAt.getTime());
+  const previousEndsAt = new Date(input.startsAt.getTime() - 1);
+  const previousStartsAt = new Date(previousEndsAt.getTime() - span);
+  const [current, previous] = await Promise.all([getEventIndicators(input), getEventIndicators({ ...input, startsAt: previousStartsAt, endsAt: previousEndsAt })]);
+  return { current, previous, previousStartsAt, previousEndsAt };
 }
 
 export async function registerForPublicEvent(input: { eventId: number; name: string; email: string; phone?: string | null }) {
@@ -1106,6 +1122,18 @@ export async function createFieldPlaybook(input: { campaignId: number; title: st
 export async function updateFieldPlaybook(input: { id: number; title: string; objective?: string | null; territory?: string | null; openingScript?: string | null; videoUrl?: string | null; talkingPoints: string[]; checklist: string[]; status: "draft" | "active" | "archived" }) {
   const db = requireDb(await getDb()); const current = await getFieldPlaybook(input.id); if (!current) throw new Error("FIELD_PLAYBOOK_NOT_FOUND");
   await db.update(fieldPlaybooks).set({ ...input, objective: input.objective ?? null, territory: input.territory ?? null, openingScript: input.openingScript ?? null, videoUrl: input.videoUrl ?? null, version: current.version + 1 }).where(eq(fieldPlaybooks.id, input.id));
+}
+
+export async function listFieldPlaybookMaterials(playbookId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(fieldPlaybookMaterials).where(eq(fieldPlaybookMaterials.playbookId, playbookId)).orderBy(desc(fieldPlaybookMaterials.createdAt));
+}
+
+export async function createFieldPlaybookMaterial(input: { campaignId: number; playbookId: number; playbookVersion: number; fileName: string; storageKey: string; url: string; sizeBytes: number; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(fieldPlaybookMaterials).values({ ...input, organizationId });
+  return Number(result[0].insertId);
 }
 
 export async function syncFieldVisits(input: Array<{ campaignId: number; voterId?: number | null; memberId?: number | null; playbookId?: number | null; clientReference: string; outcome: "contacted" | "absent" | "refused" | "follow_up" | "other"; notes?: string | null; occurredAt: Date }>) {
