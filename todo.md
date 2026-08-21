@@ -234,3 +234,4 @@
 - [x] Limitar requisições de upload por usuário e campanha para reduzir abuso de arquivos.
 - [x] Registrar conflitos de lock otimista financeiro no painel de auditoria por organização.
 - [x] Criar relatório de segurança por versão com verificações e resultados de validação.
+- [x] Auditar todas as tabelas e rotas quanto ao isolamento por organização, corrigindo lacunas confirmadas.
