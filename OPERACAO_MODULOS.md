@@ -2,6 +2,14 @@
 
 Este documento descreve a utilização operacional dos módulos adicionados ao W9 Campanhas Eleitorais. Todos os dados permanecem vinculados à organização e à campanha ativa, respeitando os papéis administrativos e o isolamento multi-tenant do sistema.
 
+## Prestação de Contas e Jurídico
+
+O módulo consolida receitas, despesas, saldo, pendências, contratos, termos de voluntariado, notas fiscais, recibos e relatórios por campanha. Cada lançamento registra tipo, categoria, contraparte, documento, valor, forma de pagamento, datas e observações. O saldo operacional é calculado por **receitas ativas menos despesas ativas**; itens rejeitados ou cancelados não compõem o cálculo.
+
+Documentos jurídicos são registrados por tipo e título, podem ser vinculados a um lançamento e seguem uma fila de conferência. A API aceita PDF de até 5 MB, valida seu formato e o armazena com chave privada por campanha. A coordenação pode mover itens entre pendente, em análise, aprovado, rejeitado, pago, cancelado ou arquivado, sempre registrando revisor e data.
+
+> Este painel organiza informações e evidências operacionais. A classificação legal, os limites eleitorais, a escrituração contábil e qualquer transmissão oficial devem ser revisados pelo contador e advogado responsáveis pela campanha.
+
 ## Mobilização e pesquisas rápidas
 
 O módulo **Mobilização** reúne mapa de calor, score de mobilização e pesquisas rápidas. A equipe pode criar uma pergunta, coletar respostas e registrar, quando disponível, o bairro e a região de cada retorno. Ao selecionar uma pesquisa no resumo, o painel apresenta a distribuição das respostas por alternativa e a consolidação territorial das coletas registradas.

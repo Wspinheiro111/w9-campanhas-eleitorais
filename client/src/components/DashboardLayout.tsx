@@ -8,7 +8,7 @@ import { startLogin } from "@/const";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { isPaletteAccessible, type CustomPalette, useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Activity, BarChart3, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, Palette, PanelLeft, Radar, ShieldCheck, Siren, UsersRound } from "lucide-react";
+import { Activity, BarChart3, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, Palette, PanelLeft, Radar, Scale, ShieldCheck, Siren, UsersRound } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -23,6 +23,7 @@ const menuItems = [
   { icon: HeartHandshake, label: "Voluntários", path: "/voluntarios", requiresManage: true },
   { icon: CalendarDays, label: "Agenda", path: "/agenda" },
   { icon: BarChart3, label: "Indicadores de eventos", path: "/eventos/indicadores", requiresManage: true },
+  { icon: Scale, label: "Prestação de contas", path: "/prestacao-contas", requiresManage: true },
   { icon: CheckSquare, label: "Tarefas", path: "/tarefas" },
   { icon: ContactRound, label: "Contatos", path: "/contatos" },
   { icon: MessageSquare, label: "Comunicação", path: "/comunicacao", requiresManage: true },

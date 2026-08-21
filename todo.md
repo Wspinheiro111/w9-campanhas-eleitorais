@@ -195,3 +195,8 @@
 - [x] Permitir selecionar os blocos incluídos na apresentação semanal durante a pré-visualização.
 - [x] Permitir adicionar notas estratégicas da coordenação antes de exportar a apresentação.
 - [x] Criar histórico seguro de relatórios e apresentações exportados, com acesso rápido por campanha.
+- [x] Mapear lacunas de pessoas, logística, CRM eleitoral e prestação de contas frente ao escopo atual do W9.
+- [x] Implementar registros de receitas, despesas, pagamentos e saldo por campanha.
+- [x] Implementar repositório jurídico de contratos, notas fiscais e relatórios com anexos seguros.
+- [ ] Implementar fluxo de aprovação, auditoria e exportação da prestação de contas.
+- [x] Consolidar a especificação de Prestação de Contas e Jurídico enviada com a arquitetura multi-tenant do W9.

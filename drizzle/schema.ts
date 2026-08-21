@@ -34,6 +34,9 @@ export const volunteerAssignmentStatusEnum = mysqlEnum("volunteer_assignment_sta
 export const eventRegistrationStatusEnum = mysqlEnum("event_registration_status", ["registered", "checked_in", "cancelled", "no_show"]);
 export const communicationChannelEnum = mysqlEnum("communication_channel", ["email", "whatsapp", "phone"]);
 export const fieldPlaybookStatusEnum = mysqlEnum("field_playbook_status", ["draft", "active", "archived"]);
+export const financialEntryTypeEnum = mysqlEnum("financial_entry_type", ["income", "expense"]);
+export const financialEntryStatusEnum = mysqlEnum("financial_entry_status", ["draft", "pending", "under_review", "approved", "rejected", "paid", "cancelled"]);
+export const legalDocumentStatusEnum = mysqlEnum("legal_document_status", ["pending", "under_review", "approved", "rejected", "archived"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -159,6 +162,64 @@ export const campaignExportVersions = mysqlTable("campaign_export_versions", {
   snapshot: json("snapshot").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("export_version_campaign_created_idx").on(table.campaignId, table.createdAt), index("export_version_organization_idx").on(table.organizationId)]);
+
+export const campaignFinancialAccounts = mysqlTable("campaign_financial_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  bankName: varchar("bankName", { length: 140 }).notNull(),
+  agency: varchar("agency", { length: 40 }),
+  accountNumber: varchar("accountNumber", { length: 60 }).notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("financial_account_campaign_idx").on(table.campaignId), index("financial_account_org_idx").on(table.organizationId)]);
+
+export const campaignFinancialEntries = mysqlTable("campaign_financial_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  accountId: int("accountId").references(() => campaignFinancialAccounts.id),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id),
+  entryType: financialEntryTypeEnum.notNull(),
+  category: varchar("category", { length: 120 }).notNull(),
+  counterpartyName: varchar("counterpartyName", { length: 220 }).notNull(),
+  counterpartyDocument: varchar("counterpartyDocument", { length: 24 }),
+  amountCents: int("amountCents").notNull(),
+  paymentMethod: varchar("paymentMethod", { length: 80 }),
+  receiptNumber: varchar("receiptNumber", { length: 100 }),
+  documentNumber: varchar("documentNumber", { length: 100 }),
+  dueDate: timestamp("dueDate"),
+  paidAt: timestamp("paidAt"),
+  status: financialEntryStatusEnum.notNull().default("draft"),
+  notes: text("notes"),
+  reviewNotes: text("reviewNotes"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("financial_entry_campaign_status_idx").on(table.campaignId, table.status), index("financial_entry_campaign_type_idx").on(table.campaignId, table.entryType), index("financial_entry_org_idx").on(table.organizationId)]);
+
+export const campaignLegalDocuments = mysqlTable("campaign_legal_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  financialEntryId: int("financialEntryId").references(() => campaignFinancialEntries.id),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id),
+  documentType: varchar("documentType", { length: 80 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  counterpartyName: varchar("counterpartyName", { length: 220 }),
+  counterpartyDocument: varchar("counterpartyDocument", { length: 24 }),
+  fileName: varchar("fileName", { length: 255 }),
+  storageKey: varchar("storageKey", { length: 1000 }),
+  url: varchar("url", { length: 1200 }),
+  status: legalDocumentStatusEnum.notNull().default("pending"),
+  expiresAt: timestamp("expiresAt"),
+  reviewNotes: text("reviewNotes"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("legal_document_campaign_status_idx").on(table.campaignId, table.status), index("legal_document_entry_idx").on(table.financialEntryId), index("legal_document_org_idx").on(table.organizationId)]);
 
 export const fieldVisits = mysqlTable("field_visits", {
   id: int("id").autoincrement().primaryKey(),

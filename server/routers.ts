@@ -6,7 +6,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
 import { ONE_YEAR_MS } from "../shared/const";
-import { aiRouter, campaignRouter, communicationRouter, consentRouter, contentsRouter, crisisRouter, dashboardRouter, fieldRouter, followupsRouter, goalsRouter, insightsRouter, monitoringRouter, organizationRouter, planningRouter, publicEventsRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, volunteersRouter, votersRouter } from "./routers/index";
+import { aiRouter, campaignRouter, communicationRouter, consentRouter, contentsRouter, crisisRouter, dashboardRouter, fieldRouter, financeLegalRouter, followupsRouter, goalsRouter, insightsRouter, monitoringRouter, organizationRouter, planningRouter, publicEventsRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, volunteersRouter, votersRouter } from "./routers/index";
 
 async function establishSession(ctx: { res: any; req: any }, user: { openId: string; name: string | null }) {
   const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
@@ -59,6 +59,7 @@ export const appRouter = router({
   publicEvents: publicEventsRouter,
   volunteers: volunteersRouter,
   reports: reportsRouter,
+  financeLegal: financeLegalRouter,
   ai: aiRouter,
 });
 
