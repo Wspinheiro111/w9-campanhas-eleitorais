@@ -207,7 +207,7 @@
 - [ ] Revisar fluxos impactados e implementar as lacunas prioritárias identificadas na especificação consolidada.
 - [x] Adicionar validações configuráveis de origem de receita e documentação mínima em lançamentos financeiros.
 - [x] Adicionar alertas internos configuráveis de prazo para conferência financeira e jurídica.
-- [ ] Modelar processos jurídicos com prazo, responsável, status e vínculo com documentos da campanha.
+- [x] Modelar processos jurídicos com prazo, responsável, status e vínculo com documentos da campanha.
 - [x] Implementar os controles de conformidade como regras internas configuráveis, sem transmissão ou certificação legal automática.
 - [x] Restringir aprovação financeira-jurídica à coordenação e gestão, mantendo operadores em consulta autorizada.
 - [x] Priorizar controles, alertas e exportações da frente financeira conforme definição da coordenação.

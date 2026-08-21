@@ -12,7 +12,13 @@ vi.mock("./campaignDb", () => ({
   updateCampaignComplianceRules: vi.fn(),
   getFinancialInternalAlerts: vi.fn(),
   getLegalDocument: vi.fn(),
+  getCampaignMember: vi.fn(),
   updateLegalDocumentAttachment: vi.fn(),
+  listLegalProcesses: vi.fn(),
+  getLegalProcess: vi.fn(),
+  createLegalProcess: vi.fn(),
+  updateLegalProcess: vi.fn(),
+  listMembers: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({ storagePut: vi.fn() }));
@@ -212,6 +218,33 @@ describe("financeLegal.entries", () => {
 
     await expect(appRouter.createCaller(context()).financeLegal.rules.update({ campaignId: 1, ...rules })).resolves.toEqual(rules);
     expect(db.updateCampaignComplianceRules).toHaveBeenCalledWith({ campaignId: 1, ...rules });
+  });
+
+  it("cria processo jurídico com documento e responsável da mesma campanha", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.getLegalDocument).mockResolvedValue({ id: 14, campaignId: 1 } as never);
+    vi.mocked(db.getCampaignMember).mockResolvedValue({ id: 7, campaignId: 1, userId: 88 } as never);
+    vi.mocked(db.createLegalProcess).mockResolvedValue(61);
+    const deadlineAt = new Date("2026-09-01T12:00:00.000Z");
+
+    await expect(appRouter.createCaller(context()).financeLegal.legalProcesses.create({ campaignId: 1, title: "Conferir contrato de locação", documentId: 14, ownerMemberId: 7, status: "in_progress", deadlineAt, notes: "Validar cláusulas internas." })).resolves.toEqual({ id: 61 });
+    expect(db.createLegalProcess).toHaveBeenCalledWith({ campaignId: 1, documentId: 14, ownerUserId: 88, title: "Conferir contrato de locação", status: "in_progress", deadlineAt, notes: "Validar cláusulas internas." });
+  });
+
+  it("bloqueia processo jurídico associado a documento de outra campanha", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.getLegalDocument).mockResolvedValue({ id: 14, campaignId: 2 } as never);
+
+    await expect(appRouter.createCaller(context()).financeLegal.legalProcesses.create({ campaignId: 1, title: "Documento externo", documentId: 14 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(db.createLegalProcess).not.toHaveBeenCalled();
+  });
+
+  it("atualiza status de processo jurídico somente após validar o acesso à campanha", async () => {
+    vi.mocked(db.getLegalProcess).mockResolvedValue({ id: 61, campaignId: 1 } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+
+    await expect(appRouter.createCaller(context()).financeLegal.legalProcesses.update({ id: 61, status: "closed", deadlineAt: null, notes: null })).resolves.toEqual({ success: true });
+    expect(db.updateLegalProcess).toHaveBeenCalledWith({ id: 61, status: "closed", deadlineAt: null, notes: null });
   });
 
   it("envia um PDF jurídico somente para a campanha do documento", async () => {
