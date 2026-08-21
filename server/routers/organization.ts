@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import * as db from "../campaignDb";
 import { protectedProcedure, router } from "../_core/trpc";
+import { securityReleaseReports } from "../securityReport";
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -59,6 +60,10 @@ export const organizationRouter = router({
     list: protectedProcedure.input(z.object({ organizationId: z.number().int().positive(), limit: z.number().int().min(1).max(200).default(100) })).query(async ({ ctx, input }) => {
       await requireOrganizationAdmin(ctx.user.id, input.organizationId);
       return db.listOrganizationAuditLogs(input.organizationId, input.limit);
+    }),
+    securityReport: protectedProcedure.input(z.object({ organizationId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      await requireOrganizationAdmin(ctx.user.id, input.organizationId);
+      return securityReleaseReports;
     }),
   }),
   performance: router({

@@ -231,3 +231,6 @@
 - [x] Corrigir a unicidade de tokens de voluntários para o escopo de cada campanha.
 - [x] Adicionar lock otimista nas transições de status financeiro para prevenir aprovações simultâneas.
 - [x] Gerar novo arquivo consolidado do código após a regressão de segurança e tipagem.
+- [x] Limitar requisições de upload por usuário e campanha para reduzir abuso de arquivos.
+- [x] Registrar conflitos de lock otimista financeiro no painel de auditoria por organização.
+- [x] Criar relatório de segurança por versão com verificações e resultados de validação.

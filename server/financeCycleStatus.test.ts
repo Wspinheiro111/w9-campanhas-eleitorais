@@ -6,6 +6,7 @@ vi.mock("./campaignDb", () => ({
   createFinancialEntry: vi.fn(),
   getFinancialEntry: vi.fn(),
   updateFinancialEntryReview: vi.fn(),
+  createOrganizationAuditLog: vi.fn(),
   getFinancialSummary: vi.fn(),
   getEvent: vi.fn(),
   getCampaignComplianceRules: vi.fn(),
@@ -181,6 +182,7 @@ describe("financeLegal.entries", () => {
 
     await expect(appRouter.createCaller(context()).financeLegal.entries.review({ entryId: 71, status: "under_review", expectedVersion: 1 })).rejects.toMatchObject({ code: "CONFLICT" });
     expect(db.updateFinancialEntryReview).toHaveBeenCalledWith(expect.objectContaining({ id: 71, expectedVersion: 1 }));
+    expect(db.createOrganizationAuditLog).toHaveBeenCalledWith(expect.objectContaining({ action: "finance.entry.review_conflict", entityId: 71 }));
   });
 
   it("impede parceiro de revisar ou aprovar receitas e despesas", async () => {
