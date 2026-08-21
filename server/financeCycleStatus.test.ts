@@ -8,6 +8,9 @@ vi.mock("./campaignDb", () => ({
   updateFinancialEntryReview: vi.fn(),
   getFinancialSummary: vi.fn(),
   getEvent: vi.fn(),
+  getCampaignComplianceRules: vi.fn(),
+  updateCampaignComplianceRules: vi.fn(),
+  getFinancialInternalAlerts: vi.fn(),
   getLegalDocument: vi.fn(),
   updateLegalDocumentAttachment: vi.fn(),
 }));
@@ -64,6 +67,7 @@ const createPayload = {
 
 beforeEach(() => {
   currentStatus = "pending";
+  vi.mocked(db.getCampaignComplianceRules).mockResolvedValue({ blockBusinessDonation: false, requireExpenseDocument: false, reviewDeadlineHours: 72 } as never);
   vi.mocked(db.getFinancialEntry).mockImplementation(async () => entry() as never);
   vi.mocked(db.updateFinancialEntryReview).mockImplementation(async input => {
     currentStatus = input.status;
@@ -127,6 +131,22 @@ describe("financeLegal.entries", () => {
     expect(db.createFinancialEntry).toHaveBeenCalledWith(expect.objectContaining({ eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" }));
   });
 
+  it("aplica a regra interna que exige documento ou recibo para despesa", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.getCampaignComplianceRules).mockResolvedValue({ blockBusinessDonation: false, requireExpenseDocument: true, reviewDeadlineHours: 72 } as never);
+
+    await expect(appRouter.createCaller(context()).financeLegal.entries.create({ ...createPayload, entryType: "expense" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("documento") });
+    expect(db.createFinancialEntry).not.toHaveBeenCalled();
+  });
+
+  it("aplica a regra interna que bloqueia receita identificada por CNPJ", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.getCampaignComplianceRules).mockResolvedValue({ blockBusinessDonation: true, requireExpenseDocument: false, reviewDeadlineHours: 72 } as never);
+
+    await expect(appRouter.createCaller(context()).financeLegal.entries.create({ ...createPayload, entryType: "income", counterpartyDocument: "12.345.678/0001-90" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("CNPJ") });
+    expect(db.createFinancialEntry).not.toHaveBeenCalled();
+  });
+
   it("registra as transições permitidas de revisão até o encerramento pela coordenação", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
     const caller = appRouter.createCaller(context());
@@ -167,6 +187,31 @@ describe("financeLegal.entries", () => {
 
     await expect(appRouter.createCaller(context()).financeLegal.summary({ campaignId: 1 })).resolves.toEqual(summary);
     expect(db.getFinancialSummary).toHaveBeenCalledWith(1);
+  });
+
+  it("permite à coordenação consultar alertas internos da campanha", async () => {
+    const internal = { rules: { reviewDeadlineHours: 72 }, alerts: [{ key: "review-1", title: "Conferência financeira pendente" }] };
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.getFinancialInternalAlerts).mockResolvedValue(internal as never);
+
+    await expect(appRouter.createCaller(context()).financeLegal.internalAlerts({ campaignId: 1 })).resolves.toEqual(internal);
+    expect(db.getFinancialInternalAlerts).toHaveBeenCalledWith(1);
+  });
+
+  it("reserva a alteração das regras internas ao administrador da campanha", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("partner") as never);
+
+    await expect(appRouter.createCaller(context()).financeLegal.rules.update({ campaignId: 1, blockBusinessDonation: true, requireExpenseDocument: true, reviewDeadlineHours: 48 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(db.updateCampaignComplianceRules).not.toHaveBeenCalled();
+  });
+
+  it("permite ao administrador atualizar regras internas configuráveis", async () => {
+    const rules = { blockBusinessDonation: true, requireExpenseDocument: true, reviewDeadlineHours: 48 };
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);
+    vi.mocked(db.updateCampaignComplianceRules).mockResolvedValue(rules as never);
+
+    await expect(appRouter.createCaller(context()).financeLegal.rules.update({ campaignId: 1, ...rules })).resolves.toEqual(rules);
+    expect(db.updateCampaignComplianceRules).toHaveBeenCalledWith({ campaignId: 1, ...rules });
   });
 
   it("envia um PDF jurídico somente para a campanha do documento", async () => {
