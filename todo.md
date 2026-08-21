@@ -242,3 +242,4 @@
 - [x] Criar tutorial passo a passo de instalação do PWA para a equipe.
 - [x] Implementar passkeys, MFA e recuperação de conta com controles de segurança no acesso.
 - [x] Bloquear progressivamente tentativas repetidas de login e registrar falhas na auditoria.
+- [x] Corrigir a chamada inválida de hooks do React que impede a renderização do CampaignGate.
