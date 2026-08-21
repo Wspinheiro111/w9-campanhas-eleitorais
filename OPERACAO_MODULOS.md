@@ -8,6 +8,8 @@ O módulo consolida receitas, despesas, saldo, pendências, contratos, termos de
 
 Documentos jurídicos são registrados por tipo e título, podem ser vinculados a um lançamento e seguem uma fila de conferência. A API aceita PDF de até 5 MB, valida seu formato e o armazena com chave privada por campanha. A coordenação pode mover itens entre pendente, em análise, aprovado, rejeitado, pago, cancelado ou arquivado, sempre registrando revisor e data.
 
+O relatório consolidado reúne saldo, lançamentos e documentos da campanha em estrutura exportável para conferência interna. As decisões de aprovação mantêm status, revisor, data e observação; por isso, alterações sensíveis devem ser registradas com justificativa e revisadas antes do fechamento contábil.
+
 > Este painel organiza informações e evidências operacionais. A classificação legal, os limites eleitorais, a escrituração contábil e qualquer transmissão oficial devem ser revisados pelo contador e advogado responsáveis pela campanha.
 
 ## Mobilização e pesquisas rápidas
