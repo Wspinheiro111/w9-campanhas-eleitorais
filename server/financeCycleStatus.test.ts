@@ -7,6 +7,7 @@ vi.mock("./campaignDb", () => ({
   getFinancialEntry: vi.fn(),
   updateFinancialEntryReview: vi.fn(),
   getFinancialSummary: vi.fn(),
+  getEvent: vi.fn(),
   getLegalDocument: vi.fn(),
   updateLegalDocumentAttachment: vi.fn(),
 }));
@@ -114,6 +115,16 @@ describe("financeLegal.entries", () => {
 
     expect(result).toEqual({ id: entryType === "income" ? 101 : 102 });
     expect(db.createFinancialEntry).toHaveBeenCalledWith(expect.objectContaining({ ...createPayload, entryType, createdByUserId: 99, paidAt: null }));
+  });
+
+  it("vincula o lançamento a evento, fornecedor e centro de custo da mesma campanha", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.getEvent).mockResolvedValue({ id: 45, campaignId: 1, title: "Encontro territorial" } as never);
+    vi.mocked(db.createFinancialEntry).mockResolvedValue(103);
+
+    await expect(appRouter.createCaller(context()).financeLegal.entries.create({ ...createPayload, entryType: "expense", eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" })).resolves.toEqual({ id: 103 });
+    expect(db.getEvent).toHaveBeenCalledWith(45);
+    expect(db.createFinancialEntry).toHaveBeenCalledWith(expect.objectContaining({ eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" }));
   });
 
   it("registra as transições permitidas de revisão até o encerramento pela coordenação", async () => {
