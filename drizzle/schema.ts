@@ -179,10 +179,13 @@ export const campaignFinancialEntries = mysqlTable("campaign_financial_entries",
   organizationId: int("organizationId").notNull().references(() => organizations.id),
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   accountId: int("accountId").references(() => campaignFinancialAccounts.id),
+  eventId: int("eventId").references(() => events.id),
   createdByUserId: int("createdByUserId").references(() => users.id),
   reviewedByUserId: int("reviewedByUserId").references(() => users.id),
   entryType: financialEntryTypeEnum.notNull(),
   category: varchar("category", { length: 120 }).notNull(),
+  costCenter: varchar("costCenter", { length: 120 }),
+  supplierName: varchar("supplierName", { length: 220 }),
   counterpartyName: varchar("counterpartyName", { length: 220 }).notNull(),
   counterpartyDocument: varchar("counterpartyDocument", { length: 24 }),
   amountCents: int("amountCents").notNull(),
@@ -220,6 +223,14 @@ export const campaignLegalDocuments = mysqlTable("campaign_legal_documents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("legal_document_campaign_status_idx").on(table.campaignId, table.status), index("legal_document_entry_idx").on(table.financialEntryId), index("legal_document_org_idx").on(table.organizationId)]);
+
+export const campaignComplianceRules = mysqlTable("campaign_compliance_rules", {
+  id: int("id").autoincrement().primaryKey(), organizationId: int("organizationId").notNull().references(() => organizations.id), campaignId: int("campaignId").notNull().references(() => campaigns.id), blockBusinessDonation: boolean("blockBusinessDonation").notNull().default(false), requireExpenseDocument: boolean("requireExpenseDocument").notNull().default(false), reviewDeadlineHours: int("reviewDeadlineHours").notNull().default(72), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("compliance_rule_campaign_unique").on(table.campaignId)]);
+
+export const campaignLegalProcesses = mysqlTable("campaign_legal_processes", {
+  id: int("id").autoincrement().primaryKey(), organizationId: int("organizationId").notNull().references(() => organizations.id), campaignId: int("campaignId").notNull().references(() => campaigns.id), documentId: int("documentId").references(() => campaignLegalDocuments.id), ownerUserId: int("ownerUserId").references(() => users.id), title: varchar("title", { length: 255 }).notNull(), status: varchar("status", { length: 40 }).notNull().default("open"), deadlineAt: timestamp("deadlineAt"), notes: text("notes"), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("legal_process_campaign_status_idx").on(table.campaignId, table.status)]);
 
 export const fieldVisits = mysqlTable("field_visits", {
   id: int("id").autoincrement().primaryKey(),

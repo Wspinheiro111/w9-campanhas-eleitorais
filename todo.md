@@ -200,3 +200,21 @@
 - [x] Implementar repositório jurídico de contratos, notas fiscais e relatórios com anexos seguros.
 - [x] Implementar fluxo de aprovação, auditoria e exportação da prestação de contas.
 - [x] Consolidar a especificação de Prestação de Contas e Jurídico enviada com a arquitetura multi-tenant do W9.
+- [ ] Implementar upload e prévia de PDFs no repositório jurídico.
+- [ ] Exportar o relatório de prestação de contas em CSV e PDF.
+- [ ] Vincular lançamentos a eventos, fornecedores e centros de custo.
+- [ ] Comparar a especificação consolidada de campanha com o escopo atual do W9.
+- [ ] Revisar fluxos impactados e implementar as lacunas prioritárias identificadas na especificação consolidada.
+- [ ] Adicionar validações configuráveis de origem de receita e documentação mínima em lançamentos financeiros.
+- [ ] Adicionar alertas internos configuráveis de prazo para conferência financeira e jurídica.
+- [ ] Modelar processos jurídicos com prazo, responsável, status e vínculo com documentos da campanha.
+- [ ] Implementar os controles de conformidade como regras internas configuráveis, sem transmissão ou certificação legal automática.
+- [ ] Restringir aprovação financeira-jurídica à coordenação e gestão, mantendo operadores em consulta autorizada.
+- [ ] Priorizar controles, alertas e exportações da frente financeira conforme definição da coordenação.
+- [ ] Implementar a tela de Controle Financeiro com cadastro e listagem de receitas e despesas.
+- [ ] Revisar o fluxo financeiro e as próximas prioridades com apoio do Gemini.
+- [ ] Substituir valores monetários visíveis por “A consultar” após a conclusão da tarefa financeira atual.
+- [x] Obter revisão adicional do Gemini sobre o próximo incremento financeiro prioritário.
+- [ ] Implementar estados detalhados e alertas internos para o ciclo financeiro conforme priorização do Gemini.
+- [ ] Corrigir a rota da tela de Prestação de Contas exibindo 404 no acesso pela navegação financeira.
+- [x] Criar testes automatizados do ciclo de status de receitas e despesas, incluindo permissões e transições inválidas.
