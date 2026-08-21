@@ -4,7 +4,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ voters: [] as any[], records: [] as any[], crises: [] as any[], decisions: [] as any[], create: vi.fn(), revoke: vi.fn(), crisisCreate: vi.fn(), crisisUpdate: vi.fn(), addDecision: vi.fn() }));
+const mocks = vi.hoisted(() => ({ voters: [] as unknown[], records: [] as unknown[], crises: [] as unknown[], decisions: [] as unknown[], create: vi.fn(), revoke: vi.fn(), crisisCreate: vi.fn(), crisisUpdate: vi.fn(), addDecision: vi.fn() }));
 vi.mock("@/contexts/CampaignContext", () => ({ useCampaign: () => ({ activeCampaign: { id: 1, memberRole: "admin" } }) }));
 vi.mock("@/components/CampaignShell", () => ({ PageHeader: ({ title }: { title: string }) => <h1>{title}</h1>, EmptyPanel: ({ title }: { title: string }) => <p>{title}</p> }));
 vi.mock("@/lib/trpc", () => ({

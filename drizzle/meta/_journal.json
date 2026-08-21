@@ -288,6 +288,13 @@
       "when": 1787309651524,
       "tag": "0040_glossy_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1787313741514,
+      "tag": "0041_blushing_dagger",
+      "breakpoints": true
     }
   ]
 }

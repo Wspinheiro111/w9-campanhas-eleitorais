@@ -4,7 +4,8 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ savePdf: vi.fn(), qrCode: vi.fn().mockResolvedValue("data:image/png;base64,qr"), invalidate: vi.fn(), updateProfile: vi.fn(), updateTask: vi.fn(), completeTraining: vi.fn(), portalData: null as any }));
+type PortalData = ReturnType<typeof portalData>;
+const mocks = vi.hoisted(() => ({ savePdf: vi.fn(), qrCode: vi.fn().mockResolvedValue("data:image/png;base64,qr"), invalidate: vi.fn(), updateProfile: vi.fn(), updateTask: vi.fn(), completeTraining: vi.fn(), portalData: null as PortalData | null }));
 vi.mock("wouter", () => ({ useRoute: () => [true, { token: "x".repeat(32) }] }));
 vi.mock("qrcode", () => ({ default: { toDataURL: mocks.qrCode } }));
 vi.mock("jspdf", () => ({ jsPDF: class { setFillColor() {} rect() {} setDrawColor() {} setLineWidth() {} setTextColor() {} setFont() {} setFontSize() {} text() {} addImage() {} line() {} save = mocks.savePdf; } }));
@@ -12,7 +13,7 @@ vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ volunteers: { portal: 
 
 import VolunteerPortal from "./VolunteerPortal";
 
-function portalData(pending = false) { return { volunteer: { name: "Ana Voluntária", neighborhood: null, region: null, availability: null, skills: null, trainingStatus: pending ? "in_progress" : "completed", status: "active" }, assignments: [], trainingMaterials: [{ id: 1, title: "Conduta", description: null, materialType: "guide", resourceUrl: null, content: null, durationMinutes: 10, completedAt: pending ? null : new Date("2026-08-19T12:00:00Z") }], certificate: pending ? null : { certificateCode: "W9-V2", issuedAt: new Date("2026-08-20T12:00:00Z"), completedMaterials: 3 }, certificateHistory: pending ? [] : [{ certificateCode: "W9-V2", issuedAt: new Date("2026-08-20T12:00:00Z"), completedMaterials: 3, versionNumber: 2 }, { certificateCode: "W9-V1", issuedAt: new Date("2026-08-19T12:00:00Z"), completedMaterials: 2, versionNumber: 1 }], certificateSettings: { primaryColor: "#103527", accentColor: "#c9a85b", logoUrl: null, signatureImageUrl: null, signatureName: null, signatureRole: null } }; }
+function portalData(pending = false) { return { volunteer: { name: "Ana Voluntária", neighborhood: null, region: null, availability: null, skills: null, trainingStatus: pending ? "in_progress" : "completed", status: "active" }, assignments: [], trainingMaterials: [{ id: 1, title: "Conduta", description: null, materialType: "guide", resourceUrl: null, content: null, durationMinutes: 10, dueAt: null as Date | null, completedAt: pending ? null : new Date("2026-08-19T12:00:00Z") }], certificate: pending ? null : { certificateCode: "W9-V2", issuedAt: new Date("2026-08-20T12:00:00Z"), completedMaterials: 3 }, certificateHistory: pending ? [] : [{ certificateCode: "W9-V2", issuedAt: new Date("2026-08-20T12:00:00Z"), completedMaterials: 3, versionNumber: 2 }, { certificateCode: "W9-V1", issuedAt: new Date("2026-08-19T12:00:00Z"), completedMaterials: 2, versionNumber: 1 }], certificateSettings: { primaryColor: "#103527", accentColor: "#c9a85b", logoUrl: null, signatureImageUrl: null, signatureName: null, signatureRole: null } }; }
 
 describe("histórico e lembretes privados do voluntário", () => {
   beforeEach(() => { mocks.portalData = portalData(); });

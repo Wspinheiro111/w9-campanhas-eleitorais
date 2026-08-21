@@ -61,7 +61,7 @@ function access(role: "admin" | "coordinator" | "partner") {
 let currentStatus: FinancialEntryStatus;
 
 function entry() {
-  return { id: 71, campaignId: 1, entryType: "expense", category: "Serviços", counterpartyName: "Fornecedor", amountCents: 12500, status: currentStatus };
+  return { id: 71, campaignId: 1, entryType: "expense", category: "Serviços", counterpartyName: "Fornecedor", amountCents: 12500, status: currentStatus, version: 1, updatedAt: new Date("2026-08-21T12:00:00Z") };
 }
 
 const createPayload = {
@@ -77,6 +77,7 @@ beforeEach(() => {
   vi.mocked(db.getFinancialEntry).mockImplementation(async () => entry() as never);
   vi.mocked(db.updateFinancialEntryReview).mockImplementation(async input => {
     currentStatus = input.status;
+    return true;
   });
 });
 
@@ -172,6 +173,14 @@ describe("financeLegal.entries", () => {
 
     await expect(appRouter.createCaller(context()).financeLegal.entries.review({ entryId: 71, status: "paid" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(db.updateFinancialEntryReview).not.toHaveBeenCalled();
+  });
+
+  it("rejeita a transição quando a versão do lançamento foi alterada por outra operação", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);
+    vi.mocked(db.updateFinancialEntryReview).mockResolvedValue(false);
+
+    await expect(appRouter.createCaller(context()).financeLegal.entries.review({ entryId: 71, status: "under_review", expectedVersion: 1 })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(db.updateFinancialEntryReview).toHaveBeenCalledWith(expect.objectContaining({ id: 71, expectedVersion: 1 }));
   });
 
   it("impede parceiro de revisar ou aprovar receitas e despesas", async () => {

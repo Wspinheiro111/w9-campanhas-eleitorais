@@ -224,3 +224,10 @@
 - [x] Adicionar máscara automática de telefone e atalho de WhatsApp aos perfis da equipe.
 - [x] Exibir validação visual de telefone inválido e impedir o salvamento até a correção no formulário de equipe.
 - [x] Corrigir o formulário de novo membro ainda exibido com e-mail, usando telefone no fluxo operacional de equipe.
+- [x] Consolidar o código-fonte e as configurações relevantes do projeto em um único arquivo TXT baixável.
+- [x] Remover os ativos e a instrumentação de depuração do Manus do cliente e do Vite.
+- [x] Remover logs de depuração, resolver TODOs remanescentes e eliminar usos evitáveis de `any` no código do projeto.
+- [x] Validar magic bytes de imagens de certificado, bloquear SVG e cobrir os formatos aceitos.
+- [x] Corrigir a unicidade de tokens de voluntários para o escopo de cada campanha.
+- [x] Adicionar lock otimista nas transições de status financeiro para prevenir aprovações simultâneas.
+- [x] Gerar novo arquivo consolidado do código após a regressão de segurança e tipagem.

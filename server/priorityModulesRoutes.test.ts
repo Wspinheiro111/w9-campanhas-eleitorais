@@ -160,11 +160,20 @@ describe("módulos prioritários", () => {
   });
 
   it("armazena logotipo do certificado somente após validar permissão e formato de imagem", async () => {
+    const pngDataUrl = "data:image/png;base64,iVBORw==";
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: partnerMember, organizationMember: { role: "operator" } } as never);
-    await expect(appRouter.createCaller(context(12)).volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: "data:image/png;base64,aGVsbG8=" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(context(12)).volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: pngDataUrl })).rejects.toMatchObject({ code: "FORBIDDEN" });
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never); vi.mocked(storagePut).mockResolvedValue({ key: "campaign-certificates/1/1/logo.png", url: "/manus-storage/campaign-certificates/1/1/logo.png" } as never);
-    await expect(appRouter.createCaller(context()).volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: "data:image/png;base64,aGVsbG8=" })).resolves.toEqual({ url: "/manus-storage/campaign-certificates/1/1/logo.png" });
+    await expect(appRouter.createCaller(context()).volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: pngDataUrl })).resolves.toEqual({ url: "/manus-storage/campaign-certificates/1/1/logo.png" });
     expect(storagePut).toHaveBeenCalledWith(expect.stringMatching(/^campaign-certificates\/1\/1\/logo-[a-f0-9]+\.png$/), expect.any(Buffer), "image/png");
+  });
+
+  it("rejeita SVG e conteúdo que não corresponde ao formato declarado no ativo de certificado", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: "data:image/png;base64,/9j/" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(storagePut).not.toHaveBeenCalled();
   });
 
   it("restringe benchmark regional a gestores e retorna somente agregados", async () => {

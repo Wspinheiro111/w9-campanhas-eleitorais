@@ -40,4 +40,4 @@ if (!response.ok) throw new Error(`Gemini HTTP ${response.status}: ${await respo
 const body = await response.json();
 const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
 if (!text) throw new Error("Gemini não retornou conteúdo analisável.");
-console.log(text);
+process.stdout.write(`${text}\n`);

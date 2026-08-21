@@ -197,6 +197,7 @@ export const campaignFinancialEntries = mysqlTable("campaign_financial_entries",
   dueDate: timestamp("dueDate"),
   paidAt: timestamp("paidAt"),
   status: financialEntryStatusEnum.notNull().default("draft"),
+  version: int("version").notNull().default(1),
   notes: text("notes"),
   reviewNotes: text("reviewNotes"),
   reviewedAt: timestamp("reviewedAt"),
@@ -328,7 +329,7 @@ export const volunteers = mysqlTable("volunteers", {
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   name: varchar("name", { length: 180 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
-  accessTokenHash: varchar("accessTokenHash", { length: 128 }).notNull().unique(),
+  accessTokenHash: varchar("accessTokenHash", { length: 128 }).notNull(),
   phone: varchar("phone", { length: 32 }),
   neighborhood: varchar("neighborhood", { length: 120 }),
   region: varchar("region", { length: 120 }),
@@ -342,7 +343,7 @@ export const volunteers = mysqlTable("volunteers", {
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [index("volunteer_campaign_status_idx").on(table.campaignId, table.status), index("volunteer_campaign_coordinator_idx").on(table.campaignId, table.coordinatorMemberId), index("volunteer_organization_idx").on(table.organizationId), uniqueIndex("volunteer_campaign_email_idx").on(table.campaignId, table.email)]);
+}, (table) => [index("volunteer_campaign_status_idx").on(table.campaignId, table.status), index("volunteer_campaign_coordinator_idx").on(table.campaignId, table.coordinatorMemberId), index("volunteer_organization_idx").on(table.organizationId), uniqueIndex("volunteer_campaign_email_idx").on(table.campaignId, table.email), uniqueIndex("volunteer_campaign_access_token_idx").on(table.campaignId, table.accessTokenHash)]);
 
 export const volunteerAssignments = mysqlTable("volunteer_assignments", {
   id: int("id").autoincrement().primaryKey(),
