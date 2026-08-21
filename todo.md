@@ -246,3 +246,4 @@
 - [x] Criar teste de renderização do CampaignGate para prevenir regressão de hooks.
 - [x] Exibir recuperação amigável no ErrorBoundary com ação explícita de recarregar a página.
 - [x] Validar redirecionamentos de MFA e passkey para o dashboard após autenticação bem-sucedida.
+- [x] Registrar automaticamente erros de interface no painel técnico com contexto seguro de rota e organização.

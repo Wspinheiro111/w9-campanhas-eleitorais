@@ -24,6 +24,10 @@ class ErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false });
   }
 
+  componentDidCatch(error: Error) {
+    window.dispatchEvent(new CustomEvent("w9-interface-error", { detail: { message: error.message } }));
+  }
+
   render() {
     if (this.state.hasError) {
       return (

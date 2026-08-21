@@ -165,6 +165,17 @@ export const routePerformanceEvents = mysqlTable("route_performance_events", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("performance_route_created_idx").on(table.route, table.createdAt), index("performance_organization_created_idx").on(table.organizationId, table.createdAt), index("performance_error_created_idx").on(table.hasError, table.createdAt)]);
 
+export const clientInterfaceErrors = mysqlTable("client_interface_errors", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  userId: int("userId").references(() => users.id),
+  route: varchar("route", { length: 240 }).notNull(),
+  source: varchar("source", { length: 40 }).notNull(),
+  fingerprint: varchar("fingerprint", { length: 64 }).notNull(),
+  message: varchar("message", { length: 280 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("client_error_organization_created_idx").on(table.organizationId, table.createdAt), index("client_error_fingerprint_created_idx").on(table.fingerprint, table.createdAt)]);
+
 export const fieldPlaybooks = mysqlTable("field_playbooks", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

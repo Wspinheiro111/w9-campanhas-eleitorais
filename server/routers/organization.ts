@@ -67,6 +67,12 @@ export const organizationRouter = router({
     }),
   }),
   performance: router({
+    reportClientError: protectedProcedure.input(z.object({ organizationId: z.number().int().positive(), route: z.string().max(240), source: z.enum(["error_boundary", "window_error", "unhandled_rejection", "query_error", "mutation_error"]), fingerprint: z.string().regex(/^[a-f0-9]{64}$/), message: z.string().min(1).max(280) })).mutation(async ({ ctx, input }) => {
+      const membership = await db.getOrganizationMembership(ctx.user.id, input.organizationId);
+      if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
+      await db.recordClientInterfaceError({ ...input, userId: ctx.user.id });
+      return { recorded: true };
+    }),
     byRoute: protectedProcedure.input(z.object({ organizationId: z.number().int().positive(), days: z.number().int().min(1).max(90).default(7) })).query(async ({ ctx, input }) => {
       await requireOrganizationAdmin(ctx.user.id, input.organizationId);
       return db.getRoutePerformanceMetrics(input);

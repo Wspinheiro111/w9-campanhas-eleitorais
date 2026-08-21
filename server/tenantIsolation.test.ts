@@ -11,6 +11,7 @@ vi.mock("./campaignDb", () => ({
   listOrganizationInvitations: vi.fn(),
   listOrganizationAuditLogs: vi.fn(),
   getRoutePerformanceMetrics: vi.fn(),
+  recordClientInterfaceError: vi.fn(),
   acceptOrganizationInvitation: vi.fn(),
 }));
 
@@ -100,6 +101,20 @@ describe("isolamento multi-tenant", () => {
     vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "operator", active: true } as never);
     const caller = appRouter.createCaller(ctx);
     await expect(caller.organization.performance.byRoute({ organizationId: 2, days: 7 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("permite que integrante registre erro de interface somente no escopo da própria organização", async () => {
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "operator", active: true } as never);
+    vi.mocked(db.recordClientInterfaceError).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.organization.performance.reportClientError({ organizationId: 2, route: "/equipe", source: "error_boundary", fingerprint: "a".repeat(64), message: "Falha de interface sanitizada" })).resolves.toEqual({ recorded: true });
+    expect(db.recordClientInterfaceError).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 2, userId: 20, route: "/equipe" }));
+  });
+
+  it("impede registrar erro de interface fora da organização do integrante", async () => {
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue(null);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.organization.performance.reportClientError({ organizationId: 3, route: "/equipe", source: "window_error", fingerprint: "a".repeat(64), message: "Falha de interface sanitizada" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("encaminha o aceite de convite ao vínculo do usuário autenticado", async () => {

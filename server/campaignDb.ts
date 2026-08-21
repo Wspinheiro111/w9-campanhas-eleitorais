@@ -17,6 +17,7 @@ import {
   campaignContents,
   campaignMembers,
   campaigns,
+  clientInterfaceErrors,
   consentRecords,
   crisisCases,
   crisisDecisionLogs,
@@ -137,7 +138,22 @@ export async function getRoutePerformanceMetrics(input: { organizationId: number
   const scope = and(eq(routePerformanceEvents.organizationId, input.organizationId), gte(routePerformanceEvents.createdAt, since));
   const events = await db.select({ organizationId: routePerformanceEvents.organizationId, route: routePerformanceEvents.route, method: routePerformanceEvents.method, statusCode: routePerformanceEvents.statusCode, durationMs: routePerformanceEvents.durationMs }).from(routePerformanceEvents).where(scope);
   const metrics = summarizePerformanceEvents(events, input.organizationId);
-  return { periodDays: input.days, since, summary: metrics.summary, routes: metrics.routes.slice(0, 100) };
+  const clientErrors = await db.select({ route: clientInterfaceErrors.route, source: clientInterfaceErrors.source, message: clientInterfaceErrors.message, createdAt: clientInterfaceErrors.createdAt })
+    .from(clientInterfaceErrors)
+    .where(and(eq(clientInterfaceErrors.organizationId, input.organizationId), gte(clientInterfaceErrors.createdAt, since)))
+    .orderBy(desc(clientInterfaceErrors.createdAt))
+    .limit(50);
+  return { periodDays: input.days, since, summary: metrics.summary, routes: metrics.routes.slice(0, 100), clientErrors };
+}
+
+export async function recordClientInterfaceError(input: { organizationId: number; userId?: number | null; route: string; source: string; fingerprint: string; message: string }) {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db.insert(clientInterfaceErrors).values({ ...input, userId: input.userId ?? null, route: input.route.slice(0, 240), source: input.source.slice(0, 40), fingerprint: input.fingerprint.slice(0, 64), message: input.message.slice(0, 280) });
+  } catch {
+    // A observabilidade não pode interromper a experiência da interface.
+  }
 }
 
 export async function getOrganizationMembership(userId: number, organizationId: number) {
