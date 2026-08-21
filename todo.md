@@ -201,7 +201,7 @@
 - [x] Implementar fluxo de aprovação, auditoria e exportação da prestação de contas.
 - [x] Consolidar a especificação de Prestação de Contas e Jurídico enviada com a arquitetura multi-tenant do W9.
 - [x] Implementar upload e prévia de PDFs no repositório jurídico.
-- [ ] Exportar o relatório de prestação de contas em CSV e PDF.
+- [x] Exportar o relatório de prestação de contas em CSV e PDF.
 - [ ] Vincular lançamentos a eventos, fornecedores e centros de custo.
 - [ ] Comparar a especificação consolidada de campanha com o escopo atual do W9.
 - [ ] Revisar fluxos impactados e implementar as lacunas prioritárias identificadas na especificação consolidada.
