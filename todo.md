@@ -203,8 +203,8 @@
 - [x] Implementar upload e prévia de PDFs no repositório jurídico.
 - [x] Exportar o relatório de prestação de contas em CSV e PDF.
 - [x] Vincular lançamentos a eventos, fornecedores e centros de custo.
-- [ ] Comparar a especificação consolidada de campanha com o escopo atual do W9.
-- [ ] Revisar fluxos impactados e implementar as lacunas prioritárias identificadas na especificação consolidada.
+- [x] Comparar a especificação consolidada de campanha com o escopo atual do W9.
+- [x] Revisar fluxos impactados e implementar as lacunas prioritárias identificadas na especificação consolidada.
 - [x] Adicionar validações configuráveis de origem de receita e documentação mínima em lançamentos financeiros.
 - [x] Adicionar alertas internos configuráveis de prazo para conferência financeira e jurídica.
 - [x] Modelar processos jurídicos com prazo, responsável, status e vínculo com documentos da campanha.
