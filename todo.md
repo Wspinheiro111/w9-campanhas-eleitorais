@@ -218,3 +218,5 @@
 - [x] Implementar estados detalhados e alertas internos para o ciclo financeiro conforme priorização do Gemini.
 - [x] Corrigir a rota da tela de Prestação de Contas exibindo 404 no acesso pela navegação financeira.
 - [x] Criar testes automatizados do ciclo de status de receitas e despesas, incluindo permissões e transições inválidas.
+- [x] Avaliar uma IA gratuita com fontes oficiais para dúvidas eleitorais e indicações no W9.
+- [x] Integrar a API Gemini direta ao assistente eleitoral do W9, com chave exclusiva do servidor, orientação a fontes oficiais e testes de segurança.
