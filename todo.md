@@ -213,8 +213,8 @@
 - [ ] Priorizar controles, alertas e exportações da frente financeira conforme definição da coordenação.
 - [ ] Implementar a tela de Controle Financeiro com cadastro e listagem de receitas e despesas.
 - [ ] Revisar o fluxo financeiro e as próximas prioridades com apoio do Gemini.
-- [ ] Substituir valores monetários visíveis por “A consultar” após a conclusão da tarefa financeira atual.
+- [x] Substituir valores monetários visíveis por “A consultar” após a conclusão da tarefa financeira atual.
 - [x] Obter revisão adicional do Gemini sobre o próximo incremento financeiro prioritário.
 - [ ] Implementar estados detalhados e alertas internos para o ciclo financeiro conforme priorização do Gemini.
-- [ ] Corrigir a rota da tela de Prestação de Contas exibindo 404 no acesso pela navegação financeira.
+- [x] Corrigir a rota da tela de Prestação de Contas exibindo 404 no acesso pela navegação financeira.
 - [x] Criar testes automatizados do ciclo de status de receitas e despesas, incluindo permissões e transições inválidas.

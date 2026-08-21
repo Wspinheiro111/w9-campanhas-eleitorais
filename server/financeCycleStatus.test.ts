@@ -73,16 +73,20 @@ describe("política do ciclo financeiro", () => {
     expect(getInitialFinancialEntryStatus(new Date())).toBe("paid");
   });
 
-  it("permite o fluxo pendente, em revisão, aprovado e pago", () => {
+  it("permite o fluxo pendente, em revisão, aprovado, pago, conciliado e encerrado", () => {
     expect(isFinancialStatusTransitionAllowed("pending", "under_review")).toBe(true);
     expect(isFinancialStatusTransitionAllowed("under_review", "approved")).toBe(true);
     expect(isFinancialStatusTransitionAllowed("approved", "paid")).toBe(true);
+    expect(isFinancialStatusTransitionAllowed("paid", "reconciled")).toBe(true);
+    expect(isFinancialStatusTransitionAllowed("reconciled", "closed")).toBe(true);
   });
 
   it("bloqueia saltos de status e saídas de estados finais", () => {
     expect(isFinancialStatusTransitionAllowed("pending", "paid")).toBe(false);
     expect(isFinancialStatusTransitionAllowed("approved", "under_review")).toBe(false);
-    expect(isFinancialStatusTransitionAllowed("paid", "cancelled")).toBe(false);
+    expect(isFinancialStatusTransitionAllowed("paid", "closed")).toBe(false);
+    expect(isFinancialStatusTransitionAllowed("reconciled", "paid")).toBe(false);
+    expect(isFinancialStatusTransitionAllowed("closed", "reconciled")).toBe(false);
     expect(isFinancialStatusTransitionAllowed("cancelled", "under_review")).toBe(false);
   });
 
@@ -92,6 +96,7 @@ describe("política do ciclo financeiro", () => {
     expect(isFinancialEntryIncludedInActiveBalance("paid")).toBe(true);
     expect(isFinancialEntryIncludedInActiveBalance("rejected")).toBe(false);
     expect(isFinancialEntryIncludedInActiveBalance("cancelled")).toBe(false);
+    expect(isFinancialEntryIncludedInActiveBalance("closed")).toBe(false);
   });
 });
 
@@ -106,17 +111,17 @@ describe("financeLegal.entries", () => {
     expect(db.createFinancialEntry).toHaveBeenCalledWith(expect.objectContaining({ ...createPayload, entryType, createdByUserId: 99, paidAt: null }));
   });
 
-  it("registra as transições permitidas de revisão até pagamento pela coordenação", async () => {
+  it("registra as transições permitidas de revisão até o encerramento pela coordenação", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
     const caller = appRouter.createCaller(context());
 
-    for (const [from, status] of [["pending", "under_review"], ["under_review", "approved"], ["approved", "paid"]] as const) {
+    for (const [from, status] of [["pending", "under_review"], ["under_review", "approved"], ["approved", "paid"], ["paid", "reconciled"], ["reconciled", "closed"]] as const) {
       currentStatus = from;
       await expect(caller.financeLegal.entries.review({ entryId: 71, status, reviewNotes: `Transição ${from} para ${status}` })).resolves.toEqual({ success: true });
       expect(currentStatus).toBe(status);
     }
 
-    expect(db.updateFinancialEntryReview).toHaveBeenNthCalledWith(3, expect.objectContaining({ id: 71, status: "paid", reviewedByUserId: 99 }));
+    expect(db.updateFinancialEntryReview).toHaveBeenNthCalledWith(5, expect.objectContaining({ id: 71, status: "closed", reviewedByUserId: 99 }));
   });
 
   it("bloqueia salto direto de pendente para pago", async () => {
@@ -135,7 +140,7 @@ describe("financeLegal.entries", () => {
   });
 
   it("rejeita status fora do ciclo financeiro suportado", async () => {
-    await expect(appRouter.createCaller(context()).financeLegal.entries.review({ entryId: 71, status: "closed" as never })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(appRouter.createCaller(context()).financeLegal.entries.review({ entryId: 71, status: "archived" as never })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(db.getFinancialEntry).not.toHaveBeenCalled();
   });
 

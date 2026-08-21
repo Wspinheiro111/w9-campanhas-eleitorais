@@ -35,7 +35,7 @@ export const eventRegistrationStatusEnum = mysqlEnum("event_registration_status"
 export const communicationChannelEnum = mysqlEnum("communication_channel", ["email", "whatsapp", "phone"]);
 export const fieldPlaybookStatusEnum = mysqlEnum("field_playbook_status", ["draft", "active", "archived"]);
 export const financialEntryTypeEnum = mysqlEnum("financial_entry_type", ["income", "expense"]);
-export const financialEntryStatusEnum = mysqlEnum("financial_entry_status", ["draft", "pending", "under_review", "approved", "rejected", "paid", "cancelled"]);
+export const financialEntryStatusEnum = mysqlEnum("financial_entry_status", ["draft", "pending", "under_review", "approved", "rejected", "paid", "reconciled", "closed", "cancelled"]);
 export const legalDocumentStatusEnum = mysqlEnum("legal_document_status", ["pending", "under_review", "approved", "rejected", "archived"]);
 
 /** Core identity record supplied by Manus OAuth. */

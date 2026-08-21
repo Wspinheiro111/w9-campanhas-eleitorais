@@ -1,16 +1,18 @@
-export const financialEntryStatuses = ["draft", "pending", "under_review", "approved", "rejected", "paid", "cancelled"] as const;
-export const financialReviewStatuses = ["under_review", "approved", "rejected", "paid", "cancelled"] as const;
+export const financialEntryStatuses = ["draft", "pending", "under_review", "approved", "rejected", "paid", "reconciled", "closed", "cancelled"] as const;
+export const financialReviewStatuses = ["pending", "under_review", "approved", "rejected", "paid", "reconciled", "closed", "cancelled"] as const;
 
 export type FinancialEntryStatus = (typeof financialEntryStatuses)[number];
 export type FinancialReviewStatus = (typeof financialReviewStatuses)[number];
 
 const allowedTransitions: Record<FinancialEntryStatus, readonly FinancialReviewStatus[]> = {
-  draft: ["under_review", "cancelled"],
+  draft: ["pending", "under_review", "cancelled"],
   pending: ["under_review", "cancelled"],
   under_review: ["approved", "rejected", "cancelled"],
   approved: ["paid", "cancelled"],
   rejected: ["under_review", "cancelled"],
-  paid: [],
+  paid: ["reconciled"],
+  reconciled: ["closed"],
+  closed: [],
   cancelled: [],
 };
 
@@ -23,5 +25,5 @@ export function isFinancialStatusTransitionAllowed(from: FinancialEntryStatus, t
 }
 
 export function isFinancialEntryIncludedInActiveBalance(status: FinancialEntryStatus) {
-  return !["rejected", "cancelled"].includes(status);
+  return !["rejected", "cancelled", "closed"].includes(status);
 }

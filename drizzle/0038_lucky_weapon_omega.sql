@@ -1,0 +1,1 @@
+ALTER TABLE `campaign_financial_entries` MODIFY COLUMN `financial_entry_status` enum('draft','pending','under_review','approved','rejected','paid','reconciled','closed','cancelled') NOT NULL DEFAULT 'draft';
