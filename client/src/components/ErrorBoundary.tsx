@@ -8,17 +8,20 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error: Error | null;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+
+  private tryAgain = () => {
+    this.setState({ hasError: false });
   }
 
   render() {
@@ -31,25 +34,33 @@ class ErrorBoundary extends Component<Props, State> {
               className="text-destructive mb-6 flex-shrink-0"
             />
 
-            <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
+            <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Recuperação do sistema</p>
+            <h2 className="mt-3 text-center text-2xl font-semibold text-foreground">Não foi possível carregar esta área.</h2>
+            <p className="mt-3 max-w-md text-center text-sm leading-6 text-muted-foreground">Os seus dados não foram alterados. Tente novamente; se o problema continuar, recarregue a página para iniciar uma nova sessão visual.</p>
 
-            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-              <pre className="text-sm text-muted-foreground whitespace-break-spaces">
-                {this.state.error?.stack}
-              </pre>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={this.tryAgain}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2 rounded-lg",
+                  "border border-border bg-card text-foreground",
+                  "hover:bg-muted cursor-pointer"
+                )}
+              >
+                Tentar novamente
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2 rounded-lg",
+                  "bg-primary text-primary-foreground",
+                  "hover:opacity-90 cursor-pointer"
+                )}
+              >
+                <RotateCcw size={16} />
+                Recarregar página
+              </button>
             </div>
-
-            <button
-              onClick={() => window.location.reload()}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg",
-                "bg-primary text-primary-foreground",
-                "hover:opacity-90 cursor-pointer"
-              )}
-            >
-              <RotateCcw size={16} />
-              Reload Page
-            </button>
           </div>
         </div>
       );

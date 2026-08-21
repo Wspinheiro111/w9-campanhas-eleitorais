@@ -243,3 +243,6 @@
 - [x] Implementar passkeys, MFA e recuperação de conta com controles de segurança no acesso.
 - [x] Bloquear progressivamente tentativas repetidas de login e registrar falhas na auditoria.
 - [x] Corrigir a chamada inválida de hooks do React que impede a renderização do CampaignGate.
+- [x] Criar teste de renderização do CampaignGate para prevenir regressão de hooks.
+- [x] Exibir recuperação amigável no ErrorBoundary com ação explícita de recarregar a página.
+- [x] Validar redirecionamentos de MFA e passkey para o dashboard após autenticação bem-sucedida.
