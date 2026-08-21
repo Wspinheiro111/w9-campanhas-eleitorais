@@ -18,6 +18,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Visão geral", path: "/" },
   { icon: Building2, label: "Organizações", path: "/organizacoes" },
   { icon: Activity, label: "Auditoria", path: "/auditoria" },
+  { icon: ShieldCheck, label: "Segurança", path: "/seguranca" },
   { icon: Gauge, label: "Painel técnico", path: "/tecnico" },
   { icon: UsersRound, label: "Equipe", path: "/equipe" },
   { icon: HeartHandshake, label: "Voluntários", path: "/voluntarios", requiresManage: true },

@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 const loginMutate = vi.fn();
 
 vi.mock("wouter", () => ({ useLocation: () => ["/login", vi.fn()] }));
-vi.mock("@/lib/trpc", () => ({ trpc: { auth: { login: { useMutation: () => ({ mutate: loginMutate, isPending: false }) }, register: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } } } }));
+vi.mock("@/lib/trpc", () => ({ trpc: { auth: { login: { useMutation: () => ({ mutate: loginMutate, isPending: false }) }, register: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) }, beginPasskeyLogin: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) }, finishPasskeyLogin: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) } } } }));
 
 import Login from "./Login";
 

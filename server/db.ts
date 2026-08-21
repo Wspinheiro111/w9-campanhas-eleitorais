@@ -1,7 +1,8 @@
-import { eq, or } from "drizzle-orm";
+import { and, eq, gt, or } from "drizzle-orm";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, User, users } from "../drizzle/schema";
+import { authChallenges, authMfaFactors, authPasskeys, authenticationAuditLogs, InsertUser, loginSecurityStates, User, users } from "../drizzle/schema";
+import { hashIp, hashSecurityIdentifier } from "./authSecurity";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -38,6 +39,7 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result[0];
 }
+export async function getUserByEmail(email: string) { const db = await getDb(); if (!db) return undefined; return (await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1))[0]; }
 
 export async function upsertGoogleUser(input: { googleId: string; email: string; name: string | null; avatarUrl: string | null }) {
   const db = await getDb();
@@ -106,9 +108,38 @@ export async function authenticateLocalUser(emailInput: string, password: string
   const rows = await db.select().from(users).where(eq(users.email, email)).limit(1);
   const user = rows[0];
   if (!user?.passwordHash || !passwordMatches(password, user.passwordHash)) return null;
-  await db.update(users).set({ lastSignedIn: new Date(), loginMethod: "password" }).where(eq(users.id, user.id));
   return user;
 }
+
+export async function getLoginSecurityState(email: string) {
+  const db = await getDb(); if (!db) return null;
+  const emailHash = hashSecurityIdentifier(email); const row = (await db.select().from(loginSecurityStates).where(eq(loginSecurityStates.emailHash, emailHash)).limit(1))[0];
+  return row ?? null;
+}
+export async function recordLoginAudit(input: { email: string; userId?: number | null; action: string; success: boolean; ip?: string; metadata?: Record<string, unknown> }) {
+  const db = await getDb(); if (!db) return;
+  await db.insert(authenticationAuditLogs).values({ emailHash: hashSecurityIdentifier(input.email), userId: input.userId ?? null, action: input.action, success: input.success, ipHash: hashIp(input.ip), metadata: input.metadata ?? null });
+}
+export async function recordLoginFailure(email: string, ip?: string) {
+  const db = await getDb(); if (!db) return { lockedUntil: null, failedAttempts: 0 };
+  const emailHash = hashSecurityIdentifier(email); const existing = (await db.select().from(loginSecurityStates).where(eq(loginSecurityStates.emailHash, emailHash)).limit(1))[0];
+  const failedAttempts = (existing?.failedAttempts ?? 0) + 1; const lockMinutes = failedAttempts >= 10 ? 60 : failedAttempts >= 7 ? 15 : failedAttempts >= 5 ? 5 : 0; const lockedUntil = lockMinutes ? new Date(Date.now() + lockMinutes * 60_000) : null;
+  if (existing) await db.update(loginSecurityStates).set({ failedAttempts, lockedUntil, lastFailedAt: new Date() }).where(eq(loginSecurityStates.id, existing.id)); else await db.insert(loginSecurityStates).values({ emailHash, failedAttempts, lockedUntil, lastFailedAt: new Date() });
+  await recordLoginAudit({ email, action: "login_failed", success: false, ip, metadata: { failedAttempts, lockMinutes } }); return { failedAttempts, lockedUntil };
+}
+export async function clearLoginFailures(email: string, userId: number, ip?: string) {
+  const db = await getDb(); if (!db) return;
+  const emailHash = hashSecurityIdentifier(email); await db.delete(loginSecurityStates).where(eq(loginSecurityStates.emailHash, emailHash)); await db.update(users).set({ lastSignedIn: new Date(), loginMethod: "password" }).where(eq(users.id, userId)); await recordLoginAudit({ email, userId, action: "login_success", success: true, ip });
+}
+export async function getMfaFactor(userId: number) { const db = await getDb(); if (!db) return null; return (await db.select().from(authMfaFactors).where(eq(authMfaFactors.userId, userId)).limit(1))[0] ?? null; }
+export async function saveMfaFactor(userId: number, secretCiphertext: string) { const db = await getDb(); if (!db) throw new Error("Database not available"); await db.insert(authMfaFactors).values({ userId, secretCiphertext }).onDuplicateKeyUpdate({ set: { secretCiphertext, enabledAt: new Date(), lastUsedAt: null } }); }
+export async function markMfaUsed(userId: number) { const db = await getDb(); if (!db) return; await db.update(authMfaFactors).set({ lastUsedAt: new Date() }).where(eq(authMfaFactors.userId, userId)); }
+export async function saveAuthChallenge(userId: number, purpose: string, challenge: string) { const db = await getDb(); if (!db) throw new Error("Database not available"); await db.delete(authChallenges).where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose))); await db.insert(authChallenges).values({ userId, purpose, challenge, expiresAt: new Date(Date.now() + 5 * 60_000) }); }
+export async function takeAuthChallenge(userId: number, purpose: string) { const db = await getDb(); if (!db) return null; const row = (await db.select().from(authChallenges).where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose), gt(authChallenges.expiresAt, new Date()))).limit(1))[0] ?? null; if (row) await db.delete(authChallenges).where(eq(authChallenges.id, row.id)); return row; }
+export async function listPasskeys(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(authPasskeys).where(eq(authPasskeys.userId, userId)); }
+export async function getPasskey(credentialId: string) { const db = await getDb(); if (!db) return null; return (await db.select().from(authPasskeys).where(eq(authPasskeys.credentialId, credentialId)).limit(1))[0] ?? null; }
+export async function savePasskey(input: { userId: number; credentialId: string; publicKey: string; counter: number; transports: string[] | null; label: string }) { const db = await getDb(); if (!db) throw new Error("Database not available"); await db.insert(authPasskeys).values(input); }
+export async function markPasskeyUsed(id: number, counter: number) { const db = await getDb(); if (!db) return; await db.update(authPasskeys).set({ counter, lastUsedAt: new Date() }).where(eq(authPasskeys.id, id)); }
 
 export async function updateUserThemePreference(userId: number, themePreference: string, themePalette: Record<string, string> | null) {
   const db = await getDb();

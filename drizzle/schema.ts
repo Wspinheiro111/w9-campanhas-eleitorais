@@ -56,6 +56,55 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const authPasskeys = mysqlTable("auth_passkeys", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  credentialId: varchar("credentialId", { length: 512 }).notNull(),
+  publicKey: text("publicKey").notNull(),
+  counter: int("counter").notNull().default(0),
+  transports: json("transports").$type<string[] | null>(),
+  label: varchar("label", { length: 120 }).notNull().default("Passkey"),
+  lastUsedAt: timestamp("lastUsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("auth_passkey_credential_unique").on(table.credentialId), index("auth_passkey_user_idx").on(table.userId)]);
+
+export const authMfaFactors = mysqlTable("auth_mfa_factors", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  secretCiphertext: varchar("secretCiphertext", { length: 512 }).notNull(),
+  enabledAt: timestamp("enabledAt").defaultNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+}, (table) => [uniqueIndex("auth_mfa_user_unique").on(table.userId)]);
+
+export const authChallenges = mysqlTable("auth_challenges", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  purpose: varchar("purpose", { length: 32 }).notNull(),
+  challenge: varchar("challenge", { length: 512 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("auth_challenge_user_purpose_idx").on(table.userId, table.purpose, table.expiresAt)]);
+
+export const loginSecurityStates = mysqlTable("login_security_states", {
+  id: int("id").autoincrement().primaryKey(),
+  emailHash: varchar("emailHash", { length: 128 }).notNull(),
+  failedAttempts: int("failedAttempts").notNull().default(0),
+  lockedUntil: timestamp("lockedUntil"),
+  lastFailedAt: timestamp("lastFailedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("login_security_email_unique").on(table.emailHash)]);
+
+export const authenticationAuditLogs = mysqlTable("authentication_audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id),
+  emailHash: varchar("emailHash", { length: 128 }).notNull(),
+  action: varchar("action", { length: 80 }).notNull(),
+  success: boolean("success").notNull(),
+  ipHash: varchar("ipHash", { length: 128 }),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("auth_audit_email_created_idx").on(table.emailHash, table.createdAt), index("auth_audit_user_created_idx").on(table.userId, table.createdAt)]);
+
 export const organizations = mysqlTable("organizations", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),

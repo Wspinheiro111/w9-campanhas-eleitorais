@@ -240,3 +240,5 @@
 - [x] Exibir aviso de atualização do PWA quando uma nova versão estiver pronta para aplicar.
 - [x] Persistir ações de campo offline e sincronizá-las automaticamente quando a conexão retornar.
 - [x] Criar tutorial passo a passo de instalação do PWA para a equipe.
+- [x] Implementar passkeys, MFA e recuperação de conta com controles de segurança no acesso.
+- [x] Bloquear progressivamente tentativas repetidas de login e registrar falhas na auditoria.
