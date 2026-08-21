@@ -325,7 +325,7 @@ export async function getCampaignMember(campaignId: number, memberId: number) {
 export async function createMember(input: {
   campaignId: number;
   name: string;
-  email: string;
+  phone: string;
   role: "admin" | "coordinator" | "partner";
   responsibility?: string;
   workRegion?: string;
@@ -334,6 +334,11 @@ export async function createMember(input: {
   const organizationId = await organizationIdForCampaign(input.campaignId);
   const result = await db.insert(campaignMembers).values({ ...input, organizationId, active: true });
   return Number(result[0].insertId);
+}
+
+export async function updateMemberPhone(campaignId: number, memberId: number, phone: string) {
+  const db = requireDb(await getDb());
+  await db.update(campaignMembers).set({ phone }).where(and(eq(campaignMembers.campaignId, campaignId), eq(campaignMembers.id, memberId)));
 }
 
 export async function listEvents(campaignId: number, startsAt?: Date, endsAt?: Date) {

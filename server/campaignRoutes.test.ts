@@ -5,6 +5,8 @@ vi.mock("./campaignDb", () => ({
   getCampaignAccess: vi.fn(),
   updateCampaignDetails: vi.fn(),
   createMember: vi.fn(),
+  getCampaignMember: vi.fn(),
+  updateMemberPhone: vi.fn(),
   getEvent: vi.fn(),
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
@@ -84,7 +86,7 @@ describe("routers operacionais da campanha", () => {
   it("reserva a inclusão de equipe ao administrador", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
     const caller = appRouter.createCaller(context());
-    await expect(caller.team.create({ campaignId: 1, name: "Parceiro", email: "parceiro@example.com", role: "partner" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.team.create({ campaignId: 1, name: "Parceiro", phone: "(51) 99999-9999", role: "partner" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(db.createMember).not.toHaveBeenCalled();
   });
 
@@ -92,8 +94,17 @@ describe("routers operacionais da campanha", () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);
     vi.mocked(db.createMember).mockResolvedValue(41);
     const caller = appRouter.createCaller(context());
-    await expect(caller.team.create({ campaignId: 1, name: "Nova Parceira", email: "nova@example.com", role: "partner" })).resolves.toEqual({ id: 41 });
-    expect(db.createMember).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, role: "partner" }));
+    await expect(caller.team.create({ campaignId: 1, name: "Nova Parceira", phone: "(51) 99999-9999", role: "partner" })).resolves.toEqual({ id: 41 });
+    expect(db.createMember).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, phone: "(51) 99999-9999", role: "partner" }));
+  });
+
+  it("permite que administrador atualize o telefone de membro da equipe", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);
+    vi.mocked(db.getCampaignMember).mockResolvedValue({ id: 41, campaignId: 1, phone: "" } as never);
+    vi.mocked(db.updateMemberPhone).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.team.updatePhone({ campaignId: 1, memberId: 41, phone: "(51) 98888-7777" })).resolves.toEqual({ success: true });
+    expect(db.updateMemberPhone).toHaveBeenCalledWith(1, 41, "(51) 98888-7777");
   });
 
   it("permite que coordenador crie um compromisso na agenda", async () => {

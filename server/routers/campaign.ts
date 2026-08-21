@@ -72,11 +72,19 @@ export const dashboardRouter = router({
 
 export const teamRouter = router({
   list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listMembers(input.campaignId); }),
-  create: protectedProcedure.input(campaignIdInput.extend({ name: z.string().min(2).max(160), email: z.string().email(), role: z.enum(memberRoles), responsibility: z.string().max(220).optional(), workRegion: z.string().max(160).optional() })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(campaignIdInput.extend({ name: z.string().min(2).max(160), phone: z.string().trim().min(8).max(32).regex(/^\+?[0-9()\s.-]+$/, "Informe um telefone válido."), role: z.enum(memberRoles), responsibility: z.string().max(220).optional(), workRegion: z.string().max(160).optional() })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     requireCapability(access, "team");
     const { campaignId, ...member } = input;
     return { id: await db.createMember({ campaignId, ...member }) };
+  }),
+  updatePhone: protectedProcedure.input(campaignIdInput.extend({ memberId: z.number().int().positive(), phone: z.string().trim().min(8).max(32).regex(/^\+?[0-9()\s.-]+$/, "Informe um telefone válido.") })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId);
+    requireCapability(access, "team");
+    const member = await db.getCampaignMember(input.campaignId, input.memberId);
+    if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Membro não encontrado nesta campanha." });
+    await db.updateMemberPhone(input.campaignId, input.memberId, input.phone);
+    return { success: true };
   }),
   performance: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getTeamPerformance(input.campaignId); }),
   benchmark: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getTeamBenchmark(input.campaignId); }),

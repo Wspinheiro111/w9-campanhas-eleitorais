@@ -220,3 +220,4 @@
 - [x] Criar testes automatizados do ciclo de status de receitas e despesas, incluindo permissões e transições inválidas.
 - [x] Avaliar uma IA gratuita com fontes oficiais para dúvidas eleitorais e indicações no W9.
 - [x] Integrar a API Gemini direta ao assistente eleitoral do W9, com chave exclusiva do servidor, orientação a fontes oficiais e testes de segurança.
+- [x] Substituir a exposição e a exigência operacional de e-mail por telefone no módulo de equipe, preservando e-mail apenas onde for indispensável à identidade e aos convites.

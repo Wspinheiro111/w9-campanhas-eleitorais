@@ -309,7 +309,9 @@ export const campaignMembers = mysqlTable("campaign_members", {
   campaignId: int("campaignId").notNull().references(() => campaigns.id),
   userId: int("userId").references(() => users.id),
   name: varchar("name", { length: 160 }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
+  /** Mantido apenas para registros legados; o contato operacional da equipe é telefone. */
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 32 }).notNull().default(""),
   role: campaignRoleEnum.notNull().default("partner"),
   responsibility: varchar("responsibility", { length: 220 }),
   workRegion: varchar("workRegion", { length: 160 }),
