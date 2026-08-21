@@ -7,10 +7,15 @@ vi.mock("./campaignDb", () => ({
   getFinancialEntry: vi.fn(),
   updateFinancialEntryReview: vi.fn(),
   getFinancialSummary: vi.fn(),
+  getLegalDocument: vi.fn(),
+  updateLegalDocumentAttachment: vi.fn(),
 }));
+
+vi.mock("./storage", () => ({ storagePut: vi.fn() }));
 
 import * as db from "./campaignDb";
 import { appRouter } from "./routers";
+import { storagePut } from "./storage";
 import {
   getInitialFinancialEntryStatus,
   isFinancialEntryIncludedInActiveBalance,
@@ -151,5 +156,25 @@ describe("financeLegal.entries", () => {
 
     await expect(appRouter.createCaller(context()).financeLegal.summary({ campaignId: 1 })).resolves.toEqual(summary);
     expect(db.getFinancialSummary).toHaveBeenCalledWith(1);
+  });
+
+  it("envia um PDF jurídico somente para a campanha do documento", async () => {
+    vi.mocked(db.getLegalDocument).mockResolvedValue({ id: 14, campaignId: 1 } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(storagePut).mockResolvedValue({ key: "campaigns/1/legal/14/contrato.pdf", url: "/manus-storage/campaigns/1/legal/14/contrato.pdf" });
+    const pdfBase64 = Buffer.from("%PDF-1.4\nconteudo de teste").toString("base64");
+
+    await expect(appRouter.createCaller(context()).financeLegal.documents.upload({ documentId: 14, fileName: "contrato.pdf", base64: pdfBase64 })).resolves.toEqual({ url: "/manus-storage/campaigns/1/legal/14/contrato.pdf" });
+    expect(storagePut).toHaveBeenCalledWith(expect.stringContaining("campaigns/1/legal/14/"), expect.any(Buffer), "application/pdf");
+    expect(db.updateLegalDocumentAttachment).toHaveBeenCalledWith(expect.objectContaining({ id: 14, fileName: "contrato.pdf", storageKey: "campaigns/1/legal/14/contrato.pdf" }));
+  });
+
+  it("recusa arquivos que não sejam PDF antes de enviá-los ao armazenamento", async () => {
+    vi.mocked(db.getLegalDocument).mockResolvedValue({ id: 14, campaignId: 1 } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);
+    const invalidBase64 = Buffer.from("conteudo sem cabecalho PDF").toString("base64");
+
+    await expect(appRouter.createCaller(context()).financeLegal.documents.upload({ documentId: 14, fileName: "arquivo.txt", base64: invalidBase64 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(storagePut).not.toHaveBeenCalled();
   });
 });
