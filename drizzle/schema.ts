@@ -81,7 +81,9 @@ export const organizationMembers = mysqlTable("organization_members", {
 export const organizationInvitations = mysqlTable("organization_invitations", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),
-  email: varchar("email", { length: 320 }).notNull(),
+  /** Campo legado: novos convites operacionais usam telefone. */
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 32 }).notNull().default(""),
   role: organizationRoleEnum.default("operator").notNull(),
   tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
   status: invitationStatusEnum.default("pending").notNull(),

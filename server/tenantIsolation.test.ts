@@ -52,20 +52,20 @@ describe("isolamento multi-tenant", () => {
     expect(db.listCampaignsForUser).toHaveBeenCalledWith(20, 2);
   });
 
-  it("permite que gerente crie convite apenas na própria organização", async () => {
+  it("permite que gerente crie convite por telefone apenas na própria organização", async () => {
     vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "manager", active: true } as never);
     vi.mocked(db.createOrganizationInvitation).mockResolvedValue(31);
     const caller = appRouter.createCaller(ctx);
-    const result = await caller.organization.invitations.create({ organizationId: 2, email: "novo@example.com", role: "operator" });
+    const result = await caller.organization.invitations.create({ organizationId: 2, phone: "(51) 99999-8888", role: "operator" });
     expect(result.invitationId).toBe(31);
     expect(result.token).toHaveLength(43);
-    expect(db.createOrganizationInvitation).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 2, invitedById: 20, role: "operator" }));
+    expect(db.createOrganizationInvitation).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 2, phone: "(51) 99999-8888", invitedById: 20, role: "operator" }));
   });
 
   it("impede operador de emitir convites", async () => {
     vi.mocked(db.getOrganizationMembership).mockResolvedValue({ id: 4, organizationId: 2, userId: 20, role: "operator", active: true } as never);
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.organization.invitations.create({ organizationId: 2, email: "novo@example.com", role: "viewer" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.organization.invitations.create({ organizationId: 2, phone: "(51) 99999-8888", role: "viewer" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("impede gerente de alterar papéis organizacionais", async () => {
@@ -106,6 +106,6 @@ describe("isolamento multi-tenant", () => {
     vi.mocked(db.acceptOrganizationInvitation).mockResolvedValue(2);
     const caller = appRouter.createCaller(ctx);
     await expect(caller.organization.invitations.accept({ token: "a".repeat(43) })).resolves.toEqual({ organizationId: 2 });
-    expect(db.acceptOrganizationInvitation).toHaveBeenCalledWith(expect.objectContaining({ userId: 20, email: "tenant@example.com" }));
+    expect(db.acceptOrganizationInvitation).toHaveBeenCalledWith({ userId: 20, tokenHash: expect.any(String) });
   });
 });

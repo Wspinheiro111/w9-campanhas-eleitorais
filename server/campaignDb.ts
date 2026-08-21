@@ -146,11 +146,12 @@ export async function getOrganizationMembership(userId: number, organizationId: 
   return rows[0] ?? null;
 }
 
-export async function createOrganizationInvitation(input: { organizationId: number; email: string; role: "admin" | "manager" | "operator" | "viewer"; tokenHash: string; invitedById: number; expiresAt: Date }) {
+export async function createOrganizationInvitation(input: { organizationId: number; phone: string; role: "admin" | "manager" | "operator" | "viewer"; tokenHash: string; invitedById: number; expiresAt: Date }) {
   const db = requireDb(await getDb());
-  const result = await db.insert(organizationInvitations).values({ ...input, email: input.email.trim().toLowerCase(), status: "pending" });
+  const phone = input.phone.replace(/\D/g, "");
+  const result = await db.insert(organizationInvitations).values({ ...input, phone, email: null, status: "pending" });
   const invitationId = Number(result[0].insertId);
-  await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.invitedById, action: "member.invited", entityType: "invitation", entityId: invitationId, metadata: { email: input.email.trim().toLowerCase(), role: input.role } });
+  await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.invitedById, action: "member.invited", entityType: "invitation", entityId: invitationId, metadata: { phone, role: input.role } });
   return invitationId;
 }
 
@@ -159,11 +160,11 @@ export async function listOrganizationInvitations(organizationId: number) {
   return db.select().from(organizationInvitations).where(eq(organizationInvitations.organizationId, organizationId)).orderBy(desc(organizationInvitations.createdAt));
 }
 
-export async function acceptOrganizationInvitation(input: { userId: number; email: string; tokenHash: string }) {
+export async function acceptOrganizationInvitation(input: { userId: number; tokenHash: string }) {
   const db = requireDb(await getDb());
   const rows = await db.select().from(organizationInvitations).where(and(eq(organizationInvitations.tokenHash, input.tokenHash), eq(organizationInvitations.status, "pending"))).limit(1);
   const invitation = rows[0];
-  if (!invitation || invitation.expiresAt < new Date() || invitation.email !== input.email.trim().toLowerCase()) throw new Error("INVITATION_INVALID_OR_EXPIRED");
+  if (!invitation || invitation.expiresAt < new Date()) throw new Error("INVITATION_INVALID_OR_EXPIRED");
   const existing = await getOrganizationMembership(input.userId, invitation.organizationId);
   if (!existing) await db.insert(organizationMembers).values({ organizationId: invitation.organizationId, userId: input.userId, role: invitation.role, active: true });
   await db.update(organizationInvitations).set({ status: "accepted", acceptedById: input.userId }).where(eq(organizationInvitations.id, invitation.id));

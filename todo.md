@@ -223,3 +223,4 @@
 - [x] Substituir a exposição e a exigência operacional de e-mail por telefone no módulo de equipe, preservando e-mail apenas onde for indispensável à identidade e aos convites.
 - [x] Adicionar máscara automática de telefone e atalho de WhatsApp aos perfis da equipe.
 - [x] Exibir validação visual de telefone inválido e impedir o salvamento até a correção no formulário de equipe.
+- [x] Corrigir o formulário de novo membro ainda exibido com e-mail, usando telefone no fluxo operacional de equipe.

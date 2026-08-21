@@ -281,6 +281,13 @@
       "when": 1787308093545,
       "tag": "0039_opposite_pride",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1787309651524,
+      "tag": "0040_glossy_shriek",
+      "breakpoints": true
     }
   ]
 }

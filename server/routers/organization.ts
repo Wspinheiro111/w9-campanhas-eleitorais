@@ -45,15 +45,14 @@ export const organizationRouter = router({
       await requireOrganizationAdmin(ctx.user.id, input.organizationId);
       return db.listOrganizationInvitations(input.organizationId);
     }),
-    create: protectedProcedure.input(z.object({ organizationId: z.number().int().positive(), email: z.string().email(), role: z.enum(["admin", "manager", "operator", "viewer"]).default("operator") })).mutation(async ({ ctx, input }) => {
+    create: protectedProcedure.input(z.object({ organizationId: z.number().int().positive(), phone: z.string().trim().min(8).max(32).regex(/^\+?[0-9()\s.-]+$/, "Informe um telefone válido."), role: z.enum(["admin", "manager", "operator", "viewer"]).default("operator") })).mutation(async ({ ctx, input }) => {
       await requireOrganizationAdmin(ctx.user.id, input.organizationId);
       const token = randomBytes(32).toString("base64url");
-      const invitationId = await db.createOrganizationInvitation({ organizationId: input.organizationId, email: input.email, role: input.role, tokenHash: hashToken(token), invitedById: ctx.user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) });
+      const invitationId = await db.createOrganizationInvitation({ organizationId: input.organizationId, phone: input.phone, role: input.role, tokenHash: hashToken(token), invitedById: ctx.user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) });
       return { invitationId, token, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) };
     }),
     accept: protectedProcedure.input(z.object({ token: z.string().min(32).max(128) })).mutation(async ({ ctx, input }) => {
-      if (!ctx.user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "O convite exige uma conta com e-mail confirmado." });
-      return { organizationId: await db.acceptOrganizationInvitation({ userId: ctx.user.id, email: ctx.user.email, tokenHash: hashToken(input.token) }) };
+      return { organizationId: await db.acceptOrganizationInvitation({ userId: ctx.user.id, tokenHash: hashToken(input.token) }) };
     }),
   }),
   audit: router({
