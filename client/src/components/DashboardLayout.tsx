@@ -8,7 +8,7 @@ import { startLogin } from "@/const";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { isPaletteAccessible, type CustomPalette, useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Activity, BarChart3, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, Palette, PanelLeft, Radar, Scale, ShieldCheck, Siren, UsersRound } from "lucide-react";
+import { Activity, BarChart3, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Download, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, Palette, PanelLeft, Radar, Scale, ShieldCheck, Siren, UsersRound } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -39,6 +39,7 @@ const menuItems = [
   { icon: BookOpenText, label: "Conteúdos", path: "/conteudos" },
   { icon: Mic, label: "Áudio para CRM", path: "/audio-crm" },
   { icon: Radar, label: "Monitoramento", path: "/monitoramento" },
+  { icon: Download, label: "Instalar aplicativo", path: "/instalar-app" },
   { icon: Bot, label: "W9 Inteligência", path: "/inteligencia" },
   { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
 ];

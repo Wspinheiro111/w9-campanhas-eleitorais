@@ -237,3 +237,6 @@
 - [x] Auditar todas as tabelas e rotas quanto ao isolamento por organização, corrigindo lacunas confirmadas.
 - [x] Adicionar ícones instaláveis, tela offline e cache versionado ao PWA.
 - [x] Regenerar o arquivo consolidado do W9 após as melhorias do PWA.
+- [x] Exibir aviso de atualização do PWA quando uma nova versão estiver pronta para aplicar.
+- [x] Persistir ações de campo offline e sincronizá-las automaticamente quando a conexão retornar.
+- [x] Criar tutorial passo a passo de instalação do PWA para a equipe.

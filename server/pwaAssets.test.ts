@@ -24,6 +24,7 @@ describe("ativos PWA", () => {
     expect(worker).toContain("w9-campaign-shell-v2");
     expect(worker).toContain("caches.delete(key)");
     expect(worker).toContain('"/offline.html"');
+    expect(worker).toContain('event.data?.type === "SKIP_WAITING"');
     expect(offline).toContain("Você está sem conexão");
   });
 });
