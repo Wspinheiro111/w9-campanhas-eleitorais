@@ -222,3 +222,4 @@
 - [x] Integrar a API Gemini direta ao assistente eleitoral do W9, com chave exclusiva do servidor, orientação a fontes oficiais e testes de segurança.
 - [x] Substituir a exposição e a exigência operacional de e-mail por telefone no módulo de equipe, preservando e-mail apenas onde for indispensável à identidade e aos convites.
 - [x] Adicionar máscara automática de telefone e atalho de WhatsApp aos perfis da equipe.
+- [x] Exibir validação visual de telefone inválido e impedir o salvamento até a correção no formulário de equipe.

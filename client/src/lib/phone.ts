@@ -16,3 +16,10 @@ export function toWhatsAppUrl(value: string) {
   if (nationalNumber.length < 10 || nationalNumber.length > 11) return null;
   return `https://wa.me/55${nationalNumber}`;
 }
+
+export function isValidBrazilianPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const nationalNumber = digits.startsWith("55") && digits.length > 11 ? digits.slice(2) : digits;
+  const ddd = Number(nationalNumber.slice(0, 2));
+  return (nationalNumber.length === 10 || nationalNumber.length === 11) && ddd >= 11 && ddd <= 99;
+}

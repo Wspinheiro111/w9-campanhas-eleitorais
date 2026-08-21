@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBrazilianPhone, toWhatsAppUrl } from "./phone";
+import { formatBrazilianPhone, isValidBrazilianPhone, toWhatsAppUrl } from "./phone";
 
 describe("telefones brasileiros", () => {
   it("aplica máscara automática para celular e telefone com código do país", () => {
@@ -10,5 +10,10 @@ describe("telefones brasileiros", () => {
   it("gera URL de WhatsApp somente para telefone brasileiro completo", () => {
     expect(toWhatsAppUrl("(51) 99999-8888")).toBe("https://wa.me/5551999998888");
     expect(toWhatsAppUrl("1234")).toBeNull();
+  });
+
+  it("distingue telefone válido antes do salvamento", () => {
+    expect(isValidBrazilianPhone("(51) 99999-8888")).toBe(true);
+    expect(isValidBrazilianPhone("(51) 9999-888")).toBe(false);
   });
 });
