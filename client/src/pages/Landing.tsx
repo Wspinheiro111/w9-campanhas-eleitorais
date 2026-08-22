@@ -1,5 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { trpc } from "@/lib/trpc";
 import {
   ArrowRight,
   BarChart3,
@@ -17,6 +21,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { Link } from "wouter";
+import { useState } from "react";
 
 const modules = [
   { icon: Target, title: "Planejamento e estratégia", text: "Metas, cenários, tarefas, agenda e prioridades para transformar o plano em ritmo de campanha." },
@@ -42,6 +47,15 @@ const operatingSignals = [
 ];
 
 export default function Landing() {
+  const [demoForm, setDemoForm] = useState({ name: "", email: "", phone: "", organizationName: "", role: "candidate" as "candidate" | "party" | "coordination" | "other", city: "", state: "", message: "", consent: false, website: "" });
+  const [demoSubmitted, setDemoSubmitted] = useState(false);
+  const requestDemo = trpc.demoRequests.submit.useMutation({
+    onSuccess: () => {
+      setDemoSubmitted(true);
+      setDemoForm({ name: "", email: "", phone: "", organizationName: "", role: "candidate", city: "", state: "", message: "", consent: false, website: "" });
+    },
+  });
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#fffaf2] text-[#12382b]">
       <section className="relative isolate overflow-hidden bg-[#103527] px-5 pb-24 pt-6 text-white sm:px-8 lg:px-12">
@@ -182,6 +196,67 @@ export default function Landing() {
               </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="bg-[#fffaf2] px-5 py-20 sm:px-8 lg:px-12">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.78fr_1.22fr] lg:items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[.16em] text-[#ef6c00]">Conheça a plataforma em 30 segundos</p>
+            <h2 className="mt-3 font-serif text-4xl font-bold leading-tight">Do comando à rua, cada frente da campanha conversa com a próxima.</h2>
+            <p className="mt-5 text-base leading-7 text-[#607266]">Assista à apresentação do W9 Campanhas Eleitorais e veja como planejamento, território, equipe e indicadores podem atuar na mesma direção.</p>
+            <a href="#demonstracao" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-[#ef6c00] underline-offset-4 hover:underline">Quero ver uma demonstração personalizada <ArrowRight className="size-4" /></a>
+          </div>
+          <div className="overflow-hidden rounded-[2rem] border-8 border-[#103527] bg-[#103527] shadow-2xl shadow-[#103527]/20">
+            <video className="aspect-video w-full bg-[#103527]" controls playsInline preload="metadata" aria-label="Vídeo de apresentação do W9 Campanhas Eleitorais">
+              <source src="/manus-storage/w9-campanhas-eleitorais-apresentacao_dece88d3.mp4" type="video/mp4" />
+              Seu navegador não suporta a reprodução de vídeo.
+            </video>
+          </div>
+        </div>
+      </section>
+
+      <section id="demonstracao" className="bg-[#ffcf39] px-5 py-20 text-[#103527] sm:px-8 lg:px-12">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.82fr_1.18fr] lg:items-start">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[.16em] text-[#a15b00]">Demonstração personalizada</p>
+            <h2 className="mt-3 max-w-3xl font-serif text-4xl font-bold leading-tight">Veja o W9 Campanhas Eleitorais aplicado à realidade da sua campanha.</h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#315445]">Conte o que está em jogo e a administração prepara uma apresentação focada em organização, território, mobilização, segurança e tomada de decisão.</p>
+            <div className="mt-8 space-y-3 text-sm font-medium text-[#315445]">
+              {[
+                "Conversa objetiva para candidatos, partidos e coordenações.",
+                "Demonstração guiada pelos desafios reais da sua operação.",
+                "Sem compromisso e sem exibição de valores na página pública.",
+              ].map((text) => <p key={text} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0" />{text}</p>)}
+            </div>
+          </div>
+
+          <form className="grid gap-4 rounded-[2rem] bg-white p-6 shadow-xl shadow-[#9b5c00]/20 sm:grid-cols-2 sm:p-8" onSubmit={(event) => {
+            event.preventDefault();
+            setDemoSubmitted(false);
+            requestDemo.mutate({
+              ...demoForm,
+              phone: demoForm.phone.replace(/\D/g, ""),
+              city: demoForm.city || undefined,
+              state: demoForm.state || undefined,
+              message: demoForm.message || undefined,
+              consent: true,
+            });
+          }}>
+            <div className="sm:col-span-2"><p className="font-serif text-2xl font-bold">Solicite sua demonstração</p><p className="mt-1 text-sm text-[#607266]">Preencha os dados e entraremos em contato para apresentar a plataforma.</p></div>
+            <div className="grid gap-2"><Label htmlFor="demo-name">Seu nome</Label><Input id="demo-name" value={demoForm.name} onChange={(event) => setDemoForm((current) => ({ ...current, name: event.target.value }))} required maxLength={180} /></div>
+            <div className="grid gap-2"><Label htmlFor="demo-email">E-mail profissional</Label><Input id="demo-email" type="email" value={demoForm.email} onChange={(event) => setDemoForm((current) => ({ ...current, email: event.target.value }))} required maxLength={320} /></div>
+            <div className="grid gap-2"><Label htmlFor="demo-phone">Telefone / WhatsApp</Label><Input id="demo-phone" inputMode="tel" value={demoForm.phone} onChange={(event) => setDemoForm((current) => ({ ...current, phone: event.target.value }))} required placeholder="(00) 00000-0000" maxLength={32} /></div>
+            <div className="grid gap-2"><Label htmlFor="demo-org">Campanha, partido ou organização</Label><Input id="demo-org" value={demoForm.organizationName} onChange={(event) => setDemoForm((current) => ({ ...current, organizationName: event.target.value }))} required maxLength={180} /></div>
+            <div className="grid gap-2"><Label htmlFor="demo-role">Seu papel</Label><select id="demo-role" className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]" value={demoForm.role} onChange={(event) => setDemoForm((current) => ({ ...current, role: event.target.value as typeof current.role }))}><option value="candidate">Candidato(a)</option><option value="party">Partido</option><option value="coordination">Coordenação de campanha</option><option value="other">Outro</option></select></div>
+            <div className="grid grid-cols-[1fr_72px] gap-3"><div className="grid gap-2"><Label htmlFor="demo-city">Cidade</Label><Input id="demo-city" value={demoForm.city} onChange={(event) => setDemoForm((current) => ({ ...current, city: event.target.value }))} maxLength={120} /></div><div className="grid gap-2"><Label htmlFor="demo-state">UF</Label><Input id="demo-state" value={demoForm.state} onChange={(event) => setDemoForm((current) => ({ ...current, state: event.target.value.toUpperCase().slice(0, 2) }))} maxLength={2} /></div></div>
+            <div className="grid gap-2 sm:col-span-2"><Label htmlFor="demo-message">O que você quer organizar melhor? <span className="font-normal text-muted-foreground">(opcional)</span></Label><Textarea id="demo-message" value={demoForm.message} onChange={(event) => setDemoForm((current) => ({ ...current, message: event.target.value }))} maxLength={2000} rows={3} placeholder="Ex.: equipe de rua, território, agenda ou prestação de contas." /></div>
+            <div className="hidden" aria-hidden="true"><Label htmlFor="demo-website">Website</Label><Input id="demo-website" tabIndex={-1} autoComplete="off" value={demoForm.website} onChange={(event) => setDemoForm((current) => ({ ...current, website: event.target.value }))} /></div>
+            <Label className="flex cursor-pointer items-start gap-2 text-xs leading-5 text-[#466352] sm:col-span-2"><input type="checkbox" className="mt-1" checked={demoForm.consent} onChange={(event) => setDemoForm((current) => ({ ...current, consent: event.target.checked }))} required />Autorizo o contato sobre a demonstração e o tratamento destes dados exclusivamente para esse atendimento.</Label>
+            {demoSubmitted && <p className="rounded-lg bg-[#eff7f0] px-3 py-2 text-sm font-medium text-[#1d6a43] sm:col-span-2">Solicitação recebida. A administração entrará em contato para combinar a demonstração.</p>}
+            {requestDemo.error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">{requestDemo.error.message}</p>}
+            <Button type="submit" className="bg-[#ef6c00] font-bold text-white hover:bg-[#c85400] sm:col-span-2" disabled={!demoForm.consent || requestDemo.isPending}>{requestDemo.isPending ? "Enviando solicitação..." : "Solicitar demonstração"}<ArrowRight className="ml-2 size-4" /></Button>
+          </form>
         </div>
       </section>
 

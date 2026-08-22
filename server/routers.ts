@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import * as campaignDb from "./campaignDb";
 import { sdk } from "./_core/sdk";
 import { ONE_YEAR_MS } from "../shared/const";
 import { createMfaEnrollment, verifyMfaCode } from "./authSecurity";
@@ -80,6 +81,24 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
       return { success: true } as const;
+    }),
+  }),
+  demoRequests: router({
+    submit: publicProcedure.input(z.object({
+      name: z.string().trim().min(2).max(180),
+      email: z.string().trim().email().max(320),
+      phone: z.string().transform(value => value.replace(/\D/g, "")).refine(value => value.length === 10 || value.length === 11, "Informe um telefone brasileiro válido."),
+      organizationName: z.string().trim().min(2).max(180),
+      role: z.enum(["candidate", "party", "coordination", "other"]),
+      city: z.string().trim().max(120).optional(),
+      state: z.string().trim().length(2).optional(),
+      message: z.string().trim().max(2000).optional(),
+      consent: z.literal(true),
+      website: z.string().max(200).optional(),
+    })).mutation(async ({ input }) => {
+      if (input.website?.trim()) return { submitted: true, ignored: true };
+      const requestId = await campaignDb.createPlatformDemoRequest(input);
+      return { submitted: true, requestId };
     }),
   }),
   campaign: campaignRouter,

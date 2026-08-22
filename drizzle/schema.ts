@@ -38,6 +38,7 @@ export const financialEntryTypeEnum = mysqlEnum("financial_entry_type", ["income
 export const financialEntryStatusEnum = mysqlEnum("financial_entry_status", ["draft", "pending", "under_review", "approved", "rejected", "paid", "reconciled", "closed", "cancelled"]);
 export const legalDocumentStatusEnum = mysqlEnum("legal_document_status", ["pending", "under_review", "approved", "rejected", "archived"]);
 export const platformCustomerStatusEnum = mysqlEnum("platform_customer_status", ["pending", "access_released", "active", "suspended"]);
+export const platformDemoRequestStatusEnum = mysqlEnum("platform_demo_request_status", ["new", "contacted", "qualified", "converted", "archived"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -158,6 +159,23 @@ export const platformCustomers = mysqlTable("platform_customers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [uniqueIndex("platform_customer_organization_unique_idx").on(table.organizationId), index("platform_customer_status_idx").on(table.status, table.updatedAt), index("platform_customer_next_contact_idx").on(table.status, table.nextContactAt)]);
+
+/** Solicitações públicas de demonstração ainda não vinculadas a uma organização. */
+export const platformDemoRequests = mysqlTable("platform_demo_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 180 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 32 }).notNull(),
+  organizationName: varchar("organizationName", { length: 180 }).notNull(),
+  role: varchar("role", { length: 80 }).notNull(),
+  city: varchar("city", { length: 120 }),
+  state: varchar("state", { length: 2 }),
+  message: text("message"),
+  consent: boolean("consent").notNull(),
+  status: platformDemoRequestStatusEnum.notNull().default("new"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("platform_demo_request_status_created_idx").on(table.status, table.createdAt), index("platform_demo_request_email_idx").on(table.email), index("platform_demo_request_phone_idx").on(table.phone)]);
 
 export const platformCustomerInteractions = mysqlTable("platform_customer_interactions", {
   id: int("id").autoincrement().primaryKey(),

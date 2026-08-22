@@ -17,6 +17,13 @@ const portfolioFrequencySchema = z.enum(["daily", "weekly", "monthly"]);
 const portfolioCronByFrequency = { daily: "0 0 12 * * *", weekly: "0 0 12 * * 1", monthly: "0 0 12 1 * *" } as const;
 
 export const platformAdminRouter = router({
+  demoRequests: router({
+    list: platformAdminProcedure.query(() => campaignDb.listPlatformDemoRequests()),
+    setStatus: platformAdminProcedure.input(z.object({ requestId: z.number().int().positive(), status: z.enum(["new", "contacted", "qualified", "converted", "archived"]) })).mutation(async ({ input }) => {
+      await campaignDb.updatePlatformDemoRequestStatus(input);
+      return { updated: true };
+    }),
+  }),
   customers: router({
     list: platformAdminProcedure.query(() => campaignDb.listPlatformCustomers()),
     create: platformAdminProcedure.input(z.object({ organizationName: z.string().min(2).max(160), legalName: z.string().max(220).optional(), fiscalId: z.string().max(32).optional(), contactName: z.string().min(2).max(180), contactPhone: phoneSchema })).mutation(async ({ ctx, input }) => campaignDb.createPlatformCustomer({ ...input, actorUserId: ctx.user.id })),

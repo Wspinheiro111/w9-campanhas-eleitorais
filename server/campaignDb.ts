@@ -34,6 +34,7 @@ import {
   organizations,
   pipelineFollowups,
   platformCustomers,
+  platformDemoRequests,
   platformCustomerInteractions,
   platformCustomerPortfolioReports,
   platformCustomerPortfolioSchedules,
@@ -227,6 +228,33 @@ export async function createPlatformCustomer(input: { organizationName: string; 
   await db.insert(platformCustomerInteractions).values({ customerId, kind: "customer_created", description: "Comprador cadastrado na administração geral.", createdByUserId: input.actorUserId });
   await createOrganizationAuditLog({ organizationId, actorUserId: input.actorUserId, action: "platform_customer.created", entityType: "platform_customer", entityId: customerId, metadata: { contactPhone: input.contactPhone.replace(/\D/g, "") } });
   return { customerId, organizationId };
+}
+
+export async function createPlatformDemoRequest(input: { name: string; email: string; phone: string; organizationName: string; role: string; city?: string | null; state?: string | null; message?: string | null }) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(platformDemoRequests).values({
+    name: input.name.trim(),
+    email: input.email.trim().toLowerCase(),
+    phone: input.phone.replace(/\D/g, ""),
+    organizationName: input.organizationName.trim(),
+    role: input.role,
+    city: input.city?.trim() || null,
+    state: input.state?.trim().toUpperCase() || null,
+    message: input.message?.trim() || null,
+    consent: true,
+    status: "new",
+  });
+  return Number(result[0].insertId);
+}
+
+export async function listPlatformDemoRequests() {
+  const db = requireDb(await getDb());
+  return db.select().from(platformDemoRequests).orderBy(desc(platformDemoRequests.createdAt)).limit(100);
+}
+
+export async function updatePlatformDemoRequestStatus(input: { requestId: number; status: "new" | "contacted" | "qualified" | "converted" | "archived" }) {
+  const db = requireDb(await getDb());
+  await db.update(platformDemoRequests).set({ status: input.status }).where(eq(platformDemoRequests.id, input.requestId));
 }
 
 export async function getPlatformCustomer(customerId: number) {

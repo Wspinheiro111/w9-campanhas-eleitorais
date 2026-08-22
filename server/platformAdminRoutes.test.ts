@@ -2,6 +2,8 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 vi.mock("./campaignDb", () => ({
+  listPlatformDemoRequests: vi.fn(),
+  updatePlatformDemoRequestStatus: vi.fn(),
   listPlatformCustomers: vi.fn(),
   createPlatformCustomer: vi.fn(),
   getPlatformCustomer: vi.fn(),
@@ -33,6 +35,15 @@ const ordinaryUserContext: TrpcContext = {
 afterEach(() => vi.clearAllMocks());
 
 describe("administração geral de compradores diretos", () => {
+  it("mantém a fila de demonstrações restrita à administração da plataforma", async () => {
+    vi.mocked(db.listPlatformDemoRequests).mockResolvedValue([] as never);
+    const caller = appRouter.createCaller(platformAdminContext);
+    await expect(caller.platformAdmin.demoRequests.list()).resolves.toEqual([]);
+    expect(db.listPlatformDemoRequests).toHaveBeenCalledOnce();
+    const ordinaryCaller = appRouter.createCaller(ordinaryUserContext);
+    await expect(ordinaryCaller.platformAdmin.demoRequests.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
   it("impede usuários comuns de consultar compradores", async () => {
     const caller = appRouter.createCaller(ordinaryUserContext);
     await expect(caller.platformAdmin.customers.list()).rejects.toMatchObject({ code: "FORBIDDEN" });

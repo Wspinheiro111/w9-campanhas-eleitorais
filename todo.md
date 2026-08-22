@@ -270,3 +270,5 @@
 - [x] Transformar a página inicial em apresentação institucional do W9 e posicionar o acesso à conta ao final do percurso.
 - [x] Reposicionar a página inicial como apresentação comercial do W9 Campanhas Eleitorais, com identidade mais vibrante e linguagem de conversão para candidatos e partidos.
 - [x] Detalhar os módulos e funcionalidades do sistema na apresentação comercial antes do acesso à conta.
+- [x] Criar formulário público de solicitação de demonstração para captar leads de campanhas de forma segura e organizada.
+- [x] Incluir seção de vídeo curto de apresentação na landing do W9 Campanhas Eleitorais.
