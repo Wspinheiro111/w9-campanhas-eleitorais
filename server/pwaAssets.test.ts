@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const publicDirectory = resolve(process.cwd(), "client/public");
@@ -26,5 +26,13 @@ describe("ativos PWA", () => {
     expect(worker).toContain('"/offline.html"');
     expect(worker).toContain('event.data?.type === "SKIP_WAITING"');
     expect(offline).toContain("Você está sem conexão");
+  });
+
+  it("disponibiliza favicon vetorial com o monograma W9", () => {
+    const faviconPath = resolve(publicDirectory, "favicon.svg");
+    expect(existsSync(faviconPath)).toBe(true);
+    const favicon = readFileSync(faviconPath, "utf8");
+    expect(favicon).toContain("#0F1C3F");
+    expect(favicon).toContain("#FFC300");
   });
 });

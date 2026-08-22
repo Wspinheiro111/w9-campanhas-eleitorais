@@ -11,6 +11,7 @@ describe("landing comercial", () => {
   it("apresenta o sistema, capta demonstração e mantém o acesso à conta no encerramento", () => {
     render(<Landing />);
     expect(screen.getByText(/Toda campanha sente a mesma dor/i)).toBeInTheDocument();
+    expect(screen.getByText("+1 milhão")).toBeInTheDocument();
     expect(screen.getByText("Acesso à conta")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /entrar na conta/i })).toHaveAttribute("href", "/login");
     expect(screen.getByText("Quero uma demonstração")).toBeInTheDocument();

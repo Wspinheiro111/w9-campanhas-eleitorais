@@ -92,7 +92,7 @@ export default function Landing() {
             <a href="#roteiro" className="inline-flex items-center rounded-full border border-white/20 px-5 py-2 text-xs font-bold tracking-wide text-white/90 transition hover:bg-white/10">LER ROTEIRO COMPLETO <ArrowDown className="ml-2 size-3.5" /></a>
           </div>
           <div className="mt-10 grid max-w-xl grid-cols-3 gap-4 border-t border-white/10 pt-6">
-            {[['+10 mil', 'eleitores mapeados por campanha'], ['100%', 'organizado, sem planilha solta'], ['24/7', 'QG digital no bolso']].map(([value, label]) => <div key={value}><p className="font-[Anton,sans-serif] text-2xl text-[#FFC300]">{value}</p><p className="mt-1 text-[10px] font-bold uppercase leading-4 tracking-wide text-white/45">{label}</p></div>)}
+            {[['+1 milhão', 'eleitores mapeados por campanha'], ['100%', 'organizado, sem planilha solta'], ['24/7', 'QG digital no bolso']].map(([value, label]) => <div key={value}><p className="font-[Anton,sans-serif] text-2xl text-[#FFC300]">{value}</p><p className="mt-1 text-[10px] font-bold uppercase leading-4 tracking-wide text-white/45">{label}</p></div>)}
           </div>
         </div>
 

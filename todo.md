@@ -278,3 +278,6 @@
 - [x] Recriar a página de entrada com fidelidade ao modelo HTML enviado, preservando o acesso ao sistema.
 - [x] Aplicar em toda a plataforma a paleta de cores extraída do modelo visual enviado.
 - [x] Extrair e padronizar o logotipo do modelo HTML na landing, no painel e na tela de acesso.
+- [x] Aplicar logotipo e identidade azul-marinho, amarelo e verde aos relatórios PDF gerados pelo sistema.
+- [x] Criar e integrar favicon personalizado com o monograma W9.
+- [x] Atualizar o indicador da landing para +1 milhão de eleitores mapeados por campanha.

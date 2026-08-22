@@ -1,3 +1,5 @@
+import { w9PrintHeader, w9PrintStyles } from "./w9PdfBrand";
+
 export type CustomerPortfolioRow = { organizationName: string; contactName: string; contactPhone: string; status: string; nextContactAt?: Date | string | null; nextContactNote?: string | null; accessReleasedAt?: Date | string | null; updatedAt: Date | string };
 export const customerPortfolioColumns = [
   { key: "organizationName", label: "Organização", value: (row: CustomerPortfolioRow) => row.organizationName },
@@ -34,7 +36,7 @@ export function buildCustomerPortfolioPrintDocument(rows: CustomerPortfolioRow[]
   const selected = selectedColumns(columns);
   const tableRows = rows.map(row => `<tr>${selected.map(column => `<td>${escapeHtml(column.value(row) || "—")}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${selected.length}">Nenhum cliente cadastrado.</td></tr>`;
   const headers = selected.map(column => `<th>${escapeHtml(column.label)}</th>`).join("");
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/><title>Carteira de clientes - W9</title><style>body{font-family:Arial,sans-serif;color:#17231d;margin:32px}h1{color:#103527;margin:0}p{color:#526159}table{width:100%;border-collapse:collapse;margin-top:22px;font-size:11px}th{background:#103527;color:white;text-align:left}th,td{border:1px solid #d8dfdb;padding:8px;vertical-align:top}tr:nth-child(even){background:#f5f8f6}@media print{body{margin:14px}}</style></head><body><h1>Carteira de clientes</h1><p>Relatório gerado em ${new Date().toLocaleString("pt-BR")}</p><table><thead><tr>${headers}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/><title>Carteira de clientes - W9 Campanhas Eleitorais</title><style>${w9PrintStyles}</style></head><body>${w9PrintHeader("Carteira de clientes")}<p class="w9-meta">Relatório gerado em ${new Date().toLocaleString("pt-BR")}</p><table><thead><tr>${headers}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
 }
 
 export function printCustomerPortfolio(rows: CustomerPortfolioRow[], columns?: CustomerPortfolioColumnKey[]) {
