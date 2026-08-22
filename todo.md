@@ -289,3 +289,5 @@
 - [x] Criar central de notificações internas com alertas operacionais, leitura e priorização.
 - [x] Permitir salvar e reutilizar modelos de relatório e capa por campanha.
 - [x] Criar dashboard executivo integrado por campanha para a coordenação.
+- [x] Criar visualização em calendário semanal para gerenciamento das escalas da equipe.
+- [x] Adicionar indicadores visuais de cobertura territorial ao dashboard executivo da campanha.
