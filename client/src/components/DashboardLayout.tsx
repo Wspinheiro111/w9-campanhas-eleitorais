@@ -8,7 +8,7 @@ import { startLogin } from "@/const";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { isPaletteAccessible, type CustomPalette, useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Activity, BarChart3, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Download, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, Palette, PanelLeft, Radar, Scale, ShieldCheck, Siren, UsersRound } from "lucide-react";
+import { Activity, BarChart3, BellRing, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Download, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, Palette, PanelLeft, Radar, Scale, ShieldCheck, Siren, UsersRound } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -17,12 +17,15 @@ import { OrganizationSwitcher } from "./OrganizationSwitcher";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Visão geral", path: "/painel" },
+  { icon: Gauge, label: "Dashboard executivo", path: "/executivo", requiresManage: true },
   { icon: Building2, label: "Organizações", path: "/organizacoes" },
   { icon: ShieldCheck, label: "Administração geral", path: "/administracao-geral", requiresPlatformAdmin: true },
   { icon: Activity, label: "Auditoria", path: "/auditoria" },
   { icon: ShieldCheck, label: "Segurança", path: "/seguranca" },
   { icon: Gauge, label: "Painel técnico", path: "/tecnico" },
   { icon: UsersRound, label: "Equipe", path: "/equipe" },
+  { icon: CalendarDays, label: "Escalas e disponibilidade", path: "/escalas", requiresManage: true },
+  { icon: BellRing, label: "Notificações", path: "/notificacoes" },
   { icon: HeartHandshake, label: "Voluntários", path: "/voluntarios", requiresManage: true },
   { icon: CalendarDays, label: "Agenda", path: "/agenda" },
   { icon: BarChart3, label: "Indicadores de eventos", path: "/eventos/indicadores", requiresManage: true },

@@ -450,6 +450,74 @@ export const campaignMembers = mysqlTable("campaign_members", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("member_campaign_idx").on(table.campaignId), index("member_user_idx").on(table.userId), index("member_organization_idx").on(table.organizationId)]);
 
+export const campaignMemberAvailabilities = mysqlTable("campaign_member_availabilities", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  memberId: int("memberId").notNull().references(() => campaignMembers.id),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt").notNull(),
+  status: mysqlEnum("member_availability_status", ["available", "preferred", "unavailable"]).notNull().default("available"),
+  note: varchar("note", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("member_availability_campaign_time_idx").on(table.campaignId, table.startsAt), index("member_availability_member_time_idx").on(table.memberId, table.startsAt), index("member_availability_organization_idx").on(table.organizationId)]);
+
+export const campaignTeamShifts = mysqlTable("campaign_team_shifts", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  title: varchar("title", { length: 220 }).notNull(),
+  territory: varchar("territory", { length: 180 }),
+  responsibility: varchar("responsibility", { length: 220 }),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt").notNull(),
+  status: mysqlEnum("team_shift_status", ["draft", "scheduled", "completed", "cancelled"]).notNull().default("scheduled"),
+  notes: text("notes"),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("team_shift_campaign_time_idx").on(table.campaignId, table.startsAt), index("team_shift_organization_idx").on(table.organizationId)]);
+
+export const campaignTeamShiftAssignments = mysqlTable("campaign_team_shift_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  shiftId: int("shiftId").notNull().references(() => campaignTeamShifts.id),
+  memberId: int("memberId").notNull().references(() => campaignMembers.id),
+  status: mysqlEnum("team_shift_assignment_status", ["assigned", "confirmed", "declined"]).notNull().default("assigned"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("team_shift_member_idx").on(table.shiftId, table.memberId), index("team_shift_assignment_member_idx").on(table.memberId), index("team_shift_assignment_campaign_idx").on(table.campaignId), index("team_shift_assignment_organization_idx").on(table.organizationId)]);
+
+export const campaignNotifications = mysqlTable("campaign_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  targetMemberId: int("targetMemberId").references(() => campaignMembers.id),
+  type: varchar("type", { length: 64 }).notNull().default("operational"),
+  severity: mysqlEnum("campaign_notification_severity", ["info", "attention", "urgent"]).notNull().default("info"),
+  title: varchar("title", { length: 220 }).notNull(),
+  message: text("message").notNull(),
+  actionPath: varchar("actionPath", { length: 320 }),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("campaign_notification_campaign_read_idx").on(table.campaignId, table.readAt), index("campaign_notification_member_read_idx").on(table.targetMemberId, table.readAt), index("campaign_notification_organization_idx").on(table.organizationId)]);
+
+export const campaignReportTemplates = mysqlTable("campaign_report_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  name: varchar("name", { length: 160 }).notNull(),
+  reportType: varchar("reportType", { length: 80 }).notNull().default("operational"),
+  subtitle: varchar("subtitle", { length: 220 }),
+  coverNotes: text("coverNotes"),
+  sections: text("sections"),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("report_template_campaign_idx").on(table.campaignId, table.updatedAt), index("report_template_organization_idx").on(table.organizationId)]);
+
 export const volunteers = mysqlTable("volunteers", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

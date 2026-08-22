@@ -45,6 +45,17 @@ vi.mock("./campaignDb", () => ({
   createTask: vi.fn(),
   getTask: vi.fn(),
   updateTaskStatus: vi.fn(),
+  listMembers: vi.fn(),
+  createTeamShift: vi.fn(),
+  createMemberAvailability: vi.fn(),
+  listMemberAvailabilities: vi.fn(),
+  listTeamShifts: vi.fn(),
+  listCampaignNotifications: vi.fn(),
+  markCampaignNotificationsRead: vi.fn(),
+  listCampaignReportTemplates: vi.fn(),
+  createCampaignReportTemplate: vi.fn(),
+  removeCampaignReportTemplate: vi.fn(),
+  getCampaignExecutiveSummary: vi.fn(),
 }));
 
 import * as db from "./campaignDb";
@@ -306,5 +317,28 @@ describe("routers operacionais da campanha", () => {
     const anonymous = { ...context(), user: null };
     const caller = appRouter.createCaller(anonymous);
     await expect(caller.ai.processAudioCrm({ campaignId: 1, filename: "relato.webm", mimeType: "audio/webm", dataBase64: "data:audio/webm;base64,AAAA", consentConfirmed: true })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("cria escala somente com membros da campanha e registra a ação operacional", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);
+    vi.mocked(db.listMembers).mockResolvedValue([{ id: 10, name: "Coordenação" }] as never);
+    vi.mocked(db.createTeamShift).mockResolvedValue(42);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.operations.shifts.create({ campaignId: 1, title: "Mutirão territorial", startsAt: new Date("2026-09-01T09:00:00Z"), endsAt: new Date("2026-09-01T12:00:00Z"), memberIds: [10] })).resolves.toEqual({ id: 42 });
+    expect(db.createTeamShift).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, memberIds: [10], createdByUserId: 99 }));
+  });
+
+  it("impede parceiro de criar escala para toda a equipe", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("partner") as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.operations.shifts.create({ campaignId: 1, title: "Ação externa", startsAt: new Date("2026-09-01T09:00:00Z"), endsAt: new Date("2026-09-01T12:00:00Z"), memberIds: [10] })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("permite que parceiro registre apenas a própria disponibilidade", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("partner", 10) as never);
+    vi.mocked(db.getCampaignMember).mockResolvedValue({ id: 10, campaignId: 1 } as never);
+    vi.mocked(db.createMemberAvailability).mockResolvedValue(6);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.operations.availability.create({ campaignId: 1, memberId: 10, startsAt: new Date("2026-09-01T09:00:00Z"), endsAt: new Date("2026-09-01T12:00:00Z"), status: "available" })).resolves.toEqual({ id: 6 });
   });
 });

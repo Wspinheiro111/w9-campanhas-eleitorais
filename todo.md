@@ -285,3 +285,7 @@
 - [x] Exibir animação de carregamento com o monograma W9 durante a geração de relatórios PDF.
 - [x] Permitir subtítulo e observações personalizadas na capa antes da exportação dos relatórios PDF.
 - [x] Inserir índice dinâmico após a capa para facilitar a navegação em relatórios PDF extensos.
+- [x] Implementar controle de disponibilidade de equipe e escalas por campanha, equipe e território.
+- [x] Criar central de notificações internas com alertas operacionais, leitura e priorização.
+- [x] Permitir salvar e reutilizar modelos de relatório e capa por campanha.
+- [x] Criar dashboard executivo integrado por campanha para a coordenação.

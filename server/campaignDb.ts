@@ -14,6 +14,11 @@ import {
   campaignCommunicationLogs,
   campaignCommunicationTemplates,
   campaignTrainingRecognitionRules,
+  campaignMemberAvailabilities,
+  campaignNotifications,
+  campaignReportTemplates,
+  campaignTeamShiftAssignments,
+  campaignTeamShifts,
   campaignContents,
   campaignMembers,
   campaigns,
@@ -1497,3 +1502,42 @@ export async function saveAiMessage(input: Omit<typeof aiMessages.$inferInsert, 
   const db = requireDb(await getDb());
   await db.insert(aiMessages).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
 }
+
+export async function listMemberAvailabilities(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ availability: campaignMemberAvailabilities, memberName: campaignMembers.name, memberRole: campaignMembers.role, workRegion: campaignMembers.workRegion }).from(campaignMemberAvailabilities).innerJoin(campaignMembers, eq(campaignMemberAvailabilities.memberId, campaignMembers.id)).where(eq(campaignMemberAvailabilities.campaignId, campaignId)).orderBy(campaignMemberAvailabilities.startsAt);
+}
+
+export async function createMemberAvailability(input: { campaignId: number; memberId: number; startsAt: Date; endsAt: Date; status: "available" | "preferred" | "unavailable"; note: string | null }) {
+  const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignMemberAvailabilities).values({ ...input, organizationId }); return Number(result[0].insertId);
+}
+
+export async function removeMemberAvailability(campaignId: number, availabilityId: number) { const db = requireDb(await getDb()); await db.delete(campaignMemberAvailabilities).where(and(eq(campaignMemberAvailabilities.id, availabilityId), eq(campaignMemberAvailabilities.campaignId, campaignId))); }
+
+export async function listTeamShifts(campaignId: number) {
+  const db = requireDb(await getDb()); const shifts = await db.select().from(campaignTeamShifts).where(eq(campaignTeamShifts.campaignId, campaignId)).orderBy(campaignTeamShifts.startsAt);
+  const assignments = await db.select({ assignment: campaignTeamShiftAssignments, memberName: campaignMembers.name, memberRole: campaignMembers.role }).from(campaignTeamShiftAssignments).innerJoin(campaignMembers, eq(campaignTeamShiftAssignments.memberId, campaignMembers.id)).where(eq(campaignTeamShiftAssignments.campaignId, campaignId));
+  return shifts.map(shift => ({ ...shift, assignments: assignments.filter(item => item.assignment.shiftId === shift.id).map(item => ({ ...item.assignment, memberName: item.memberName, memberRole: item.memberRole })) }));
+}
+
+export async function createTeamShift(input: { campaignId: number; title: string; territory: string | null; responsibility: string | null; startsAt: Date; endsAt: Date; notes: string | null; memberIds: number[]; createdByUserId: number }) {
+  const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignTeamShifts).values({ organizationId, campaignId: input.campaignId, title: input.title, territory: input.territory, responsibility: input.responsibility, startsAt: input.startsAt, endsAt: input.endsAt, notes: input.notes, createdByUserId: input.createdByUserId }); const shiftId = Number(result[0].insertId);
+  if (input.memberIds.length) await db.insert(campaignTeamShiftAssignments).values(input.memberIds.map(memberId => ({ organizationId, campaignId: input.campaignId, shiftId, memberId })));
+  await db.insert(campaignNotifications).values({ organizationId, campaignId: input.campaignId, type: "shift", severity: "attention", title: `Nova escala: ${input.title}`, message: `Uma nova escala foi criada para ${input.startsAt.toLocaleString("pt-BR")}.`, actionPath: "/escalas" }); return shiftId;
+}
+
+export async function updateTeamShiftAssignmentStatus(campaignId: number, assignmentId: number, status: "assigned" | "confirmed" | "declined") { const db = requireDb(await getDb()); await db.update(campaignTeamShiftAssignments).set({ status }).where(and(eq(campaignTeamShiftAssignments.id, assignmentId), eq(campaignTeamShiftAssignments.campaignId, campaignId))); }
+
+export async function listCampaignNotifications(campaignId: number, memberId?: number | null) { const db = requireDb(await getDb()); const condition = memberId ? and(eq(campaignNotifications.campaignId, campaignId), or(isNull(campaignNotifications.targetMemberId), eq(campaignNotifications.targetMemberId, memberId))) : eq(campaignNotifications.campaignId, campaignId); return db.select().from(campaignNotifications).where(condition).orderBy(desc(campaignNotifications.createdAt)); }
+
+export async function markCampaignNotificationsRead(campaignId: number, memberId?: number | null) { const db = requireDb(await getDb()); const condition = memberId ? and(eq(campaignNotifications.campaignId, campaignId), or(isNull(campaignNotifications.targetMemberId), eq(campaignNotifications.targetMemberId, memberId)), isNull(campaignNotifications.readAt)) : and(eq(campaignNotifications.campaignId, campaignId), isNull(campaignNotifications.readAt)); await db.update(campaignNotifications).set({ readAt: new Date() }).where(condition); }
+
+export async function listCampaignReportTemplates(campaignId: number) { const db = requireDb(await getDb()); return db.select().from(campaignReportTemplates).where(eq(campaignReportTemplates.campaignId, campaignId)).orderBy(desc(campaignReportTemplates.updatedAt)); }
+
+export async function createCampaignReportTemplate(input: { campaignId: number; name: string; reportType: string; subtitle: string | null; coverNotes: string | null; sections: string[]; createdByUserId: number }) { const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId); const result = await db.insert(campaignReportTemplates).values({ organizationId, campaignId: input.campaignId, name: input.name, reportType: input.reportType, subtitle: input.subtitle, coverNotes: input.coverNotes, sections: JSON.stringify(input.sections), createdByUserId: input.createdByUserId }); return Number(result[0].insertId); }
+
+export async function removeCampaignReportTemplate(campaignId: number, templateId: number) { const db = requireDb(await getDb()); await db.delete(campaignReportTemplates).where(and(eq(campaignReportTemplates.id, templateId), eq(campaignReportTemplates.campaignId, campaignId))); }
+
+export async function getCampaignExecutiveSummary(campaignId: number) { const [dashboard, shifts, notifications, templates] = await Promise.all([getDashboardData(campaignId), listTeamShifts(campaignId), listCampaignNotifications(campaignId), listCampaignReportTemplates(campaignId)]); const now = new Date(); const upcomingShifts = shifts.filter(item => item.startsAt > now && item.status === "scheduled"); const unconfirmedAssignments = upcomingShifts.flatMap(item => item.assignments).filter(item => item.status === "assigned").length; return { dashboard, execution: { upcomingShifts: upcomingShifts.length, unconfirmedAssignments, unreadNotifications: notifications.filter(item => !item.readAt).length, reportTemplates: templates.length }, priorities: notifications.filter(item => !item.readAt).slice(0, 5), upcomingShifts: upcomingShifts.slice(0, 5) }; }
