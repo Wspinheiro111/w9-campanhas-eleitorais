@@ -13,6 +13,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 const AIStudio = lazy(() => import("./pages/AIStudio"));
 const AccountSecurity = lazy(() => import("./pages/AccountSecurity"));
 const Agenda = lazy(() => import("./pages/Agenda"));
+const AdminGeneral = lazy(() => import("./pages/AdminGeneral"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const AudioCRM = lazy(() => import("./pages/AudioCRM"));
 const CertificateValidation = lazy(() => import("./pages/CertificateValidation"));
@@ -33,7 +34,6 @@ const PublicSignup = lazy(() => import("./pages/PublicSignup"));
 const PublicEventSignup = lazy(() => import("./pages/PublicEventSignup"));
 const EventFeedback = lazy(() => import("./pages/EventFeedback"));
 const Reports = lazy(() => import("./pages/Reports"));
-const ResellerPanel = lazy(() => import("./pages/ResellerPanel"));
 const ScenarioSimulator = lazy(() => import("./pages/ScenarioSimulator"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const TechnicalPerformance = lazy(() => import("./pages/TechnicalPerformance"));
@@ -51,7 +51,7 @@ function PageLoading() { return <div className="min-h-[55vh] animate-pulse round
 function Router() {
   return <Switch>
     <Route path="/" component={Dashboard} />
-    <Route path="/revendedor" component={ResellerPanel} />
+    <Route path="/administracao-geral" component={AdminGeneral} />
     <Route path="/seguranca" component={AccountSecurity} />
     <Route path="/instalar-app" component={PwaInstallGuide} />
     <Route path="/organizacoes" component={Organizations} />

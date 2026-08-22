@@ -1,0 +1,1 @@
+-- Tabelas legadas de revendedores mantidas inativas até confirmação explícita de exclusão irreversível.

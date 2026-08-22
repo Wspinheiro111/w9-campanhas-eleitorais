@@ -33,9 +33,8 @@ import {
   organizationMembers,
   organizations,
   pipelineFollowups,
+  platformCustomers,
   routePerformanceEvents,
-  resellerClients,
-  resellerProposals,
   campaignSurveys,
   surveyResponses,
   tasks,
@@ -206,79 +205,41 @@ export async function updateOrganizationMemberRole(input: { organizationId: numb
   await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.actorUserId, action: "member.role_updated", entityType: "organization_member", entityId: input.memberId, metadata: { role: input.role } });
 }
 
-export async function listResellerClients(resellerUserId: number) {
+export async function listPlatformCustomers() {
   const db = requireDb(await getDb());
-  return db.select({ client: resellerClients, organization: organizations }).from(resellerClients).innerJoin(organizations, eq(organizations.id, resellerClients.organizationId)).where(eq(resellerClients.resellerUserId, resellerUserId)).orderBy(desc(resellerClients.updatedAt));
+  return db.select({ customer: platformCustomers, organization: organizations, invitation: organizationInvitations })
+    .from(platformCustomers)
+    .innerJoin(organizations, eq(organizations.id, platformCustomers.organizationId))
+    .leftJoin(organizationInvitations, eq(organizationInvitations.id, platformCustomers.lastInvitationId))
+    .orderBy(desc(platformCustomers.updatedAt));
 }
 
-export async function listAvailableResellerOrganizations(resellerUserId: number) {
+export async function createPlatformCustomer(input: { organizationName: string; legalName?: string | null; fiscalId?: string | null; contactName: string; contactPhone: string; actorUserId: number }) {
   const db = requireDb(await getDb());
-  const rows = await db.select({ organization: organizations, client: resellerClients })
-    .from(organizations)
-    .leftJoin(resellerClients, and(eq(resellerClients.organizationId, organizations.id), eq(resellerClients.resellerUserId, resellerUserId)))
-    .orderBy(desc(organizations.updatedAt));
-  return rows.filter(row => !row.client);
+  const organizationResult = await db.insert(organizations).values({ name: input.organizationName, legalName: input.legalName || null, fiscalId: input.fiscalId || null, status: "active", createdById: input.actorUserId });
+  const organizationId = Number(organizationResult[0].insertId);
+  const customerResult = await db.insert(platformCustomers).values({ organizationId, contactName: input.contactName, contactPhone: input.contactPhone.replace(/\D/g, ""), status: "pending", createdByUserId: input.actorUserId });
+  const customerId = Number(customerResult[0].insertId);
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.actorUserId, action: "platform_customer.created", entityType: "platform_customer", entityId: customerId, metadata: { contactPhone: input.contactPhone.replace(/\D/g, "") } });
+  return { customerId, organizationId };
 }
 
-export async function createResellerClient(input: { resellerUserId: number; name: string; legalName?: string; fiscalId?: string }) {
+export async function getPlatformCustomer(customerId: number) {
   const db = requireDb(await getDb());
-  const created = await db.insert(organizations).values({ name: input.name, legalName: input.legalName || null, fiscalId: input.fiscalId || null, status: "active", createdById: input.resellerUserId });
-  const organizationId = Number(created[0].insertId);
-  await db.insert(organizationMembers).values({ organizationId, userId: input.resellerUserId, role: "admin", active: true });
-  await db.insert(resellerClients).values({ resellerUserId: input.resellerUserId, organizationId, active: true });
-  await createOrganizationAuditLog({ organizationId, actorUserId: input.resellerUserId, action: "reseller.client_created", entityType: "organization", entityId: organizationId, metadata: { source: "reseller_panel" } });
-  return organizationId;
+  const rows = await db.select({ customer: platformCustomers, organization: organizations })
+    .from(platformCustomers)
+    .innerJoin(organizations, eq(organizations.id, platformCustomers.organizationId))
+    .where(eq(platformCustomers.id, customerId))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
-export async function linkResellerClient(input: { resellerUserId: number; organizationId: number }) {
+export async function markPlatformCustomerAccessReleased(input: { customerId: number; invitationId: number; actorUserId: number }) {
   const db = requireDb(await getDb());
-  const organization = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, input.organizationId)).limit(1);
-  if (!organization[0]) throw new Error("ORGANIZATION_NOT_FOUND");
-  const existing = await db.select({ id: resellerClients.id }).from(resellerClients).where(and(eq(resellerClients.resellerUserId, input.resellerUserId), eq(resellerClients.organizationId, input.organizationId))).limit(1);
-  if (!existing[0]) await db.insert(resellerClients).values({ resellerUserId: input.resellerUserId, organizationId: input.organizationId, active: true });
-  await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.resellerUserId, action: "reseller.client_linked", entityType: "organization", entityId: input.organizationId, metadata: { source: "reseller_panel" } });
-  return input.organizationId;
-}
-
-async function requireResellerClient(resellerUserId: number, organizationId: number) {
-  const db = requireDb(await getDb());
-  const client = await db.select().from(resellerClients).where(and(eq(resellerClients.resellerUserId, resellerUserId), eq(resellerClients.organizationId, organizationId), eq(resellerClients.active, true))).limit(1);
-  if (!client[0]) throw new Error("RESELLER_CLIENT_NOT_FOUND");
-  return client[0];
-}
-
-export async function updateResellerClient(input: { resellerUserId: number; organizationId: number; name: string; legalName?: string | null; fiscalId?: string | null; status: "active" | "suspended" | "archived" }) {
-  const db = requireDb(await getDb());
-  await requireResellerClient(input.resellerUserId, input.organizationId);
-  await db.update(organizations).set({ name: input.name, legalName: input.legalName || null, fiscalId: input.fiscalId || null, status: input.status }).where(eq(organizations.id, input.organizationId));
-  await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.resellerUserId, action: "reseller.client_updated", entityType: "organization", entityId: input.organizationId, metadata: { status: input.status } });
-}
-
-export async function openResellerSupportAccess(input: { resellerUserId: number; organizationId: number }) {
-  const db = requireDb(await getDb());
-  await requireResellerClient(input.resellerUserId, input.organizationId);
-  const membership = await db.select().from(organizationMembers).where(and(eq(organizationMembers.userId, input.resellerUserId), eq(organizationMembers.organizationId, input.organizationId))).limit(1);
-  if (membership[0]) await db.update(organizationMembers).set({ active: true }).where(eq(organizationMembers.id, membership[0].id));
-  else await db.insert(organizationMembers).values({ organizationId: input.organizationId, userId: input.resellerUserId, role: "manager", active: true });
-  await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.resellerUserId, action: "reseller.support_access_opened", entityType: "organization", entityId: input.organizationId, metadata: { access: "manager" } });
-  return input.organizationId;
-}
-
-export async function listResellerProposals(resellerUserId: number) {
-  const db = requireDb(await getDb());
-  return db.select().from(resellerProposals).where(eq(resellerProposals.resellerUserId, resellerUserId)).orderBy(desc(resellerProposals.updatedAt));
-}
-
-export async function createResellerProposal(input: { resellerUserId: number; organizationId?: number | null; title: string; contactName?: string; contactPhone?: string; notes?: string }) {
-  const db = requireDb(await getDb());
-  if (input.organizationId) await requireResellerClient(input.resellerUserId, input.organizationId);
-  const result = await db.insert(resellerProposals).values({ ...input, organizationId: input.organizationId ?? null, contactName: input.contactName || null, contactPhone: input.contactPhone?.replace(/\D/g, "") || null, notes: input.notes || null, status: "draft" });
-  return Number(result[0].insertId);
-}
-
-export async function updateResellerProposalStatus(input: { resellerUserId: number; proposalId: number; status: "draft" | "sent" | "negotiation" | "accepted" | "lost" | "archived" }) {
-  const db = requireDb(await getDb());
-  await db.update(resellerProposals).set({ status: input.status }).where(and(eq(resellerProposals.id, input.proposalId), eq(resellerProposals.resellerUserId, input.resellerUserId)));
+  const customer = await getPlatformCustomer(input.customerId);
+  if (!customer) throw new Error("PLATFORM_CUSTOMER_NOT_FOUND");
+  await db.update(platformCustomers).set({ status: "access_released", lastInvitationId: input.invitationId, accessReleasedAt: new Date() }).where(eq(platformCustomers.id, input.customerId));
+  await createOrganizationAuditLog({ organizationId: customer.organization.id, actorUserId: input.actorUserId, action: "platform_customer.access_released", entityType: "platform_customer", entityId: input.customerId, metadata: { invitationId: input.invitationId } });
 }
 
 export async function listCampaignsForUser(userId: number, organizationId?: number) {

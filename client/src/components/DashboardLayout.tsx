@@ -17,7 +17,7 @@ import { OrganizationSwitcher } from "./OrganizationSwitcher";
 const menuItems = [
   { icon: LayoutDashboard, label: "Visão geral", path: "/" },
   { icon: Building2, label: "Organizações", path: "/organizacoes" },
-  { icon: UsersRound, label: "Revendedor", path: "/revendedor", requiresPlatformAdmin: true },
+  { icon: ShieldCheck, label: "Administração geral", path: "/administracao-geral", requiresPlatformAdmin: true },
   { icon: Activity, label: "Auditoria", path: "/auditoria" },
   { icon: ShieldCheck, label: "Segurança", path: "/seguranca" },
   { icon: Gauge, label: "Painel técnico", path: "/tecnico" },

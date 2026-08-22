@@ -37,7 +37,7 @@ export const fieldPlaybookStatusEnum = mysqlEnum("field_playbook_status", ["draf
 export const financialEntryTypeEnum = mysqlEnum("financial_entry_type", ["income", "expense"]);
 export const financialEntryStatusEnum = mysqlEnum("financial_entry_status", ["draft", "pending", "under_review", "approved", "rejected", "paid", "reconciled", "closed", "cancelled"]);
 export const legalDocumentStatusEnum = mysqlEnum("legal_document_status", ["pending", "under_review", "approved", "rejected", "archived"]);
-export const resellerProposalStatusEnum = mysqlEnum("reseller_proposal_status", ["draft", "sent", "negotiation", "accepted", "lost", "archived"]);
+export const platformCustomerStatusEnum = mysqlEnum("platform_customer_status", ["pending", "access_released", "active", "suspended"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -128,28 +128,6 @@ export const organizationMembers = mysqlTable("organization_members", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("org_member_user_idx").on(table.userId), index("org_member_org_idx").on(table.organizationId), uniqueIndex("org_member_unique_idx").on(table.organizationId, table.userId)]);
 
-export const resellerClients = mysqlTable("reseller_clients", {
-  id: int("id").autoincrement().primaryKey(),
-  resellerUserId: int("resellerUserId").notNull().references(() => users.id),
-  organizationId: int("organizationId").notNull().references(() => organizations.id),
-  active: boolean("active").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [uniqueIndex("reseller_client_unique_idx").on(table.resellerUserId, table.organizationId), index("reseller_client_user_idx").on(table.resellerUserId, table.active)]);
-
-export const resellerProposals = mysqlTable("reseller_proposals", {
-  id: int("id").autoincrement().primaryKey(),
-  resellerUserId: int("resellerUserId").notNull().references(() => users.id),
-  organizationId: int("organizationId").references(() => organizations.id),
-  title: varchar("title", { length: 180 }).notNull(),
-  contactName: varchar("contactName", { length: 180 }),
-  contactPhone: varchar("contactPhone", { length: 32 }),
-  status: resellerProposalStatusEnum.default("draft").notNull(),
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [index("reseller_proposal_user_status_idx").on(table.resellerUserId, table.status), index("reseller_proposal_org_idx").on(table.organizationId)]);
-
 export const organizationInvitations = mysqlTable("organization_invitations", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),
@@ -165,6 +143,19 @@ export const organizationInvitations = mysqlTable("organization_invitations", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("invite_org_idx").on(table.organizationId, table.status), index("invite_email_idx").on(table.email, table.status), index("invite_token_idx").on(table.tokenHash)]);
+
+export const platformCustomers = mysqlTable("platform_customers", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  contactName: varchar("contactName", { length: 180 }).notNull(),
+  contactPhone: varchar("contactPhone", { length: 32 }).notNull(),
+  status: platformCustomerStatusEnum.default("pending").notNull(),
+  lastInvitationId: int("lastInvitationId"),
+  accessReleasedAt: timestamp("accessReleasedAt"),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("platform_customer_organization_unique_idx").on(table.organizationId), index("platform_customer_status_idx").on(table.status, table.updatedAt)]);
 
 export const organizationAuditLogs = mysqlTable("organization_audit_logs", {
   id: int("id").autoincrement().primaryKey(),
