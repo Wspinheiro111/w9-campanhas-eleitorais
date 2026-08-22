@@ -7,7 +7,7 @@ import Landing from "./Landing";
 describe("página institucional", () => {
   it("apresenta o sistema e mantém o acesso à conta no encerramento", () => {
     render(<Landing />);
-    expect(screen.getByText("Mais clareza para decidir. Mais ritmo para mobilizar.")).toBeInTheDocument();
+    expect(screen.getByText("Quem quer se eleger não pode depender de planilhas soltas.")).toBeInTheDocument();
     expect(screen.getByText("Acesso à conta")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Entrar na conta" })).toHaveAttribute("href", "/login");
   });

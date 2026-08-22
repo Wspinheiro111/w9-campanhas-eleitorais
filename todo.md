@@ -268,3 +268,5 @@
 - [x] Permitir baixar snapshots históricos da carteira em CSV e PDF.
 - [x] Exibir aviso visual quando um novo relatório interno estiver disponível.
 - [x] Transformar a página inicial em apresentação institucional do W9 e posicionar o acesso à conta ao final do percurso.
+- [x] Reposicionar a página inicial como apresentação comercial do W9 Campanhas Eleitorais, com identidade mais vibrante e linguagem de conversão para candidatos e partidos.
+- [x] Detalhar os módulos e funcionalidades do sistema na apresentação comercial antes do acesso à conta.
