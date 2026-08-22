@@ -34,10 +34,12 @@ import {
   organizations,
   pipelineFollowups,
   platformCustomers,
+  platformCustomerInteractions,
   routePerformanceEvents,
   campaignSurveys,
   surveyResponses,
   tasks,
+  users,
   volunteerAssignments,
   volunteerTrainingCertificates,
   volunteerTrainingCertificateVersions,
@@ -220,6 +222,7 @@ export async function createPlatformCustomer(input: { organizationName: string; 
   const organizationId = Number(organizationResult[0].insertId);
   const customerResult = await db.insert(platformCustomers).values({ organizationId, contactName: input.contactName, contactPhone: input.contactPhone.replace(/\D/g, ""), status: "pending", createdByUserId: input.actorUserId });
   const customerId = Number(customerResult[0].insertId);
+  await db.insert(platformCustomerInteractions).values({ customerId, kind: "customer_created", description: "Comprador cadastrado na administração geral.", createdByUserId: input.actorUserId });
   await createOrganizationAuditLog({ organizationId, actorUserId: input.actorUserId, action: "platform_customer.created", entityType: "platform_customer", entityId: customerId, metadata: { contactPhone: input.contactPhone.replace(/\D/g, "") } });
   return { customerId, organizationId };
 }
@@ -239,7 +242,34 @@ export async function markPlatformCustomerAccessReleased(input: { customerId: nu
   const customer = await getPlatformCustomer(input.customerId);
   if (!customer) throw new Error("PLATFORM_CUSTOMER_NOT_FOUND");
   await db.update(platformCustomers).set({ status: "access_released", lastInvitationId: input.invitationId, accessReleasedAt: new Date() }).where(eq(platformCustomers.id, input.customerId));
+  await db.insert(platformCustomerInteractions).values({ customerId: input.customerId, kind: "access_released", description: "Acesso liberado por convite seguro.", createdByUserId: input.actorUserId });
   await createOrganizationAuditLog({ organizationId: customer.organization.id, actorUserId: input.actorUserId, action: "platform_customer.access_released", entityType: "platform_customer", entityId: input.customerId, metadata: { invitationId: input.invitationId } });
+}
+
+export async function updatePlatformCustomerStatus(input: { customerId: number; status: "active" | "suspended"; actorUserId: number }) {
+  const db = requireDb(await getDb());
+  const customer = await getPlatformCustomer(input.customerId);
+  if (!customer) throw new Error("PLATFORM_CUSTOMER_NOT_FOUND");
+  await db.update(platformCustomers).set({ status: input.status }).where(eq(platformCustomers.id, input.customerId));
+  await db.update(organizations).set({ status: input.status === "suspended" ? "suspended" : "active" }).where(eq(organizations.id, customer.organization.id));
+  const description = input.status === "suspended" ? "Acesso do cliente suspenso pela administração geral." : "Acesso do cliente reativado pela administração geral.";
+  await db.insert(platformCustomerInteractions).values({ customerId: input.customerId, kind: input.status === "suspended" ? "access_suspended" : "access_reactivated", description, createdByUserId: input.actorUserId });
+  await createOrganizationAuditLog({ organizationId: customer.organization.id, actorUserId: input.actorUserId, action: `platform_customer.${input.status}`, entityType: "platform_customer", entityId: input.customerId, metadata: { organizationStatus: input.status === "suspended" ? "suspended" : "active" } });
+}
+
+export async function listPlatformCustomerInteractions(customerId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ interaction: platformCustomerInteractions, actor: users }).from(platformCustomerInteractions).innerJoin(users, eq(users.id, platformCustomerInteractions.createdByUserId)).where(eq(platformCustomerInteractions.customerId, customerId)).orderBy(desc(platformCustomerInteractions.createdAt)).limit(100);
+}
+
+export async function addPlatformCustomerInteraction(input: { customerId: number; kind: string; description: string; actorUserId: number }) {
+  const db = requireDb(await getDb());
+  const customer = await getPlatformCustomer(input.customerId);
+  if (!customer) throw new Error("PLATFORM_CUSTOMER_NOT_FOUND");
+  const result = await db.insert(platformCustomerInteractions).values({ customerId: input.customerId, kind: input.kind, description: input.description, createdByUserId: input.actorUserId });
+  const interactionId = Number(result[0].insertId);
+  await createOrganizationAuditLog({ organizationId: customer.organization.id, actorUserId: input.actorUserId, action: "platform_customer.interaction_created", entityType: "platform_customer_interaction", entityId: interactionId, metadata: { kind: input.kind } });
+  return interactionId;
 }
 
 export async function listCampaignsForUser(userId: number, organizationId?: number) {

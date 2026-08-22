@@ -157,6 +157,15 @@ export const platformCustomers = mysqlTable("platform_customers", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [uniqueIndex("platform_customer_organization_unique_idx").on(table.organizationId), index("platform_customer_status_idx").on(table.status, table.updatedAt)]);
 
+export const platformCustomerInteractions = mysqlTable("platform_customer_interactions", {
+  id: int("id").autoincrement().primaryKey(),
+  customerId: int("customerId").notNull().references(() => platformCustomers.id),
+  kind: varchar("kind", { length: 48 }).notNull(),
+  description: text("description").notNull(),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("platform_customer_interaction_customer_idx").on(table.customerId, table.createdAt), index("platform_customer_interaction_actor_idx").on(table.createdByUserId, table.createdAt)]);
+
 export const organizationAuditLogs = mysqlTable("organization_audit_logs", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

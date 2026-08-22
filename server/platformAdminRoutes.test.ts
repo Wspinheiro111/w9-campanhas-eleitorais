@@ -7,6 +7,9 @@ vi.mock("./campaignDb", () => ({
   getPlatformCustomer: vi.fn(),
   createOrganizationInvitation: vi.fn(),
   markPlatformCustomerAccessReleased: vi.fn(),
+  updatePlatformCustomerStatus: vi.fn(),
+  listPlatformCustomerInteractions: vi.fn(),
+  addPlatformCustomerInteraction: vi.fn(),
 }));
 
 import * as db from "./campaignDb";
@@ -52,5 +55,23 @@ describe("administração geral de compradores diretos", () => {
     expect(result.invitationUrl).toMatch(/^https:\/\/w9\.example\/onboarding\?invite=[a-f0-9]{64}$/);
     expect(db.createOrganizationInvitation).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 22, phone: "51999998888", invitedById: 1, role: "admin" }));
     expect(db.markPlatformCustomerAccessReleased).toHaveBeenCalledWith({ customerId: 7, invitationId: 91, actorUserId: 1 });
+  });
+
+  it("suspende e reativa o acesso somente pela administração geral", async () => {
+    vi.mocked(db.updatePlatformCustomerStatus).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(platformAdminContext);
+    await expect(caller.platformAdmin.customers.setStatus({ customerId: 7, status: "suspended" })).resolves.toEqual({ updated: true });
+    expect(db.updatePlatformCustomerStatus).toHaveBeenCalledWith({ customerId: 7, status: "suspended", actorUserId: 1 });
+    const ordinaryCaller = appRouter.createCaller(ordinaryUserContext);
+    await expect(ordinaryCaller.platformAdmin.customers.setStatus({ customerId: 7, status: "active" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("registra e consulta interações comerciais pelo cliente selecionado", async () => {
+    vi.mocked(db.addPlatformCustomerInteraction).mockResolvedValue(12);
+    vi.mocked(db.listPlatformCustomerInteractions).mockResolvedValue([] as never);
+    const caller = appRouter.createCaller(platformAdminContext);
+    await expect(caller.platformAdmin.customers.addInteraction({ customerId: 7, kind: "whatsapp", description: "Retorno comercial solicitado para a próxima semana." })).resolves.toEqual({ interactionId: 12 });
+    expect(db.addPlatformCustomerInteraction).toHaveBeenCalledWith(expect.objectContaining({ customerId: 7, kind: "whatsapp", actorUserId: 1 }));
+    await expect(caller.platformAdmin.customers.history({ customerId: 7 })).resolves.toEqual([]);
   });
 });

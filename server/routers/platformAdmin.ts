@@ -24,5 +24,14 @@ export const platformAdminRouter = router({
       await campaignDb.markPlatformCustomerAccessReleased({ customerId: input.customerId, invitationId, actorUserId: ctx.user.id });
       return { invitationUrl: `${input.origin}/onboarding?invite=${token}`, phone: customer.customer.contactPhone };
     }),
+    setStatus: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive(), status: z.enum(["active", "suspended"]) })).mutation(async ({ ctx, input }) => {
+      await campaignDb.updatePlatformCustomerStatus({ ...input, actorUserId: ctx.user.id });
+      return { updated: true };
+    }),
+    history: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive() })).query(async ({ input }) => campaignDb.listPlatformCustomerInteractions(input.customerId)),
+    addInteraction: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive(), kind: z.string().trim().min(2).max(48), description: z.string().trim().min(3).max(4000) })).mutation(async ({ ctx, input }) => {
+      const interactionId = await campaignDb.addPlatformCustomerInteraction({ ...input, actorUserId: ctx.user.id });
+      return { interactionId };
+    }),
   }),
 });

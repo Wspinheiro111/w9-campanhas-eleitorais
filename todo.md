@@ -255,3 +255,5 @@
 - [x] Remover fisicamente as tabelas legadas de revendedores após confirmação explícita de exclusão irreversível; módulo, rotas e interface já foram removidos.
 - [x] Criar painel de administrador geral para cadastrar compradores diretos, organizações e status comercial.
 - [x] Liberar acesso ao comprador por convite seguro gerado pelo administrador geral e rastrear o status do acesso.
+- [x] Permitir suspender e reativar clientes diretamente pelo painel de administrador geral.
+- [x] Registrar e exibir histórico comercial auditável no perfil de cada cliente.
