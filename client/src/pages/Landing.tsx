@@ -1,52 +1,60 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/BrandMark";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
+  ArrowDown,
   ArrowRight,
-  BarChart3,
   Bot,
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
   ClipboardCheck,
   Landmark,
-  LockKeyhole,
   MapPinned,
   Megaphone,
+  Play,
   ShieldCheck,
   Target,
   UsersRound,
   WifiOff,
 } from "lucide-react";
-import { Link } from "wouter";
 import { useState } from "react";
+import { Link } from "wouter";
 
-const modules = [
-  { icon: Target, title: "Planejamento e estratégia", text: "Metas, cenários, tarefas, agenda e prioridades para transformar o plano em ritmo de campanha." },
-  { icon: UsersRound, title: "Equipe e voluntariado", text: "Funções, equipes, formação, certificados, desempenho e mobilização de quem faz a campanha acontecer." },
-  { icon: MapPinned, title: "Território e relacionamento", text: "CRM eleitoral, segmentação, demandas, mapa de calor, pipeline e leitura real das regiões." },
-  { icon: WifiOff, title: "Campo offline", text: "Visitas, playbooks, check-ins e ações de rua continuam registradas mesmo sem conexão." },
-  { icon: Megaphone, title: "Conteúdo e comunicação", text: "Calendário editorial, materiais, comunicação consentida e histórico por contato e campanha." },
-  { icon: BarChart3, title: "Eventos e mobilização", text: "RSVP, presença, metas, indicadores territoriais e alertas para não deixar público na cadeira vazia." },
-  { icon: Landmark, title: "Financeiro e jurídico", text: "Receitas, despesas, documentos, aprovações, processos, auditoria e relatórios sem expor valores sensíveis." },
-  { icon: Bot, title: "W9 Inteligência", text: "Apoio com Gemini, fontes oficiais, criação de materiais e respostas informativas para a operação." },
+const storyLines = [
+  "Toda campanha começa com esperança grande. A organização é o que transforma intenção em presença.",
+  "WhatsApp lotado, planilhas que não fecham e uma equipe que precisa decidir mais rápido.",
+  "Quando cada frente opera separada, contatos, tarefas e oportunidades se perdem no caminho.",
+  "Enquanto a coordenação apaga incêndios, o território deixa de receber atenção estratégica.",
+  "E se tudo funcionasse em um só sistema? Um QG digital em que cada movimento fica visível.",
+  "Esse é o W9 Campanhas Eleitorais: operação, inteligência e equipe na mesma direção.",
 ];
 
-const outcomes = [
-  { number: "01", title: "Menos improviso", text: "A coordenação enxerga o que precisa acontecer agora e no próximo movimento territorial." },
-  { number: "02", title: "Mais presença", text: "Equipe, voluntários, eventos e campo trabalham com metas e responsáveis." },
-  { number: "03", title: "Decisão mais rápida", text: "Indicadores e relatórios mostram onde reforçar mobilização e relacionamento." },
+const painPoints = [
+  { icon: Megaphone, title: "Mensagens e contatos dispersos", text: "Conversas, demandas e pessoas importantes acabam separadas em grupos e planilhas." },
+  { icon: UsersRound, title: "Lideranças sem acompanhamento", text: "A coordenação precisa saber quem está ativo, em qual região e com qual prioridade." },
+  { icon: CalendarDays, title: "Agenda dupla, equipe no escuro", text: "Tarefas e compromissos precisam de responsável, prazo e contexto para acontecer." },
+  { icon: Landmark, title: "Financeiro sem controle central", text: "Documentos e lançamentos exigem organização, rastreabilidade e prestação de contas." },
+  { icon: MapPinned, title: "Território sem leitura atual", text: "O mapa de atuação precisa revelar onde há relacionamento, demanda e mobilização." },
 ];
 
-const operatingSignals = [
-  { icon: CalendarDays, title: "Ritmo diário", text: "Prazos, tarefas e ações em uma visão única." },
-  { icon: UsersRound, title: "Time alinhado", text: "Responsáveis, formação e entregas visíveis." },
-  { icon: BarChart3, title: "Decisão com dados", text: "Indicadores para reforçar o que funciona." },
+const solutionCards = [
+  { number: "01", icon: UsersRound, title: "Organize", detail: "CRM, equipe, agenda, tarefas e demandas em uma visão compartilhada." },
+  { number: "02", icon: MapPinned, title: "Mobilize", detail: "Território, campo offline, eventos e relacionamentos com responsáveis definidos." },
+  { number: "03", icon: ClipboardCheck, title: "Controle", detail: "Financeiro, jurídico, relatórios, segurança e auditoria para a operação." },
+  { number: "04", icon: Bot, title: "Inteligência", detail: "Apoio com IA, indicadores e conteúdo para priorizar a próxima decisão." },
+];
+
+const allModules = [
+  "Planejamento e estratégia", "Equipe e voluntariado", "CRM eleitoral e território", "Campo offline", "Comunicação e conteúdos", "Eventos e mobilização", "Financeiro e jurídico", "PWA e segurança",
 ];
 
 export default function Landing() {
+  const [activeLine, setActiveLine] = useState(0);
   const [demoForm, setDemoForm] = useState({ name: "", email: "", phone: "", organizationName: "", role: "candidate" as "candidate" | "party" | "coordination" | "other", city: "", state: "", message: "", preferredDemoAt: "", consent: false, website: "" });
   const [demoSubmitted, setDemoSubmitted] = useState(false);
   const requestDemo = trpc.demoRequests.submit.useMutation({
@@ -56,243 +64,89 @@ export default function Landing() {
     },
   });
 
-  return (
-    <main className="min-h-screen overflow-hidden bg-[#fffaf2] text-[#12382b]">
-      <section className="relative isolate overflow-hidden bg-[#103527] px-5 pb-24 pt-6 text-white sm:px-8 lg:px-12">
-        <div
-          className="absolute inset-0 -z-10 opacity-90"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 78% 8%, rgba(255,111,0,.98) 0, transparent 22%), radial-gradient(circle at 72% 78%, rgba(255,211,53,.68) 0, transparent 26%), radial-gradient(circle at 10% 95%, rgba(39,145,102,.72) 0, transparent 34%)",
-          }}
-        />
+  const openTrailer = () => document.getElementById("trailer")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
-        <nav className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-[#ffcf39] text-[#103527]">
-              <ShieldCheck className="size-5" />
-            </span>
-            <span className="font-serif text-lg font-bold sm:text-xl">W9 Campanhas Eleitorais</span>
+  return <main className="min-h-screen overflow-hidden bg-[#0A132E] font-sans text-white selection:bg-[#FFC300] selection:text-[#0F1C3F]">
+    <section className="relative overflow-hidden border-b border-white/10 bg-[#0A132E]">
+      <div className="pointer-events-none absolute inset-0 opacity-[0.22]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.22) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+      <div className="pointer-events-none absolute -right-40 top-[-13rem] size-[35rem] rounded-full bg-[#00A859]/20 blur-[110px]" />
+      <div className="pointer-events-none absolute -left-40 bottom-[-15rem] size-[35rem] rounded-full bg-[#FFC300]/15 blur-[110px]" />
+
+      <nav className="relative z-10 mx-auto flex max-w-[1280px] items-center justify-between border-b border-white/10 px-5 py-4 sm:px-8">
+        <div className="flex items-center gap-3">
+          <BrandMark />
+          <Badge className="hidden border-white/15 bg-white/5 text-[10px] font-bold tracking-wider text-white/75 sm:inline-flex">ELEIÇÕES 2026</Badge>
+        </div>
+        <Link href="/login" className="rounded-full border border-[#FFC300]/70 bg-[#FFC300] px-4 py-2 text-xs font-black tracking-wide text-[#0F1C3F] transition hover:bg-white sm:px-5">VER SISTEMA AO VIVO</Link>
+      </nav>
+
+      <div className="relative z-10 mx-auto grid max-w-[1280px] gap-12 px-5 pb-20 pt-16 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:gap-16 lg:pb-28 lg:pt-24">
+        <div>
+          <p className="inline-flex rounded-full border border-[#FFC300]/30 bg-[#FFC300]/10 px-3 py-1 text-[10px] font-black tracking-[.16em] text-[#FFC300]">TRAILER OFICIAL 30s • ÁUDIO REAL PT-BR</p>
+          <h1 className="mt-6 max-w-[720px] font-[Anton,sans-serif] text-5xl uppercase leading-[.88] tracking-tight sm:text-6xl md:text-7xl lg:text-[82px]">
+            Toda campanha sente a mesma dor. <span className="text-[#FFC300]">Poucas encontram a solução.</span>
+          </h1>
+          <p className="mt-7 max-w-xl text-base leading-7 text-white/65 sm:text-lg">O sistema que transforma <strong className="text-white">caos em estratégia</strong> e estratégia em <strong className="text-[#FFC300]">execução.</strong> O <strong className="text-white">W9 Campanhas Eleitorais</strong> centraliza a operação para candidatos, partidos e coordenações.</p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button onClick={openTrailer} className="rounded-full bg-[#FFC300] px-6 font-black tracking-wide text-[#0F1C3F] hover:bg-white"><Play className="mr-2 size-4 fill-current" />OUVIR TRAILER DE 30s</Button>
+            <a href="#roteiro" className="inline-flex items-center rounded-full border border-white/20 px-5 py-2 text-xs font-bold tracking-wide text-white/90 transition hover:bg-white/10">LER ROTEIRO COMPLETO <ArrowDown className="ml-2 size-3.5" /></a>
           </div>
-          <Link href="/login" className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-bold transition hover:bg-white/20">
-            Acessar conta
-          </Link>
-        </nav>
-
-        <div className="mx-auto grid max-w-7xl gap-12 pb-4 pt-20 lg:grid-cols-[1.15fr_.85fr] lg:items-center">
-          <div>
-            <Badge className="border border-[#ffcf39]/55 bg-[#ffcf39]/15 font-bold text-[#fff0a8]">
-              A plataforma para campanhas que querem chegar mais fortes
-            </Badge>
-            <h1 className="mt-6 max-w-4xl font-serif text-5xl font-bold leading-[1.01] tracking-tight sm:text-6xl lg:text-7xl">
-              Quem quer se eleger não pode depender de planilhas soltas.
-            </h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-white/80">
-              O <strong>W9 Campanhas Eleitorais</strong> transforma pessoas, território, eventos, dados e decisões em uma operação organizada para candidatos, partidos e coordenações que querem disputar com método.
-            </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="bg-[#ffcf39] font-bold text-[#103527] hover:bg-[#ffe06b]">
-                <Link href="/login">
-                  Quero organizar minha campanha <ArrowRight className="ml-2 size-4" />
-                </Link>
-              </Button>
-              <a href="#recursos" className="rounded-md border border-white/30 bg-white/5 px-5 py-2.5 text-sm font-bold transition hover:bg-white/15">
-                Ver tudo que o sistema entrega
-              </a>
-            </div>
-            <p className="mt-7 text-sm font-medium text-[#fff0a8]">
-              “Campanha bem-preparada sabe onde está, quem está fazendo e qual é o próximo passo.”
-            </p>
-
-            <div className="mt-12 grid max-w-2xl gap-3 sm:grid-cols-3">
-              {operatingSignals.map(({ icon: Icon, title, text }) => (
-                <div key={title} className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                  <Icon className="size-5 text-[#ffcf39]" />
-                  <p className="mt-4 text-sm font-semibold">{title}</p>
-                  <p className="mt-1 text-xs leading-5 text-white/65">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-white/20 bg-white p-5 text-[#103527] shadow-2xl shadow-black/20 sm:p-7">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[.16em] text-[#a15b00]">Central de comando</p>
-                <p className="mt-2 font-serif text-3xl font-bold">Sua campanha, em movimento.</p>
-              </div>
-              <span className="rounded-full bg-[#ffefe0] p-3 text-[#ef6c00]">
-                <Target className="size-5" />
-              </span>
-            </div>
-
-            <div className="mt-7 grid gap-4">
-              <div className="rounded-2xl bg-[#eff7f0] p-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-[#466352]">Prioridades da coordenação</span>
-                  <ClipboardCheck className="size-5 text-[#ef6c00]" />
-                </div>
-                <p className="mt-3 font-serif text-2xl font-bold">Do planejamento ao voto</p>
-                <div className="mt-4 h-2 rounded-full bg-[#d7ead9]">
-                  <div className="h-2 w-4/5 rounded-full bg-[#ef6c00]" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-2xl bg-[#103527] p-4 text-white">
-                  <MapPinned className="size-5 text-[#ffcf39]" />
-                  <p className="mt-5 text-sm font-semibold">Território</p>
-                  <p className="mt-1 text-xs text-white/65">Onde mobilizar agora.</p>
-                </div>
-                <div className="rounded-2xl bg-[#ffcf39] p-4 text-[#103527]">
-                  <Bot className="size-5" />
-                  <p className="mt-5 text-sm font-bold">Inteligência</p>
-                  <p className="mt-1 text-xs">Apoio para agir melhor.</p>
-                </div>
-              </div>
-            </div>
+          <div className="mt-10 grid max-w-xl grid-cols-3 gap-4 border-t border-white/10 pt-6">
+            {[['+10 mil', 'eleitores mapeados por campanha'], ['100%', 'organizado, sem planilha solta'], ['24/7', 'QG digital no bolso']].map(([value, label]) => <div key={value}><p className="font-[Anton,sans-serif] text-2xl text-[#FFC300]">{value}</p><p className="mt-1 text-[10px] font-bold uppercase leading-4 tracking-wide text-white/45">{label}</p></div>)}
           </div>
         </div>
-      </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-12">
-        <div className="grid gap-10 lg:grid-cols-[.82fr_1.18fr]">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-[#ef6c00]">Por que investir agora</p>
-            <h2 className="mt-3 font-serif text-4xl font-bold leading-tight">A eleição é disputada todos os dias. Sua organização também precisa ser.</h2>
-            <p className="mt-5 text-base leading-7 text-[#607266]">
-              O W9 Campanhas Eleitorais reúne a rotina inteira da campanha: quem está na rua, o que acontece em cada território, onde há oportunidade e quais decisões não podem esperar.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {outcomes.map(({ number, title, text }) => (
-              <article key={number} className="rounded-3xl border border-[#f1d7b4] bg-white p-6 shadow-sm">
-                <span className="font-serif text-3xl font-bold text-[#ef6c00]">{number}</span>
-                <h3 className="mt-8 font-serif text-2xl font-bold">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-[#607266]">{text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="recursos" className="bg-[#f6e8d9] px-5 py-20 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-7xl">
-          <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-[#ef6c00]">Muito além de um painel</p>
-            <h2 className="mt-3 font-serif text-4xl font-bold">Uma plataforma completa para fazer a campanha avançar.</h2>
-            <p className="mt-5 text-base leading-7 text-[#607266]">
-              Planejamento, rua, voluntariado, comunicação, documentos, resultados e segurança de acesso trabalham juntos em uma única plataforma.
-            </p>
-          </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            {modules.map(({ icon: Icon, title, text }) => (
-              <article key={title} className="rounded-3xl border border-[#f0d2ae] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                <span className="flex size-11 items-center justify-center rounded-2xl bg-[#fff1df] text-[#ef6c00]">
-                  <Icon className="size-5" />
-                </span>
-                <h3 className="mt-7 font-serif text-xl font-bold">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-[#607266]">{text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#fffaf2] px-5 py-20 sm:px-8 lg:px-12">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.78fr_1.22fr] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-[#ef6c00]">Conheça a plataforma em 30 segundos</p>
-            <h2 className="mt-3 font-serif text-4xl font-bold leading-tight">Do comando à rua, cada frente da campanha conversa com a próxima.</h2>
-            <p className="mt-5 text-base leading-7 text-[#607266]">Assista à apresentação do W9 Campanhas Eleitorais e veja como planejamento, território, equipe e indicadores podem atuar na mesma direção.</p>
-            <a href="#demonstracao" className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-[#ef6c00] underline-offset-4 hover:underline">Quero ver uma demonstração personalizada <ArrowRight className="size-4" /></a>
-          </div>
-          <div className="overflow-hidden rounded-[2rem] border-8 border-[#103527] bg-[#103527] shadow-2xl shadow-[#103527]/20">
-            <video className="aspect-video w-full bg-[#103527]" controls playsInline preload="metadata" aria-label="Vídeo de apresentação do W9 Campanhas Eleitorais">
-              <source src="/manus-storage/w9-campanhas-eleitorais-apresentacao_dece88d3.mp4" type="video/mp4" />
-              Seu navegador não suporta a reprodução de vídeo.
-            </video>
-          </div>
-        </div>
-      </section>
-
-      <section id="demonstracao" className="bg-[#ffcf39] px-5 py-20 text-[#103527] sm:px-8 lg:px-12">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.82fr_1.18fr] lg:items-start">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-[#a15b00]">Demonstração personalizada</p>
-            <h2 className="mt-3 max-w-3xl font-serif text-4xl font-bold leading-tight">Veja o W9 Campanhas Eleitorais aplicado à realidade da sua campanha.</h2>
-            <p className="mt-5 max-w-xl text-base leading-7 text-[#315445]">Conte o que está em jogo e a administração prepara uma apresentação focada em organização, território, mobilização, segurança e tomada de decisão.</p>
-            <div className="mt-8 space-y-3 text-sm font-medium text-[#315445]">
-              {[
-                "Conversa objetiva para candidatos, partidos e coordenações.",
-                "Demonstração guiada pelos desafios reais da sua operação.",
-                "Sem compromisso e sem exibição de valores na página pública.",
-              ].map((text) => <p key={text} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0" />{text}</p>)}
+        <section id="trailer" className="relative rounded-[28px] border border-white/10 bg-[#12204A]/90 p-3 shadow-[0_40px_120px_rgba(0,0,0,.55)] backdrop-blur">
+          <div className="flex items-center justify-between border-b border-white/10 px-3 pb-3"><div className="flex gap-1.5"><i className="size-2.5 rounded-full bg-red-400" /><i className="size-2.5 rounded-full bg-[#FFC300]" /><i className="size-2.5 rounded-full bg-[#00A859]" /></div><p className="text-[9px] font-black tracking-[.18em] text-white/40">W9_PLAYER • ÁUDIO REAL</p></div>
+          <div className="p-3 sm:p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[.14em] text-[#FFC300]">PRONTO PARA APRESENTAR • 30s</p><p className="mt-3 font-[Anton,sans-serif] text-2xl uppercase leading-none sm:text-3xl">{storyLines[activeLine]}</p></div><span className="shrink-0 rounded-full bg-[#00A859]/20 px-2 py-1 text-[9px] font-bold text-[#67ecad]">VOZ PT-BR</span></div>
+            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#FFC300] transition-all" style={{ width: `${((activeLine + 1) / storyLines.length) * 100}%` }} /></div>
+            <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+              <video className="aspect-video w-full" controls playsInline preload="metadata" aria-label="Vídeo de apresentação do W9 Campanhas Eleitorais"><source src="/manus-storage/w9-campanhas-eleitorais-apresentacao_dece88d3.mp4" type="video/mp4" />Seu navegador não suporta a reprodução de vídeo.</video>
             </div>
+            <div className="mt-4 max-h-36 space-y-1 overflow-auto pr-1">{storyLines.map((line, index) => <button type="button" key={line} onClick={() => setActiveLine(index)} className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-xs transition ${activeLine === index ? "bg-[#FFC300] text-[#0F1C3F]" : "text-white/65 hover:bg-white/10"}`}><span className="grid size-5 shrink-0 place-items-center rounded-full bg-black/20 text-[10px] font-black">{index + 1}</span><span className="line-clamp-2 leading-5">{line}</span></button>)}</div>
           </div>
+        </section>
+      </div>
+    </section>
 
-          <form className="grid gap-4 rounded-[2rem] bg-white p-6 shadow-xl shadow-[#9b5c00]/20 sm:grid-cols-2 sm:p-8" onSubmit={(event) => {
-            event.preventDefault();
-            setDemoSubmitted(false);
-            requestDemo.mutate({
-              ...demoForm,
-              phone: demoForm.phone.replace(/\D/g, ""),
-              city: demoForm.city || undefined,
-              state: demoForm.state || undefined,
-              message: demoForm.message || undefined,
-              preferredDemoAt: new Date(demoForm.preferredDemoAt),
-              consent: true,
-            });
-          }}>
-            <div className="sm:col-span-2"><p className="font-serif text-2xl font-bold">Solicite sua demonstração</p><p className="mt-1 text-sm text-[#607266]">Preencha os dados e entraremos em contato para apresentar a plataforma.</p></div>
-            <div className="grid gap-2"><Label htmlFor="demo-name">Seu nome</Label><Input id="demo-name" value={demoForm.name} onChange={(event) => setDemoForm((current) => ({ ...current, name: event.target.value }))} required maxLength={180} /></div>
-            <div className="grid gap-2"><Label htmlFor="demo-email">E-mail profissional</Label><Input id="demo-email" type="email" value={demoForm.email} onChange={(event) => setDemoForm((current) => ({ ...current, email: event.target.value }))} required maxLength={320} /></div>
-            <div className="grid gap-2"><Label htmlFor="demo-phone">Telefone / WhatsApp</Label><Input id="demo-phone" inputMode="tel" value={demoForm.phone} onChange={(event) => setDemoForm((current) => ({ ...current, phone: event.target.value }))} required placeholder="(00) 00000-0000" maxLength={32} /></div>
-            <div className="grid gap-2"><Label htmlFor="demo-org">Campanha, partido ou organização</Label><Input id="demo-org" value={demoForm.organizationName} onChange={(event) => setDemoForm((current) => ({ ...current, organizationName: event.target.value }))} required maxLength={180} /></div>
-            <div className="grid gap-2"><Label htmlFor="demo-role">Seu papel</Label><select id="demo-role" className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]" value={demoForm.role} onChange={(event) => setDemoForm((current) => ({ ...current, role: event.target.value as typeof current.role }))}><option value="candidate">Candidato(a)</option><option value="party">Partido</option><option value="coordination">Coordenação de campanha</option><option value="other">Outro</option></select></div>
-            <div className="grid grid-cols-[1fr_72px] gap-3"><div className="grid gap-2"><Label htmlFor="demo-city">Cidade</Label><Input id="demo-city" value={demoForm.city} onChange={(event) => setDemoForm((current) => ({ ...current, city: event.target.value }))} maxLength={120} /></div><div className="grid gap-2"><Label htmlFor="demo-state">UF</Label><Input id="demo-state" value={demoForm.state} onChange={(event) => setDemoForm((current) => ({ ...current, state: event.target.value.toUpperCase().slice(0, 2) }))} maxLength={2} /></div></div>
-            <div className="grid gap-2 sm:col-span-2"><Label htmlFor="demo-time">Melhor data e horário para a demonstração</Label><Input id="demo-time" type="datetime-local" min={new Date().toISOString().slice(0, 16)} value={demoForm.preferredDemoAt} onChange={(event) => setDemoForm((current) => ({ ...current, preferredDemoAt: event.target.value }))} required /><p className="text-xs text-muted-foreground">O horário é uma preferência. A confirmação será feita pela administração.</p></div>
-            <div className="grid gap-2 sm:col-span-2"><Label htmlFor="demo-message">O que você quer organizar melhor? <span className="font-normal text-muted-foreground">(opcional)</span></Label><Textarea id="demo-message" value={demoForm.message} onChange={(event) => setDemoForm((current) => ({ ...current, message: event.target.value }))} maxLength={2000} rows={3} placeholder="Ex.: equipe de rua, território, agenda ou prestação de contas." /></div>
-            <div className="hidden" aria-hidden="true"><Label htmlFor="demo-website">Website</Label><Input id="demo-website" tabIndex={-1} autoComplete="off" value={demoForm.website} onChange={(event) => setDemoForm((current) => ({ ...current, website: event.target.value }))} /></div>
-            <Label className="flex cursor-pointer items-start gap-2 text-xs leading-5 text-[#466352] sm:col-span-2"><input type="checkbox" className="mt-1" checked={demoForm.consent} onChange={(event) => setDemoForm((current) => ({ ...current, consent: event.target.checked }))} required />Autorizo o contato sobre a demonstração e o tratamento destes dados exclusivamente para esse atendimento.</Label>
-            {demoSubmitted && <p className="rounded-lg bg-[#eff7f0] px-3 py-2 text-sm font-medium text-[#1d6a43] sm:col-span-2">Solicitação recebida. A administração entrará em contato para combinar a demonstração.</p>}
-            {requestDemo.error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">{requestDemo.error.message}</p>}
-            <Button type="submit" className="bg-[#ef6c00] font-bold text-white hover:bg-[#c85400] sm:col-span-2" disabled={!demoForm.consent || requestDemo.isPending}>{requestDemo.isPending ? "Enviando solicitação..." : "Solicitar demonstração"}<ArrowRight className="ml-2 size-4" /></Button>
-          </form>
+    <section id="roteiro" className="bg-[#0F1C3F] px-5 py-20 sm:px-8 lg:py-28">
+      <div className="mx-auto grid max-w-[1280px] gap-12 lg:grid-cols-[.98fr_.82fr] lg:items-center">
+        <div><p className="text-[11px] font-black uppercase tracking-[.2em] text-[#FFC300]">0–25s • A dor real</p><h2 className="mt-3 max-w-lg font-[Anton,sans-serif] text-5xl uppercase leading-[.88] sm:text-6xl">Você conhece <span className="text-white/35">essa cena?</span></h2>
+          <div className="mt-8 space-y-3">{painPoints.map(({ icon: Icon, title, text }) => <article key={title} className="flex gap-4 rounded-xl border border-white/10 bg-white/[.035] p-4 transition hover:border-[#FFC300]/35 hover:bg-white/[.06]"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white/10 text-[#FFC300]"><Icon className="size-4" /></span><div><h3 className="text-sm font-bold">{title}</h3><p className="mt-1 text-xs leading-5 text-white/50">{text}</p></div></article>)}</div>
         </div>
-      </section>
+        <aside className="relative overflow-hidden rounded-[28px] border border-[#FFC300]/20 bg-gradient-to-br from-[#FFC300] to-[#00A859] p-[1px] shadow-[0_25px_70px_rgba(0,0,0,.35)]"><div className="relative h-full rounded-[27px] bg-[#0A132E] p-7"><p className="text-[10px] font-black tracking-[.16em] text-[#FFC300]">LOCUÇÃO REAL • CLIQUE PARA OUVIR</p><p className="mt-5 font-[Anton,sans-serif] text-3xl uppercase leading-[.95]">“O caos não é falta de trabalho. É falta de sistema.”</p><p className="mt-5 text-sm leading-6 text-white/60">Centralize contatos, agenda, território, tarefas e evidências para que a campanha tenha memória, ritmo e responsáveis claros.</p><Button onClick={openTrailer} variant="outline" className="mt-7 border-[#FFC300]/60 bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white"><Play className="mr-2 size-4 fill-current" />OUVIR AGORA</Button></div></aside>
+      </div>
+    </section>
 
-      <section className="bg-[#103527] px-5 py-20 text-white sm:px-8 lg:px-12">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_.9fr] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-[#ffcf39]">Para candidatos, partidos e coordenações</p>
-            <h2 className="mt-3 max-w-3xl font-serif text-4xl font-bold">Não deixe a próxima eleição ser decidida pela falta de organização.</h2>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
-              Da primeira reunião à reta final, o W9 Campanhas Eleitorais mantém sua equipe focada no que gera presença, relacionamento e capacidade de decisão.
-            </p>
-            <div className="mt-8 grid gap-3 text-sm text-white/80 sm:grid-cols-2">
-              {["Multi-organização e papéis definidos", "PWA para uso em campo", "Auditoria e controles operacionais", "Inteligência com apoio de IA"].map((text) => (
-                <span key={text} className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-[#ffcf39]" />
-                  {text}
-                </span>
-              ))}
-            </div>
-          </div>
+    <section className="bg-[#0A132E] px-5 py-20 sm:px-8 lg:py-28">
+      <div className="mx-auto max-w-[1280px]"><div className="max-w-3xl"><p className="text-[11px] font-black uppercase tracking-[.2em] text-[#00A859]">25–60s • A virada</p><h2 className="mt-3 font-[Anton,sans-serif] text-5xl uppercase leading-[.88] sm:text-6xl">Um só sistema. <span className="text-[#FFC300]">Toda a campanha em movimento.</span></h2><p className="mt-6 max-w-2xl text-base leading-7 text-white/60">O W9 Campanhas Eleitorais conecta o que a coordenação precisa enxergar para agir: pessoas, território, rotina, comunicação e controles operacionais.</p></div>
+        <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{solutionCards.map(({ number, icon: Icon, title, detail }, index) => <article key={title} className={`group rounded-2xl border p-6 transition hover:-translate-y-1 ${index === 1 ? "border-[#FFC300] bg-[#FFC300] text-[#0F1C3F]" : index === 3 ? "border-[#00A859]/40 bg-[#00A859]/10" : "border-white/10 bg-white/[.035]"}`}><div className="flex items-center justify-between"><span className="font-[Anton,sans-serif] text-2xl opacity-50">{number}</span><Icon className={`size-5 ${index === 1 ? "" : "text-[#FFC300]"}`} /></div><h3 className="mt-12 font-[Anton,sans-serif] text-3xl uppercase">{title}</h3><p className={`mt-3 text-sm leading-6 ${index === 1 ? "text-[#0F1C3F]/70" : "text-white/55"}`}>{detail}</p></article>)}</div>
+        <div className="mt-8 flex flex-wrap gap-2">{allModules.map(module => <span key={module} className="rounded-full border border-white/10 bg-white/[.035] px-3 py-1.5 text-xs font-semibold text-white/65">{module}</span>)}</div>
+      </div>
+    </section>
 
-          <div className="rounded-[2rem] border border-white/15 bg-white/10 p-7 backdrop-blur">
-            <LockKeyhole className="size-7 text-[#ffcf39]" />
-            <p className="mt-6 font-serif text-3xl font-bold">Acesso à conta</p>
-            <p className="mt-3 text-sm leading-6 text-white/65">Entre pelo método mais adequado à sua conta: Google, e-mail e senha, MFA ou passkey.</p>
-            <Button asChild className="mt-7 w-full bg-[#ffcf39] font-bold text-[#103527] hover:bg-[#ffe06b]">
-              <Link href="/login">
-                Entrar na conta <ArrowRight className="ml-2 size-4" />
-              </Link>
-            </Button>
-            <p className="mt-4 text-center text-xs text-white/50">Quer conhecer a ferramenta? Fale com a administração para organizar a implantação.</p>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
+    <section id="demonstracao" className="relative overflow-hidden bg-[#FFC300] px-5 py-20 text-[#0F1C3F] sm:px-8 lg:py-28">
+      <div className="pointer-events-none absolute inset-0 opacity-[.15]" style={{ backgroundImage: "linear-gradient(90deg, #0F1C3F 1px, transparent 1px), linear-gradient(#0F1C3F 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
+      <div className="relative mx-auto grid max-w-[1280px] gap-12 lg:grid-cols-[.86fr_1.14fr] lg:items-start"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-[#0F1C3F]/65">60–90s • A próxima decisão</p><h2 className="mt-3 font-[Anton,sans-serif] text-5xl uppercase leading-[.88] sm:text-6xl">Sua campanha merece método, não improviso.</h2><p className="mt-6 max-w-xl text-base leading-7 text-[#0F1C3F]/75">Conte o que sua coordenação precisa organizar. A demonstração mostra como o W9 Campanhas Eleitorais se encaixa na realidade de candidatos, partidos e equipes.</p><div className="mt-8 space-y-3">{["Demonstração guiada pelos desafios da operação.", "Horário preferencial escolhido por você.", "Sem compromisso e sem valores expostos na página pública."].map(item => <p key={item} className="flex items-start gap-2 text-sm font-bold"><CheckCircle2 className="mt-0.5 size-4" />{item}</p>)}</div></div>
+        <form className="grid gap-4 rounded-[26px] bg-[#0F1C3F] p-6 text-white shadow-[0_20px_60px_rgba(15,28,63,.3)] sm:grid-cols-2 sm:p-8" onSubmit={(event) => { event.preventDefault(); setDemoSubmitted(false); requestDemo.mutate({ ...demoForm, phone: demoForm.phone.replace(/\D/g, ""), city: demoForm.city || undefined, state: demoForm.state || undefined, message: demoForm.message || undefined, preferredDemoAt: new Date(demoForm.preferredDemoAt), consent: true }); }}>
+          <div className="sm:col-span-2"><p className="font-[Anton,sans-serif] text-3xl uppercase">Quero uma demonstração</p><p className="mt-1 text-sm text-white/55">Preencha os dados e a administração entra em contato.</p></div>
+          <div className="grid gap-2"><Label htmlFor="demo-name" className="text-white/80">Seu nome</Label><Input id="demo-name" className="border-white/15 bg-white/5 text-white" value={demoForm.name} onChange={(event) => setDemoForm(current => ({ ...current, name: event.target.value }))} required maxLength={180} /></div>
+          <div className="grid gap-2"><Label htmlFor="demo-email" className="text-white/80">E-mail profissional</Label><Input id="demo-email" className="border-white/15 bg-white/5 text-white" type="email" value={demoForm.email} onChange={(event) => setDemoForm(current => ({ ...current, email: event.target.value }))} required maxLength={320} /></div>
+          <div className="grid gap-2"><Label htmlFor="demo-phone" className="text-white/80">Telefone / WhatsApp</Label><Input id="demo-phone" className="border-white/15 bg-white/5 text-white" inputMode="tel" value={demoForm.phone} onChange={(event) => setDemoForm(current => ({ ...current, phone: event.target.value }))} required placeholder="(00) 00000-0000" maxLength={32} /></div>
+          <div className="grid gap-2"><Label htmlFor="demo-org" className="text-white/80">Campanha, partido ou organização</Label><Input id="demo-org" className="border-white/15 bg-white/5 text-white" value={demoForm.organizationName} onChange={(event) => setDemoForm(current => ({ ...current, organizationName: event.target.value }))} required maxLength={180} /></div>
+          <div className="grid gap-2"><Label htmlFor="demo-role" className="text-white/80">Seu papel</Label><select id="demo-role" className="h-9 rounded-md border border-white/15 bg-white/5 px-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-[#FFC300]" value={demoForm.role} onChange={(event) => setDemoForm(current => ({ ...current, role: event.target.value as typeof current.role }))}><option className="text-[#0F1C3F]" value="candidate">Candidato(a)</option><option className="text-[#0F1C3F]" value="party">Partido</option><option className="text-[#0F1C3F]" value="coordination">Coordenação de campanha</option><option className="text-[#0F1C3F]" value="other">Outro</option></select></div>
+          <div className="grid grid-cols-[1fr_72px] gap-3"><div className="grid gap-2"><Label htmlFor="demo-city" className="text-white/80">Cidade</Label><Input id="demo-city" className="border-white/15 bg-white/5 text-white" value={demoForm.city} onChange={(event) => setDemoForm(current => ({ ...current, city: event.target.value }))} maxLength={120} /></div><div className="grid gap-2"><Label htmlFor="demo-state" className="text-white/80">UF</Label><Input id="demo-state" className="border-white/15 bg-white/5 text-white" value={demoForm.state} onChange={(event) => setDemoForm(current => ({ ...current, state: event.target.value.toUpperCase().slice(0, 2) }))} maxLength={2} /></div></div>
+          <div className="grid gap-2 sm:col-span-2"><Label htmlFor="demo-time" className="text-white/80">Melhor data e horário para a demonstração</Label><Input id="demo-time" className="border-white/15 bg-white/5 text-white" type="datetime-local" min={new Date().toISOString().slice(0, 16)} value={demoForm.preferredDemoAt} onChange={(event) => setDemoForm(current => ({ ...current, preferredDemoAt: event.target.value }))} required /><p className="text-xs text-white/45">O horário é uma preferência. A confirmação é feita pela administração.</p></div>
+          <div className="grid gap-2 sm:col-span-2"><Label htmlFor="demo-message" className="text-white/80">O que você quer organizar melhor? <span className="font-normal text-white/45">(opcional)</span></Label><Textarea id="demo-message" className="border-white/15 bg-white/5 text-white" value={demoForm.message} onChange={(event) => setDemoForm(current => ({ ...current, message: event.target.value }))} maxLength={2000} rows={3} placeholder="Ex.: equipe de rua, território, agenda ou prestação de contas." /></div>
+          <div className="hidden" aria-hidden="true"><Label htmlFor="demo-website">Website</Label><Input id="demo-website" tabIndex={-1} autoComplete="off" value={demoForm.website} onChange={(event) => setDemoForm(current => ({ ...current, website: event.target.value }))} /></div>
+          <Label className="flex cursor-pointer items-start gap-2 text-xs leading-5 text-white/55 sm:col-span-2"><input type="checkbox" className="mt-1 accent-[#FFC300]" checked={demoForm.consent} onChange={(event) => setDemoForm(current => ({ ...current, consent: event.target.checked }))} required />Autorizo o contato sobre a demonstração e o tratamento destes dados exclusivamente para esse atendimento.</Label>
+          {demoSubmitted && <p className="rounded-lg bg-[#00A859]/20 px-3 py-2 text-sm font-medium text-[#8af5bd] sm:col-span-2">Solicitação recebida. A administração entrará em contato para combinar a demonstração.</p>}
+          {requestDemo.error && <p className="rounded-lg bg-destructive/20 px-3 py-2 text-sm text-red-200 sm:col-span-2">{requestDemo.error.message}</p>}
+          <Button type="submit" className="bg-[#FFC300] font-black tracking-wide text-[#0F1C3F] hover:bg-white sm:col-span-2" disabled={!demoForm.consent || requestDemo.isPending}>{requestDemo.isPending ? "ENVIANDO SOLICITAÇÃO..." : "SOLICITAR DEMONSTRAÇÃO"}<ArrowRight className="ml-2 size-4" /></Button>
+        </form>
+      </div>
+    </section>
+
+    <section className="border-t border-white/10 bg-[#0A132E] px-5 py-16 sm:px-8"><div className="mx-auto flex max-w-[1280px] flex-col items-start justify-between gap-7 md:flex-row md:items-center"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-[#00A859]">W9 Campanhas Eleitorais</p><h2 className="mt-2 font-[Anton,sans-serif] text-4xl uppercase leading-[.9] sm:text-5xl">A campanha é sua. <span className="text-[#FFC300]">O sistema é o seu QG.</span></h2></div><div className="rounded-2xl border border-white/10 bg-white/[.04] p-5 md:w-[350px]"><p className="flex items-center gap-2 text-sm font-bold"><ShieldCheck className="size-4 text-[#00A859]" />Acesso à conta</p><p className="mt-2 text-xs leading-5 text-white/55">Entre com Google, e-mail e senha, MFA ou passkey para acessar sua operação.</p><Button asChild className="mt-5 w-full bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white"><Link href="/login">ENTRAR NA CONTA <ArrowRight className="ml-2 size-4" /></Link></Button></div></div></section>
+  </main>;
 }

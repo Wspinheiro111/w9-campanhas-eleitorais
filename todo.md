@@ -275,3 +275,6 @@
 - [x] Exibir alerta visual no painel interno quando existir novo pedido de demonstração não visualizado.
 - [x] Permitir que o lead escolha data e horário preferenciais para a demonstração no formulário público.
 - [x] Corrigir a conexão WebSocket de atualização em tempo real do Vite na prévia por proxy.
+- [x] Recriar a página de entrada com fidelidade ao modelo HTML enviado, preservando o acesso ao sistema.
+- [x] Aplicar em toda a plataforma a paleta de cores extraída do modelo visual enviado.
+- [x] Extrair e padronizar o logotipo do modelo HTML na landing, no painel e na tela de acesso.

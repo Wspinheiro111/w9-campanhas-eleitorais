@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 export const campaignThemes = [
+  { id: "w9", label: "W9 Oficial", description: "Navy, amarelo e verde", swatches: ["#0F1C3F", "#FFC300", "#00A859"] },
   { id: "red", label: "Vermelho e branco", description: "Rubro, branco e cinza claro", swatches: ["#b42318", "#ffffff", "#d0d5dd"] },
   { id: "green_yellow", label: "Verde e amarelo", description: "Verde bandeira, ouro e navy", swatches: ["#0b5d3b", "#f3c74d", "#102a43"] },
   { id: "blue", label: "Azul e branco", description: "Royal, celeste e azul escuro", swatches: ["#2155c7", "#ffffff", "#173b78"] },
@@ -14,7 +15,7 @@ export const campaignThemes = [
 
 export type CustomPalette = { primary: string; secondary: string; accent: string; background: string; surface: string; text: string; border: string };
 export type CampaignTheme = typeof campaignThemes[number]["id"] | "custom";
-export const defaultCustomPalette: CustomPalette = { primary: "#1f4e79", secondary: "#e8f0f7", accent: "#e1ad32", background: "#f7f9fc", surface: "#ffffff", text: "#17212b", border: "#c9d5e1" };
+export const defaultCustomPalette: CustomPalette = { primary: "#0F1C3F", secondary: "#EEF2F8", accent: "#FFC300", background: "#F8FAFC", surface: "#FFFFFF", text: "#0F1C3F", border: "#CBD5E1" };
 
 const validThemes = new Set<string>([...campaignThemes.map(theme => theme.id), "custom"]);
 const colorKeys: Array<keyof CustomPalette> = ["primary", "secondary", "accent", "background", "surface", "text", "border"];
@@ -40,7 +41,7 @@ function applyPalette(palette: CustomPalette | null) {
 interface ThemeContextType { theme: CampaignTheme; setTheme: (theme: CampaignTheme) => void; themes: typeof campaignThemes; customPalette: CustomPalette; saveCustomPalette: (palette: CustomPalette) => boolean; }
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children, defaultTheme = "neutral" }: { children: React.ReactNode; defaultTheme?: CampaignTheme }) {
+export function ThemeProvider({ children, defaultTheme = "w9" }: { children: React.ReactNode; defaultTheme?: CampaignTheme }) {
   const [theme, setThemeState] = useState<CampaignTheme>(() => { const stored = typeof window === "undefined" ? null : localStorage.getItem("w9-theme-preference"); return stored && validThemes.has(stored) ? stored as CampaignTheme : defaultTheme; });
   const [customPalette, setCustomPalette] = useState<CustomPalette>(() => parsePalette(typeof window === "undefined" ? null : localStorage.getItem("w9-custom-theme-palette")) ?? defaultCustomPalette);
   const me = trpc.auth.me.useQuery(); const updatePreference = trpc.auth.updateThemePreference.useMutation();

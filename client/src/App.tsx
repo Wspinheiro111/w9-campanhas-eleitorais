@@ -85,7 +85,7 @@ function Router() {
 }
 
 function App() {
-  return <ErrorBoundary><ThemeProvider defaultTheme="neutral"><TooltipProvider><Toaster /><PwaUpdateBanner /><Suspense fallback={<PageLoading />}><Switch>
+  return <ErrorBoundary><ThemeProvider defaultTheme="w9"><TooltipProvider><Toaster /><PwaUpdateBanner /><Suspense fallback={<PageLoading />}><Switch>
     <Route path="/" component={Landing} />
     <Route path="/login" component={Login} />
     <Route path="/onboarding" component={Onboarding} />

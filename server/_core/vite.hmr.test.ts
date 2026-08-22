@@ -18,7 +18,8 @@ describe("configuração de HMR da prévia", () => {
 
   it("mantém o HMR padrão para desenvolvimento local", () => {
     delete process.env.MANUS_WEBDEV_PROJECT_ID;
+    process.env.PORT = "3000";
     const options = getViteServerOptions({} as Server);
-    expect(options.hmr).not.toHaveProperty("clientPort");
+    expect(options.hmr).toMatchObject({ protocol: "ws", clientPort: 3000 });
   });
 });

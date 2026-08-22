@@ -20,7 +20,7 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => db.toPublicUser(opts.ctx.user)),
-    updateThemePreference: protectedProcedure.input(z.object({ themePreference: z.enum(["red", "green_yellow", "blue", "emerald", "orange", "violet", "navy_red", "neutral", "custom"]), themePalette: z.object({ primary: z.string().regex(/^#[0-9a-fA-F]{6}$/), secondary: z.string().regex(/^#[0-9a-fA-F]{6}$/), accent: z.string().regex(/^#[0-9a-fA-F]{6}$/), background: z.string().regex(/^#[0-9a-fA-F]{6}$/), surface: z.string().regex(/^#[0-9a-fA-F]{6}$/), text: z.string().regex(/^#[0-9a-fA-F]{6}$/), border: z.string().regex(/^#[0-9a-fA-F]{6}$/) }).nullable().default(null) })).mutation(async ({ ctx, input }) => {
+    updateThemePreference: protectedProcedure.input(z.object({ themePreference: z.enum(["w9", "red", "green_yellow", "blue", "emerald", "orange", "violet", "navy_red", "neutral", "custom"]), themePalette: z.object({ primary: z.string().regex(/^#[0-9a-fA-F]{6}$/), secondary: z.string().regex(/^#[0-9a-fA-F]{6}$/), accent: z.string().regex(/^#[0-9a-fA-F]{6}$/), background: z.string().regex(/^#[0-9a-fA-F]{6}$/), surface: z.string().regex(/^#[0-9a-fA-F]{6}$/), text: z.string().regex(/^#[0-9a-fA-F]{6}$/), border: z.string().regex(/^#[0-9a-fA-F]{6}$/) }).nullable().default(null) })).mutation(async ({ ctx, input }) => {
       if (input.themePreference === "custom" && !input.themePalette) throw new Error("Uma paleta personalizada é obrigatória para este tema.");
       await db.updateUserThemePreference(ctx.user.id, input.themePreference, input.themePalette);
       return { success: true, themePreference: input.themePreference };

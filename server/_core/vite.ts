@@ -8,11 +8,12 @@ import viteConfig from "../../vite.config";
 
 export function getViteServerOptions(server: Server) {
   const isHostedPreview = Boolean(process.env.MANUS_WEBDEV_PROJECT_ID);
+  const localClientPort = Number(process.env.PORT);
   return {
     middlewareMode: true,
     hmr: isHostedPreview
       ? { server, protocol: "wss" as const, clientPort: 443 }
-      : { server },
+      : { server, protocol: "ws" as const, ...(Number.isFinite(localClientPort) && localClientPort > 0 ? { clientPort: localClientPort } : {}) },
     allowedHosts: true as const,
   };
 }
