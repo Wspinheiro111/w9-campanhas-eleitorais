@@ -28,10 +28,15 @@ export const platformAdminRouter = router({
       await campaignDb.updatePlatformCustomerStatus({ ...input, actorUserId: ctx.user.id });
       return { updated: true };
     }),
-    history: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive() })).query(async ({ input }) => campaignDb.listPlatformCustomerInteractions(input.customerId)),
+    history: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive(), kind: z.string().trim().min(2).max(48).optional() })).query(async ({ input }) => campaignDb.listPlatformCustomerInteractions(input.customerId, input.kind)),
     addInteraction: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive(), kind: z.string().trim().min(2).max(48), description: z.string().trim().min(3).max(4000) })).mutation(async ({ ctx, input }) => {
       const interactionId = await campaignDb.addPlatformCustomerInteraction({ ...input, actorUserId: ctx.user.id });
       return { interactionId };
+    }),
+    scheduleNextContact: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive(), nextContactAt: z.date(), note: z.string().trim().max(500).optional() })).mutation(async ({ ctx, input }) => {
+      if (input.nextContactAt.getTime() < Date.now() - 60_000) throw new TRPCError({ code: "BAD_REQUEST", message: "O próximo contato deve ser agendado para agora ou para uma data futura." });
+      await campaignDb.schedulePlatformCustomerNextContact({ ...input, actorUserId: ctx.user.id });
+      return { scheduled: true };
     }),
   }),
 });

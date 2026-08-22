@@ -257,3 +257,6 @@
 - [x] Liberar acesso ao comprador por convite seguro gerado pelo administrador geral e rastrear o status do acesso.
 - [x] Permitir suspender e reativar clientes diretamente pelo painel de administrador geral.
 - [x] Registrar e exibir histórico comercial auditável no perfil de cada cliente.
+- [x] Filtrar o histórico comercial por tipo de interação no perfil do cliente.
+- [x] Agendar o próximo contato comercial e exibir lembrete visual no painel.
+- [x] Exportar o histórico comercial completo do cliente em PDF.

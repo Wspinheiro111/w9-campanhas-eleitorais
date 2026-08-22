@@ -257,9 +257,22 @@ export async function updatePlatformCustomerStatus(input: { customerId: number; 
   await createOrganizationAuditLog({ organizationId: customer.organization.id, actorUserId: input.actorUserId, action: `platform_customer.${input.status}`, entityType: "platform_customer", entityId: input.customerId, metadata: { organizationStatus: input.status === "suspended" ? "suspended" : "active" } });
 }
 
-export async function listPlatformCustomerInteractions(customerId: number) {
+export async function listPlatformCustomerInteractions(customerId: number, kind?: string) {
   const db = requireDb(await getDb());
-  return db.select({ interaction: platformCustomerInteractions, actor: users }).from(platformCustomerInteractions).innerJoin(users, eq(users.id, platformCustomerInteractions.createdByUserId)).where(eq(platformCustomerInteractions.customerId, customerId)).orderBy(desc(platformCustomerInteractions.createdAt)).limit(100);
+  const conditions = [eq(platformCustomerInteractions.customerId, customerId)];
+  if (kind) conditions.push(eq(platformCustomerInteractions.kind, kind));
+  return db.select({ interaction: platformCustomerInteractions, actor: users }).from(platformCustomerInteractions).innerJoin(users, eq(users.id, platformCustomerInteractions.createdByUserId)).where(and(...conditions)).orderBy(desc(platformCustomerInteractions.createdAt)).limit(100);
+}
+
+export async function schedulePlatformCustomerNextContact(input: { customerId: number; nextContactAt: Date; note?: string | null; actorUserId: number }) {
+  const db = requireDb(await getDb());
+  const customer = await getPlatformCustomer(input.customerId);
+  if (!customer) throw new Error("PLATFORM_CUSTOMER_NOT_FOUND");
+  const note = input.note?.trim() || null;
+  await db.update(platformCustomers).set({ nextContactAt: input.nextContactAt, nextContactNote: note }).where(eq(platformCustomers.id, input.customerId));
+  const formattedDate = input.nextContactAt.toLocaleString("pt-BR");
+  await db.insert(platformCustomerInteractions).values({ customerId: input.customerId, kind: "next_contact_scheduled", description: `Próximo contato agendado para ${formattedDate}.${note ? ` ${note}` : ""}`, createdByUserId: input.actorUserId });
+  await createOrganizationAuditLog({ organizationId: customer.organization.id, actorUserId: input.actorUserId, action: "platform_customer.next_contact_scheduled", entityType: "platform_customer", entityId: input.customerId, metadata: { nextContactAt: input.nextContactAt.toISOString() } });
 }
 
 export async function addPlatformCustomerInteraction(input: { customerId: number; kind: string; description: string; actorUserId: number }) {

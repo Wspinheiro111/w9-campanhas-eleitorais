@@ -337,6 +337,13 @@
       "when": 1787368435893,
       "tag": "0047_silky_silver_surfer",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1787369012076,
+      "tag": "0048_clear_shooting_star",
+      "breakpoints": true
     }
   ]
 }

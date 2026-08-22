@@ -152,10 +152,12 @@ export const platformCustomers = mysqlTable("platform_customers", {
   status: platformCustomerStatusEnum.default("pending").notNull(),
   lastInvitationId: int("lastInvitationId"),
   accessReleasedAt: timestamp("accessReleasedAt"),
+  nextContactAt: timestamp("nextContactAt"),
+  nextContactNote: varchar("nextContactNote", { length: 500 }),
   createdByUserId: int("createdByUserId").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [uniqueIndex("platform_customer_organization_unique_idx").on(table.organizationId), index("platform_customer_status_idx").on(table.status, table.updatedAt)]);
+}, (table) => [uniqueIndex("platform_customer_organization_unique_idx").on(table.organizationId), index("platform_customer_status_idx").on(table.status, table.updatedAt), index("platform_customer_next_contact_idx").on(table.status, table.nextContactAt)]);
 
 export const platformCustomerInteractions = mysqlTable("platform_customer_interactions", {
   id: int("id").autoincrement().primaryKey(),
