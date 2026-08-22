@@ -251,3 +251,4 @@
 - [x] Permitir cadastrar, editar, desativar e acompanhar organizações pelo painel de revendedor.
 - [x] Implementar acesso de suporte auditável do revendedor às organizações vinculadas, sem burlar o isolamento multiempresa.
 - [x] Adicionar módulo de acompanhamento de propostas comerciais/orçamentos no painel de revendedor.
+- [x] Permitir vincular organizações já existentes pela interface do painel de revendedor com controle de duplicidade.

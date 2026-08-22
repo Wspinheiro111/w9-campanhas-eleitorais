@@ -17,6 +17,7 @@ export const resellerRouter = router({
     return { clients, proposals, summary: { totalClients: clients.length, activeClients: clients.filter(item => item.client.active && item.organization.status === "active").length, openProposals: proposals.filter(item => ["draft", "sent", "negotiation"].includes(item.status)).length } };
   }),
   clients: router({
+    available: resellerProcedure.query(async ({ ctx }) => db.listAvailableResellerOrganizations(ctx.user.id)),
     create: resellerProcedure.input(z.object({ name: z.string().min(2).max(180), legalName: z.string().max(220).optional(), fiscalId: z.string().max(32).optional() })).mutation(async ({ ctx, input }) => ({ organizationId: await db.createResellerClient({ resellerUserId: ctx.user.id, ...input }) })),
     linkExisting: resellerProcedure.input(z.object({ organizationId: z.number().int().positive() })).mutation(async ({ ctx, input }) => ({ organizationId: await db.linkResellerClient({ resellerUserId: ctx.user.id, ...input }) })),
     update: resellerProcedure.input(z.object({ organizationId: z.number().int().positive(), name: z.string().min(2).max(180), legalName: z.string().max(220).nullable().optional(), fiscalId: z.string().max(32).nullable().optional(), status: organizationStatus })).mutation(async ({ ctx, input }) => { await db.updateResellerClient({ resellerUserId: ctx.user.id, ...input }); return { success: true }; }),

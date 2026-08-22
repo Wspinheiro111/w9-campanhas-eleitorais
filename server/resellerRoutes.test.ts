@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 
 vi.mock("./campaignDb", () => ({
   listResellerClients: vi.fn(),
+  listAvailableResellerOrganizations: vi.fn(),
   listResellerProposals: vi.fn(),
   createResellerClient: vi.fn(),
   linkResellerClient: vi.fn(),
@@ -39,5 +40,14 @@ describe("painel de revendedor", () => {
     const caller = appRouter.createCaller(adminContext);
     await expect(caller.reseller.clients.create({ name: "Cliente de teste", legalName: "Cliente de teste LTDA" })).resolves.toEqual({ organizationId: 12 });
     expect(db.createResellerClient).toHaveBeenCalledWith(expect.objectContaining({ resellerUserId: 1, name: "Cliente de teste" }));
+  });
+
+  it("lista organizações disponíveis e vincula uma existente no escopo do revendedor", async () => {
+    vi.mocked(db.listAvailableResellerOrganizations).mockResolvedValue([{ organization: { id: 44, name: "Organização existente" }, client: null }] as never);
+    vi.mocked(db.linkResellerClient).mockResolvedValue(44);
+    const caller = appRouter.createCaller(adminContext);
+    await expect(caller.reseller.clients.available()).resolves.toHaveLength(1);
+    await expect(caller.reseller.clients.linkExisting({ organizationId: 44 })).resolves.toEqual({ organizationId: 44 });
+    expect(db.linkResellerClient).toHaveBeenCalledWith({ resellerUserId: 1, organizationId: 44 });
   });
 });

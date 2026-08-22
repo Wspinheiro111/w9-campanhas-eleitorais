@@ -211,6 +211,15 @@ export async function listResellerClients(resellerUserId: number) {
   return db.select({ client: resellerClients, organization: organizations }).from(resellerClients).innerJoin(organizations, eq(organizations.id, resellerClients.organizationId)).where(eq(resellerClients.resellerUserId, resellerUserId)).orderBy(desc(resellerClients.updatedAt));
 }
 
+export async function listAvailableResellerOrganizations(resellerUserId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ organization: organizations, client: resellerClients })
+    .from(organizations)
+    .leftJoin(resellerClients, and(eq(resellerClients.organizationId, organizations.id), eq(resellerClients.resellerUserId, resellerUserId)))
+    .orderBy(desc(organizations.updatedAt));
+  return rows.filter(row => !row.client);
+}
+
 export async function createResellerClient(input: { resellerUserId: number; name: string; legalName?: string; fiscalId?: string }) {
   const db = requireDb(await getDb());
   const created = await db.insert(organizations).values({ name: input.name, legalName: input.legalName || null, fiscalId: input.fiscalId || null, status: "active", createdById: input.resellerUserId });
@@ -227,6 +236,7 @@ export async function linkResellerClient(input: { resellerUserId: number; organi
   if (!organization[0]) throw new Error("ORGANIZATION_NOT_FOUND");
   const existing = await db.select({ id: resellerClients.id }).from(resellerClients).where(and(eq(resellerClients.resellerUserId, input.resellerUserId), eq(resellerClients.organizationId, input.organizationId))).limit(1);
   if (!existing[0]) await db.insert(resellerClients).values({ resellerUserId: input.resellerUserId, organizationId: input.organizationId, active: true });
+  await createOrganizationAuditLog({ organizationId: input.organizationId, actorUserId: input.resellerUserId, action: "reseller.client_linked", entityType: "organization", entityId: input.organizationId, metadata: { source: "reseller_panel" } });
   return input.organizationId;
 }
 
