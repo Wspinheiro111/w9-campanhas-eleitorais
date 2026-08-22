@@ -171,10 +171,12 @@ export const platformCustomerInteractions = mysqlTable("platform_customer_intera
 export const platformCustomerPortfolioSchedules = mysqlTable("platform_customer_portfolio_schedules", {
   id: int("id").autoincrement().primaryKey(),
   cron: varchar("cron", { length: 80 }).notNull(),
+  frequency: varchar("frequency", { length: 16 }).notNull().default("weekly"),
   scheduleTaskUid: varchar("scheduleTaskUid", { length: 65 }).notNull(),
   enabled: boolean("enabled").notNull().default(true),
   createdByUserId: int("createdByUserId").notNull().references(() => users.id),
   lastGeneratedAt: timestamp("lastGeneratedAt"),
+  lastViewedReportAt: timestamp("lastViewedReportAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [uniqueIndex("platform_customer_portfolio_schedule_task_idx").on(table.scheduleTaskUid)]);

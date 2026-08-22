@@ -351,6 +351,13 @@
       "when": 1787413238254,
       "tag": "0049_complete_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1787413927272,
+      "tag": "0050_perfect_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

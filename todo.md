@@ -264,3 +264,6 @@
 - [x] Filtrar a carteira de clientes por status antes da exportação.
 - [x] Permitir selecionar as colunas incluídas nas exportações da carteira.
 - [x] Gerar relatório interno programado da carteira e disponibilizar o histórico no Administrador Geral.
+- [x] Permitir escolher a frequência do relatório interno da carteira.
+- [x] Permitir baixar snapshots históricos da carteira em CSV e PDF.
+- [x] Exibir aviso visual quando um novo relatório interno estiver disponível.

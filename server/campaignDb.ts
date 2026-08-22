@@ -293,15 +293,22 @@ export async function getPlatformCustomerPortfolioSchedule() {
   return rows[0] ?? null;
 }
 
-export async function savePlatformCustomerPortfolioSchedule(input: { cron: string; scheduleTaskUid: string; actorUserId: number }) {
+export async function savePlatformCustomerPortfolioSchedule(input: { cron: string; frequency: "daily" | "weekly" | "monthly"; scheduleTaskUid: string; actorUserId: number }) {
   const db = requireDb(await getDb());
   const current = await getPlatformCustomerPortfolioSchedule();
   if (current) {
-    await db.update(platformCustomerPortfolioSchedules).set({ cron: input.cron, scheduleTaskUid: input.scheduleTaskUid, enabled: true }).where(eq(platformCustomerPortfolioSchedules.id, current.id));
+    await db.update(platformCustomerPortfolioSchedules).set({ cron: input.cron, frequency: input.frequency, scheduleTaskUid: input.scheduleTaskUid, enabled: true }).where(eq(platformCustomerPortfolioSchedules.id, current.id));
     return current.id;
   }
-  const result = await db.insert(platformCustomerPortfolioSchedules).values({ cron: input.cron, scheduleTaskUid: input.scheduleTaskUid, createdByUserId: input.actorUserId });
+  const result = await db.insert(platformCustomerPortfolioSchedules).values({ cron: input.cron, frequency: input.frequency, scheduleTaskUid: input.scheduleTaskUid, createdByUserId: input.actorUserId });
   return Number(result[0].insertId);
+}
+
+export async function markPlatformCustomerPortfolioReportsViewed() {
+  const db = requireDb(await getDb());
+  const current = await getPlatformCustomerPortfolioSchedule();
+  if (!current) return;
+  await db.update(platformCustomerPortfolioSchedules).set({ lastViewedReportAt: new Date() }).where(eq(platformCustomerPortfolioSchedules.id, current.id));
 }
 
 export async function listPlatformCustomerPortfolioReports() {
