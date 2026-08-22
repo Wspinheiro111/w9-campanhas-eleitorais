@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
+import { parse as parseCookie } from "cookie";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { COOKIE_NAME } from "@shared/const";
+import { createHeartbeatJob, updateHeartbeatJob } from "../_core/heartbeat";
 import { protectedProcedure, router } from "../_core/trpc";
 import * as campaignDb from "../campaignDb";
 
@@ -37,6 +40,23 @@ export const platformAdminRouter = router({
       if (input.nextContactAt.getTime() < Date.now() - 60_000) throw new TRPCError({ code: "BAD_REQUEST", message: "O próximo contato deve ser agendado para agora ou para uma data futura." });
       await campaignDb.schedulePlatformCustomerNextContact({ ...input, actorUserId: ctx.user.id });
       return { scheduled: true };
+    }),
+  }),
+  portfolioReports: router({
+    schedule: platformAdminProcedure.query(() => campaignDb.getPlatformCustomerPortfolioSchedule()),
+    history: platformAdminProcedure.query(() => campaignDb.listPlatformCustomerPortfolioReports()),
+    activateWeekly: platformAdminProcedure.mutation(async ({ ctx }) => {
+      const cron = "0 0 12 * * 1";
+      const current = await campaignDb.getPlatformCustomerPortfolioSchedule();
+      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      if (current) {
+        await updateHeartbeatJob(current.scheduleTaskUid, { cron, path: "/api/scheduled/platform-customer-portfolio", enable: true, description: "Relatório semanal interno da carteira de clientes" }, sessionToken);
+        await campaignDb.savePlatformCustomerPortfolioSchedule({ cron, scheduleTaskUid: current.scheduleTaskUid, actorUserId: ctx.user.id });
+        return { taskUid: current.scheduleTaskUid, activated: true };
+      }
+      const job = await createHeartbeatJob({ name: `platform-customer-portfolio-${ctx.user.id}`, cron, path: "/api/scheduled/platform-customer-portfolio", payload: {}, description: "Relatório semanal interno da carteira de clientes" }, sessionToken);
+      await campaignDb.savePlatformCustomerPortfolioSchedule({ cron, scheduleTaskUid: job.taskUid, actorUserId: ctx.user.id });
+      return { taskUid: job.taskUid, activated: true, nextExecutionAt: job.nextExecutionAt ?? null };
     }),
   }),
 });

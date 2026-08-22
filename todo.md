@@ -261,3 +261,6 @@
 - [x] Agendar o próximo contato comercial e exibir lembrete visual no painel.
 - [x] Exportar o histórico comercial completo do cliente em PDF.
 - [x] Exportar a carteira completa de clientes e seus status em CSV e PDF pelo Administrador Geral.
+- [x] Filtrar a carteira de clientes por status antes da exportação.
+- [x] Permitir selecionar as colunas incluídas nas exportações da carteira.
+- [x] Gerar relatório interno programado da carteira e disponibilizar o histórico no Administrador Geral.

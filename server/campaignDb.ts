@@ -35,6 +35,8 @@ import {
   pipelineFollowups,
   platformCustomers,
   platformCustomerInteractions,
+  platformCustomerPortfolioReports,
+  platformCustomerPortfolioSchedules,
   routePerformanceEvents,
   campaignSurveys,
   surveyResponses,
@@ -283,6 +285,41 @@ export async function addPlatformCustomerInteraction(input: { customerId: number
   const interactionId = Number(result[0].insertId);
   await createOrganizationAuditLog({ organizationId: customer.organization.id, actorUserId: input.actorUserId, action: "platform_customer.interaction_created", entityType: "platform_customer_interaction", entityId: interactionId, metadata: { kind: input.kind } });
   return interactionId;
+}
+
+export async function getPlatformCustomerPortfolioSchedule() {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(platformCustomerPortfolioSchedules).orderBy(desc(platformCustomerPortfolioSchedules.updatedAt)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function savePlatformCustomerPortfolioSchedule(input: { cron: string; scheduleTaskUid: string; actorUserId: number }) {
+  const db = requireDb(await getDb());
+  const current = await getPlatformCustomerPortfolioSchedule();
+  if (current) {
+    await db.update(platformCustomerPortfolioSchedules).set({ cron: input.cron, scheduleTaskUid: input.scheduleTaskUid, enabled: true }).where(eq(platformCustomerPortfolioSchedules.id, current.id));
+    return current.id;
+  }
+  const result = await db.insert(platformCustomerPortfolioSchedules).values({ cron: input.cron, scheduleTaskUid: input.scheduleTaskUid, createdByUserId: input.actorUserId });
+  return Number(result[0].insertId);
+}
+
+export async function listPlatformCustomerPortfolioReports() {
+  const db = requireDb(await getDb());
+  return db.select().from(platformCustomerPortfolioReports).orderBy(desc(platformCustomerPortfolioReports.generatedAt)).limit(24);
+}
+
+export async function generatePlatformCustomerPortfolioReport(scheduleTaskUid: string) {
+  const db = requireDb(await getDb());
+  const scheduleRows = await db.select().from(platformCustomerPortfolioSchedules).where(eq(platformCustomerPortfolioSchedules.scheduleTaskUid, scheduleTaskUid)).limit(1);
+  const schedule = scheduleRows[0];
+  if (!schedule || !schedule.enabled) return { skipped: true as const };
+  const rows = await listPlatformCustomers();
+  const snapshot = rows.map(({ customer, organization }) => ({ organizationName: organization.name, contactName: customer.contactName, contactPhone: customer.contactPhone, status: customer.status, nextContactAt: customer.nextContactAt, nextContactNote: customer.nextContactNote, accessReleasedAt: customer.accessReleasedAt, updatedAt: customer.updatedAt }));
+  const statusSummary = snapshot.reduce<Record<string, number>>((summary, customer) => ({ ...summary, [customer.status]: (summary[customer.status] ?? 0) + 1 }), {});
+  const result = await db.insert(platformCustomerPortfolioReports).values({ scheduleTaskUid, customerCount: snapshot.length, statusSummary, snapshot });
+  await db.update(platformCustomerPortfolioSchedules).set({ lastGeneratedAt: new Date() }).where(eq(platformCustomerPortfolioSchedules.id, schedule.id));
+  return { skipped: false as const, reportId: Number(result[0].insertId), customerCount: snapshot.length };
 }
 
 export async function listCampaignsForUser(userId: number, organizationId?: number) {

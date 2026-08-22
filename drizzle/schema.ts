@@ -168,6 +168,26 @@ export const platformCustomerInteractions = mysqlTable("platform_customer_intera
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("platform_customer_interaction_customer_idx").on(table.customerId, table.createdAt), index("platform_customer_interaction_actor_idx").on(table.createdByUserId, table.createdAt)]);
 
+export const platformCustomerPortfolioSchedules = mysqlTable("platform_customer_portfolio_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  cron: varchar("cron", { length: 80 }).notNull(),
+  scheduleTaskUid: varchar("scheduleTaskUid", { length: 65 }).notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  lastGeneratedAt: timestamp("lastGeneratedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("platform_customer_portfolio_schedule_task_idx").on(table.scheduleTaskUid)]);
+
+export const platformCustomerPortfolioReports = mysqlTable("platform_customer_portfolio_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  scheduleTaskUid: varchar("scheduleTaskUid", { length: 65 }),
+  customerCount: int("customerCount").notNull().default(0),
+  statusSummary: json("statusSummary").notNull(),
+  snapshot: json("snapshot").notNull(),
+  generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+}, (table) => [index("platform_customer_portfolio_report_schedule_idx").on(table.scheduleTaskUid, table.generatedAt)]);
+
 export const organizationAuditLogs = mysqlTable("organization_audit_logs", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

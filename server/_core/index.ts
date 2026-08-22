@@ -10,7 +10,9 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { recordRoutePerformanceEvent } from "../campaignDb";
+import { generatePlatformCustomerPortfolioReport } from "../campaignDb";
 import { normalizeTelemetryRoute } from "../routeMetrics";
+import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -53,6 +55,16 @@ async function startServer() {
   registerStorageProxy(app);
   registerGoogleAuthRoutes(app);
   registerOAuthRoutes(app);
+  app.post("/api/scheduled/platform-customer-portfolio", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
+      const result = await generatePlatformCustomerPortfolioReport(user.taskUid);
+      return res.json({ ok: true, ...result });
+    } catch (error) {
+      return res.status(500).json({ error: error instanceof Error ? error.message : String(error), context: { taskUid: "unavailable" }, timestamp: new Date().toISOString() });
+    }
+  });
   // tRPC API
   app.use(
     "/api/trpc",
