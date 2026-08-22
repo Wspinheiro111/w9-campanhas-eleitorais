@@ -15,7 +15,7 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Visão geral", path: "/" },
+  { icon: LayoutDashboard, label: "Visão geral", path: "/painel" },
   { icon: Building2, label: "Organizações", path: "/organizacoes" },
   { icon: ShieldCheck, label: "Administração geral", path: "/administracao-geral", requiresPlatformAdmin: true },
   { icon: Activity, label: "Auditoria", path: "/auditoria" },

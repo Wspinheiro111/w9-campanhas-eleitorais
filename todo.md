@@ -267,3 +267,4 @@
 - [x] Permitir escolher a frequência do relatório interno da carteira.
 - [x] Permitir baixar snapshots históricos da carteira em CSV e PDF.
 - [x] Exibir aviso visual quando um novo relatório interno estiver disponível.
+- [x] Transformar a página inicial em apresentação institucional do W9 e posicionar o acesso à conta ao final do percurso.

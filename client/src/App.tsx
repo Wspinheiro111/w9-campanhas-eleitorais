@@ -24,6 +24,7 @@ const CrisisRoom = lazy(() => import("./pages/CrisisRoom"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const FieldOps = lazy(() => import("./pages/FieldOps"));
 const Login = lazy(() => import("./pages/Login"));
+const Landing = lazy(() => import("./pages/Landing"));
 const Monitoring = lazy(() => import("./pages/Monitoring"));
 const Mobilization = lazy(() => import("./pages/Mobilization"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -50,7 +51,7 @@ function PageLoading() { return <div className="min-h-[55vh] animate-pulse round
 
 function Router() {
   return <Switch>
-    <Route path="/" component={Dashboard} />
+    <Route path="/painel" component={Dashboard} />
     <Route path="/administracao-geral" component={AdminGeneral} />
     <Route path="/seguranca" component={AccountSecurity} />
     <Route path="/instalar-app" component={PwaInstallGuide} />
@@ -85,6 +86,7 @@ function Router() {
 
 function App() {
   return <ErrorBoundary><ThemeProvider defaultTheme="neutral"><TooltipProvider><Toaster /><PwaUpdateBanner /><Suspense fallback={<PageLoading />}><Switch>
+    <Route path="/" component={Landing} />
     <Route path="/login" component={Login} />
     <Route path="/onboarding" component={Onboarding} />
     <Route path="/cadastro/:campaignId" component={PublicSignup} />

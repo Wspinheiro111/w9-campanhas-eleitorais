@@ -27,11 +27,11 @@ describe("acesso local", () => {
   it("redireciona ao dashboard após login normal, MFA e passkey", () => {
     render(<Login />);
     act(() => loginOptions?.onSuccess?.({}));
-    expect(navigate).toHaveBeenCalledWith("/");
+    expect(navigate).toHaveBeenCalledWith("/painel");
     act(() => loginOptions?.onSuccess?.({ requiresMfa: true }));
     expect(screen.getByLabelText(/código do autenticador/i)).toBeInTheDocument();
     act(() => finishPasskeyOptions?.onSuccess?.());
-    expect(navigate).toHaveBeenCalledWith("/");
+    expect(navigate).toHaveBeenCalledWith("/painel");
   });
 
   it("envia e-mail e senha pelo formulário de login", async () => {
