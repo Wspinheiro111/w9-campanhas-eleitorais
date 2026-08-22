@@ -274,3 +274,4 @@
 - [x] Incluir seção de vídeo curto de apresentação na landing do W9 Campanhas Eleitorais.
 - [x] Exibir alerta visual no painel interno quando existir novo pedido de demonstração não visualizado.
 - [x] Permitir que o lead escolha data e horário preferenciais para a demonstração no formulário público.
+- [x] Corrigir a conexão WebSocket de atualização em tempo real do Vite na prévia por proxy.

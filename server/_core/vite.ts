@@ -6,12 +6,19 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
-export async function setupVite(app: Express, server: Server) {
-  const serverOptions = {
+export function getViteServerOptions(server: Server) {
+  const isHostedPreview = Boolean(process.env.MANUS_WEBDEV_PROJECT_ID);
+  return {
     middlewareMode: true,
-    hmr: { server },
+    hmr: isHostedPreview
+      ? { server, protocol: "wss" as const, clientPort: 443 }
+      : { server },
     allowedHosts: true as const,
   };
+}
+
+export async function setupVite(app: Express, server: Server) {
+  const serverOptions = getViteServerOptions(server);
 
   const vite = await createViteServer({
     ...viteConfig,
