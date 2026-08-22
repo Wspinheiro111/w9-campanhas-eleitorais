@@ -247,3 +247,7 @@
 - [x] Exibir recuperação amigável no ErrorBoundary com ação explícita de recarregar a página.
 - [x] Validar redirecionamentos de MFA e passkey para o dashboard após autenticação bem-sucedida.
 - [x] Registrar automaticamente erros de interface no painel técnico com contexto seguro de rota e organização.
+- [x] Criar painel de revendedor com visão consolidada das organizações clientes vinculadas.
+- [x] Permitir cadastrar, editar, desativar e acompanhar organizações pelo painel de revendedor.
+- [x] Implementar acesso de suporte auditável do revendedor às organizações vinculadas, sem burlar o isolamento multiempresa.
+- [x] Adicionar módulo de acompanhamento de propostas comerciais/orçamentos no painel de revendedor.

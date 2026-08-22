@@ -37,6 +37,7 @@ export const fieldPlaybookStatusEnum = mysqlEnum("field_playbook_status", ["draf
 export const financialEntryTypeEnum = mysqlEnum("financial_entry_type", ["income", "expense"]);
 export const financialEntryStatusEnum = mysqlEnum("financial_entry_status", ["draft", "pending", "under_review", "approved", "rejected", "paid", "reconciled", "closed", "cancelled"]);
 export const legalDocumentStatusEnum = mysqlEnum("legal_document_status", ["pending", "under_review", "approved", "rejected", "archived"]);
+export const resellerProposalStatusEnum = mysqlEnum("reseller_proposal_status", ["draft", "sent", "negotiation", "accepted", "lost", "archived"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -126,6 +127,28 @@ export const organizationMembers = mysqlTable("organization_members", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("org_member_user_idx").on(table.userId), index("org_member_org_idx").on(table.organizationId), uniqueIndex("org_member_unique_idx").on(table.organizationId, table.userId)]);
+
+export const resellerClients = mysqlTable("reseller_clients", {
+  id: int("id").autoincrement().primaryKey(),
+  resellerUserId: int("resellerUserId").notNull().references(() => users.id),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("reseller_client_unique_idx").on(table.resellerUserId, table.organizationId), index("reseller_client_user_idx").on(table.resellerUserId, table.active)]);
+
+export const resellerProposals = mysqlTable("reseller_proposals", {
+  id: int("id").autoincrement().primaryKey(),
+  resellerUserId: int("resellerUserId").notNull().references(() => users.id),
+  organizationId: int("organizationId").references(() => organizations.id),
+  title: varchar("title", { length: 180 }).notNull(),
+  contactName: varchar("contactName", { length: 180 }),
+  contactPhone: varchar("contactPhone", { length: 32 }),
+  status: resellerProposalStatusEnum.default("draft").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("reseller_proposal_user_status_idx").on(table.resellerUserId, table.status), index("reseller_proposal_org_idx").on(table.organizationId)]);
 
 export const organizationInvitations = mysqlTable("organization_invitations", {
   id: int("id").autoincrement().primaryKey(),
