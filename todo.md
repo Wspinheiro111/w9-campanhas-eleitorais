@@ -252,6 +252,6 @@
 - [x] Implementar acesso de suporte auditável do revendedor às organizações vinculadas, sem burlar o isolamento multiempresa.
 - [x] Adicionar módulo de acompanhamento de propostas comerciais/orçamentos no painel de revendedor.
 - [x] Permitir vincular organizações já existentes pela interface do painel de revendedor com controle de duplicidade.
-- [ ] Remover fisicamente as tabelas legadas de revendedores após confirmação explícita de exclusão irreversível; módulo, rotas e interface já foram removidos.
+- [x] Remover fisicamente as tabelas legadas de revendedores após confirmação explícita de exclusão irreversível; módulo, rotas e interface já foram removidos.
 - [x] Criar painel de administrador geral para cadastrar compradores diretos, organizações e status comercial.
 - [x] Liberar acesso ao comprador por convite seguro gerado pelo administrador geral e rastrear o status do acesso.

@@ -1,1 +1,2 @@
--- Tabelas legadas de revendedores mantidas inativas até confirmação explícita de exclusão irreversível.
+DROP TABLE `reseller_clients`;--> statement-breakpoint
+DROP TABLE `reseller_proposals`;
