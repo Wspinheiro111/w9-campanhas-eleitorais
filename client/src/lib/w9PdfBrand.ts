@@ -1,8 +1,10 @@
 import type { jsPDF } from "jspdf";
 
 export const W9_PDF_COLORS = { navy: [15, 28, 63], yellow: [255, 195, 0], green: [0, 168, 89], ink: [26, 38, 66], muted: [88, 103, 132], border: [210, 219, 232] } as const;
+export type W9PdfCoverOptions = { subtitle?: string; notes?: string };
+export type W9PdfIndexItem = { title: string; page: number };
 
-export function addW9PdfCover(pdf: jsPDF, title: string, subtitle?: string) {
+export function addW9PdfCover(pdf: jsPDF, title: string, subtitle?: string, options?: W9PdfCoverOptions) {
   pdf.setFillColor(...W9_PDF_COLORS.navy);
   pdf.rect(0, 0, 210, 297, "F");
   pdf.setFillColor(...W9_PDF_COLORS.yellow);
@@ -22,17 +24,49 @@ export function addW9PdfCover(pdf: jsPDF, title: string, subtitle?: string) {
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(28);
   pdf.text(pdf.splitTextToSize(title, 165), 18, 142);
-  if (subtitle) {
+  const coverSubtitle = options?.subtitle || subtitle;
+  if (coverSubtitle) {
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(12);
     pdf.setTextColor(217, 225, 239);
-    pdf.text(pdf.splitTextToSize(subtitle, 165), 18, 185);
+    pdf.text(pdf.splitTextToSize(coverSubtitle, 165), 18, 185);
+  }
+  if (options?.notes) {
+    pdf.setFontSize(9.5);
+    pdf.setTextColor(217, 225, 239);
+    pdf.text(pdf.splitTextToSize(options.notes, 165), 18, 218);
   }
   pdf.setFontSize(9);
   pdf.setTextColor(...W9_PDF_COLORS.yellow);
   pdf.text("RELATÓRIO INSTITUCIONAL", 18, 265);
   pdf.setTextColor(217, 225, 239);
   pdf.text(`Gerado em ${new Date().toLocaleString("pt-BR")}`, 18, 274);
+  pdf.addPage();
+}
+
+export function addW9PdfIndex(pdf: jsPDF, entries: W9PdfIndexItem[]) {
+  pdf.setFillColor(...W9_PDF_COLORS.navy);
+  pdf.rect(0, 0, 210, 34, "F");
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(16);
+  pdf.text("Índice do relatório", 15, 21);
+  pdf.setTextColor(...W9_PDF_COLORS.ink);
+  pdf.setFontSize(10);
+  let y = 54;
+  entries.forEach((entry, index) => {
+    pdf.text(`${index + 1}. ${entry.title}`, 18, y);
+    pdf.setDrawColor(...W9_PDF_COLORS.border);
+    pdf.setLineDashPattern([1.2, 1.2], 0);
+    pdf.line(82, y - 1.5, 183, y - 1.5);
+    pdf.setLineDashPattern([], 0);
+    pdf.text(String(entry.page), 192, y, { align: "right" });
+    y += 13;
+  });
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(...W9_PDF_COLORS.muted);
+  pdf.text("Índice gerado automaticamente a partir das seções incluídas neste arquivo.", 18, 274);
   pdf.addPage();
 }
 

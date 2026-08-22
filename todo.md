@@ -283,3 +283,5 @@
 - [x] Atualizar o indicador da landing para +1 milhão de eleitores mapeados por campanha.
 - [x] Adicionar capa institucional W9 a todos os relatórios PDF exportados pelo sistema.
 - [x] Exibir animação de carregamento com o monograma W9 durante a geração de relatórios PDF.
+- [x] Permitir subtítulo e observações personalizadas na capa antes da exportação dos relatórios PDF.
+- [x] Inserir índice dinâmico após a capa para facilitar a navegação em relatórios PDF extensos.

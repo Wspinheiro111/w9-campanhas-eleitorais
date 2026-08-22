@@ -7,6 +7,7 @@ describe("marca dos relatórios W9", () => {
     expect(W9_PDF_COLORS.yellow).toEqual([255, 195, 0]);
     expect(w9PrintHeader("Carteira de clientes")).toContain("W9 CAMPANHAS");
     expect(w9PrintCover("Carteira de clientes")).toContain("RELATÓRIO INSTITUCIONAL");
+    expect(typeof W9_PDF_COLORS.border).toBe("object");
     expect(w9PrintStyles).toContain("#00A859");
   });
 });
