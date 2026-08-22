@@ -281,3 +281,5 @@
 - [x] Aplicar logotipo e identidade azul-marinho, amarelo e verde aos relatórios PDF gerados pelo sistema.
 - [x] Criar e integrar favicon personalizado com o monograma W9.
 - [x] Atualizar o indicador da landing para +1 milhão de eleitores mapeados por campanha.
+- [x] Adicionar capa institucional W9 a todos os relatórios PDF exportados pelo sistema.
+- [x] Exibir animação de carregamento com o monograma W9 durante a geração de relatórios PDF.

@@ -6,6 +6,7 @@ import { lazy, Suspense } from "react";
 import DashboardLayout from "./components/DashboardLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { PwaUpdateBanner } from "./components/PwaUpdateBanner";
+import { W9GlobalReportGenerationFeedback } from "./components/W9ReportGenerationOverlay";
 import { CampaignProvider } from "./contexts/CampaignContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -85,7 +86,7 @@ function Router() {
 }
 
 function App() {
-  return <ErrorBoundary><ThemeProvider defaultTheme="w9"><TooltipProvider><Toaster /><PwaUpdateBanner /><Suspense fallback={<PageLoading />}><Switch>
+  return <ErrorBoundary><ThemeProvider defaultTheme="w9"><TooltipProvider><Toaster /><PwaUpdateBanner /><W9GlobalReportGenerationFeedback /><Suspense fallback={<PageLoading />}><Switch>
     <Route path="/" component={Landing} />
     <Route path="/login" component={Login} />
     <Route path="/onboarding" component={Onboarding} />
