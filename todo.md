@@ -260,3 +260,4 @@
 - [x] Filtrar o histórico comercial por tipo de interação no perfil do cliente.
 - [x] Agendar o próximo contato comercial e exibir lembrete visual no painel.
 - [x] Exportar o histórico comercial completo do cliente em PDF.
+- [x] Exportar a carteira completa de clientes e seus status em CSV e PDF pelo Administrador Geral.
