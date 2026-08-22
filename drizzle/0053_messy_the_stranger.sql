@@ -1,0 +1,1 @@
+ALTER TABLE `platform_demo_requests` MODIFY COLUMN `preferredDemoAt` timestamp;

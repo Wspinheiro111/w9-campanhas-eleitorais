@@ -272,3 +272,5 @@
 - [x] Detalhar os módulos e funcionalidades do sistema na apresentação comercial antes do acesso à conta.
 - [x] Criar formulário público de solicitação de demonstração para captar leads de campanhas de forma segura e organizada.
 - [x] Incluir seção de vídeo curto de apresentação na landing do W9 Campanhas Eleitorais.
+- [x] Exibir alerta visual no painel interno quando existir novo pedido de demonstração não visualizado.
+- [x] Permitir que o lead escolha data e horário preferenciais para a demonstração no formulário público.

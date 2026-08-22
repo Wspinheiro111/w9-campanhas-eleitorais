@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createHash, randomBytes } from "node:crypto";
-import { and, desc, eq, gte, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import {
   aiMessages,
   audioCrmLogs,
@@ -230,7 +230,7 @@ export async function createPlatformCustomer(input: { organizationName: string; 
   return { customerId, organizationId };
 }
 
-export async function createPlatformDemoRequest(input: { name: string; email: string; phone: string; organizationName: string; role: string; city?: string | null; state?: string | null; message?: string | null }) {
+export async function createPlatformDemoRequest(input: { name: string; email: string; phone: string; organizationName: string; role: string; city?: string | null; state?: string | null; message?: string | null; preferredDemoAt: Date }) {
   const db = requireDb(await getDb());
   const result = await db.insert(platformDemoRequests).values({
     name: input.name.trim(),
@@ -241,6 +241,7 @@ export async function createPlatformDemoRequest(input: { name: string; email: st
     city: input.city?.trim() || null,
     state: input.state?.trim().toUpperCase() || null,
     message: input.message?.trim() || null,
+    preferredDemoAt: input.preferredDemoAt,
     consent: true,
     status: "new",
   });
@@ -250,6 +251,17 @@ export async function createPlatformDemoRequest(input: { name: string; email: st
 export async function listPlatformDemoRequests() {
   const db = requireDb(await getDb());
   return db.select().from(platformDemoRequests).orderBy(desc(platformDemoRequests.createdAt)).limit(100);
+}
+
+export async function countUnviewedPlatformDemoRequests() {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ total: sql<number>`count(*)` }).from(platformDemoRequests).where(and(eq(platformDemoRequests.status, "new"), isNull(platformDemoRequests.viewedAt)));
+  return Number(rows[0]?.total ?? 0);
+}
+
+export async function markPlatformDemoRequestsViewed() {
+  const db = requireDb(await getDb());
+  await db.update(platformDemoRequests).set({ viewedAt: new Date() }).where(and(eq(platformDemoRequests.status, "new"), isNull(platformDemoRequests.viewedAt)));
 }
 
 export async function updatePlatformDemoRequestStatus(input: { requestId: number; status: "new" | "contacted" | "qualified" | "converted" | "archived" }) {

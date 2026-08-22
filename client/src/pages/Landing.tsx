@@ -47,12 +47,12 @@ const operatingSignals = [
 ];
 
 export default function Landing() {
-  const [demoForm, setDemoForm] = useState({ name: "", email: "", phone: "", organizationName: "", role: "candidate" as "candidate" | "party" | "coordination" | "other", city: "", state: "", message: "", consent: false, website: "" });
+  const [demoForm, setDemoForm] = useState({ name: "", email: "", phone: "", organizationName: "", role: "candidate" as "candidate" | "party" | "coordination" | "other", city: "", state: "", message: "", preferredDemoAt: "", consent: false, website: "" });
   const [demoSubmitted, setDemoSubmitted] = useState(false);
   const requestDemo = trpc.demoRequests.submit.useMutation({
     onSuccess: () => {
       setDemoSubmitted(true);
-      setDemoForm({ name: "", email: "", phone: "", organizationName: "", role: "candidate", city: "", state: "", message: "", consent: false, website: "" });
+      setDemoForm({ name: "", email: "", phone: "", organizationName: "", role: "candidate", city: "", state: "", message: "", preferredDemoAt: "", consent: false, website: "" });
     },
   });
 
@@ -240,6 +240,7 @@ export default function Landing() {
               city: demoForm.city || undefined,
               state: demoForm.state || undefined,
               message: demoForm.message || undefined,
+              preferredDemoAt: new Date(demoForm.preferredDemoAt),
               consent: true,
             });
           }}>
@@ -250,6 +251,7 @@ export default function Landing() {
             <div className="grid gap-2"><Label htmlFor="demo-org">Campanha, partido ou organização</Label><Input id="demo-org" value={demoForm.organizationName} onChange={(event) => setDemoForm((current) => ({ ...current, organizationName: event.target.value }))} required maxLength={180} /></div>
             <div className="grid gap-2"><Label htmlFor="demo-role">Seu papel</Label><select id="demo-role" className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]" value={demoForm.role} onChange={(event) => setDemoForm((current) => ({ ...current, role: event.target.value as typeof current.role }))}><option value="candidate">Candidato(a)</option><option value="party">Partido</option><option value="coordination">Coordenação de campanha</option><option value="other">Outro</option></select></div>
             <div className="grid grid-cols-[1fr_72px] gap-3"><div className="grid gap-2"><Label htmlFor="demo-city">Cidade</Label><Input id="demo-city" value={demoForm.city} onChange={(event) => setDemoForm((current) => ({ ...current, city: event.target.value }))} maxLength={120} /></div><div className="grid gap-2"><Label htmlFor="demo-state">UF</Label><Input id="demo-state" value={demoForm.state} onChange={(event) => setDemoForm((current) => ({ ...current, state: event.target.value.toUpperCase().slice(0, 2) }))} maxLength={2} /></div></div>
+            <div className="grid gap-2 sm:col-span-2"><Label htmlFor="demo-time">Melhor data e horário para a demonstração</Label><Input id="demo-time" type="datetime-local" min={new Date().toISOString().slice(0, 16)} value={demoForm.preferredDemoAt} onChange={(event) => setDemoForm((current) => ({ ...current, preferredDemoAt: event.target.value }))} required /><p className="text-xs text-muted-foreground">O horário é uma preferência. A confirmação será feita pela administração.</p></div>
             <div className="grid gap-2 sm:col-span-2"><Label htmlFor="demo-message">O que você quer organizar melhor? <span className="font-normal text-muted-foreground">(opcional)</span></Label><Textarea id="demo-message" value={demoForm.message} onChange={(event) => setDemoForm((current) => ({ ...current, message: event.target.value }))} maxLength={2000} rows={3} placeholder="Ex.: equipe de rua, território, agenda ou prestação de contas." /></div>
             <div className="hidden" aria-hidden="true"><Label htmlFor="demo-website">Website</Label><Input id="demo-website" tabIndex={-1} autoComplete="off" value={demoForm.website} onChange={(event) => setDemoForm((current) => ({ ...current, website: event.target.value }))} /></div>
             <Label className="flex cursor-pointer items-start gap-2 text-xs leading-5 text-[#466352] sm:col-span-2"><input type="checkbox" className="mt-1" checked={demoForm.consent} onChange={(event) => setDemoForm((current) => ({ ...current, consent: event.target.checked }))} required />Autorizo o contato sobre a demonstração e o tratamento destes dados exclusivamente para esse atendimento.</Label>

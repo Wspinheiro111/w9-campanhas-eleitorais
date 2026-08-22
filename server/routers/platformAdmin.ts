@@ -19,6 +19,11 @@ const portfolioCronByFrequency = { daily: "0 0 12 * * *", weekly: "0 0 12 * * 1"
 export const platformAdminRouter = router({
   demoRequests: router({
     list: platformAdminProcedure.query(() => campaignDb.listPlatformDemoRequests()),
+    unseenCount: platformAdminProcedure.query(() => campaignDb.countUnviewedPlatformDemoRequests()),
+    markViewed: platformAdminProcedure.mutation(async () => {
+      await campaignDb.markPlatformDemoRequestsViewed();
+      return { updated: true };
+    }),
     setStatus: platformAdminProcedure.input(z.object({ requestId: z.number().int().positive(), status: z.enum(["new", "contacted", "qualified", "converted", "archived"]) })).mutation(async ({ input }) => {
       await campaignDb.updatePlatformDemoRequestStatus(input);
       return { updated: true };

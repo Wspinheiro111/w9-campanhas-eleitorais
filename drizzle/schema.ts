@@ -171,8 +171,10 @@ export const platformDemoRequests = mysqlTable("platform_demo_requests", {
   city: varchar("city", { length: 120 }),
   state: varchar("state", { length: 2 }),
   message: text("message"),
+  preferredDemoAt: timestamp("preferredDemoAt"),
   consent: boolean("consent").notNull(),
   status: platformDemoRequestStatusEnum.notNull().default("new"),
+  viewedAt: timestamp("viewedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("platform_demo_request_status_created_idx").on(table.status, table.createdAt), index("platform_demo_request_email_idx").on(table.email), index("platform_demo_request_phone_idx").on(table.phone)]);

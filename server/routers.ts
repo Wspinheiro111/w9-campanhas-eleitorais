@@ -93,6 +93,7 @@ export const appRouter = router({
       city: z.string().trim().max(120).optional(),
       state: z.string().trim().length(2).optional(),
       message: z.string().trim().max(2000).optional(),
+      preferredDemoAt: z.date().refine(value => value.getTime() > Date.now() - 60_000, "Escolha um horário futuro para a demonstração."),
       consent: z.literal(true),
       website: z.string().max(200).optional(),
     })).mutation(async ({ input }) => {

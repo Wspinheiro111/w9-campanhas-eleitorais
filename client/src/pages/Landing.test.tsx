@@ -15,6 +15,7 @@ describe("landing comercial", () => {
     expect(screen.getByRole("link", { name: "Entrar na conta" })).toHaveAttribute("href", "/login");
     expect(screen.getByText("Solicite sua demonstração")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Solicitar demonstração" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Melhor data e horário para a demonstração")).toHaveAttribute("type", "datetime-local");
     expect(screen.getByLabelText("Vídeo de apresentação do W9 Campanhas Eleitorais")).toBeInTheDocument();
   });
 });

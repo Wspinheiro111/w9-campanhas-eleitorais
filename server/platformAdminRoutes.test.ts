@@ -3,6 +3,8 @@ import type { TrpcContext } from "./_core/context";
 
 vi.mock("./campaignDb", () => ({
   listPlatformDemoRequests: vi.fn(),
+  countUnviewedPlatformDemoRequests: vi.fn(),
+  markPlatformDemoRequestsViewed: vi.fn(),
   updatePlatformDemoRequestStatus: vi.fn(),
   listPlatformCustomers: vi.fn(),
   createPlatformCustomer: vi.fn(),
@@ -42,6 +44,15 @@ describe("administração geral de compradores diretos", () => {
     expect(db.listPlatformDemoRequests).toHaveBeenCalledOnce();
     const ordinaryCaller = appRouter.createCaller(ordinaryUserContext);
     await expect(ordinaryCaller.platformAdmin.demoRequests.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("informa e permite confirmar a visualização de novos pedidos", async () => {
+    vi.mocked(db.countUnviewedPlatformDemoRequests).mockResolvedValue(2);
+    vi.mocked(db.markPlatformDemoRequestsViewed).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(platformAdminContext);
+    await expect(caller.platformAdmin.demoRequests.unseenCount()).resolves.toBe(2);
+    await expect(caller.platformAdmin.demoRequests.markViewed()).resolves.toEqual({ updated: true });
+    expect(db.markPlatformDemoRequestsViewed).toHaveBeenCalledOnce();
   });
 
   it("impede usuários comuns de consultar compradores", async () => {
