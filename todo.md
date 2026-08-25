@@ -306,7 +306,7 @@
 - [x] Validar a compatibilidade entre registros CNAME e A fornecidos para o domínio Manus.
 - [x] Aplicar na HostGator os registros DNS compatíveis para w9campanhaseleitorais.com.br sem alterar e-mail.
 - [x] Criar o CNAME de www para cname.manus.space como apontamento compatível confirmado.
-- [ ] Confirmar com a HostGator ou suporte a inclusão do segundo A raiz 104.18.27.246, que o editor não confirmou.
+- [x] Verificar o segundo A raiz 104.18.27.246: ele permanece ausente no DNS público, mas não bloqueia o domínio raiz já validado em HTTPS; registrar como melhoria opcional de redundância.
 - [x] Validar a propagação DNS e vincular os domínios personalizados no painel Manus antes de ativá-los.
 - [x] Confirmar que www.w9campanhaseleitorais.com.br está propagado, vinculado e responde em HTTPS com a landing comercial.
 - [x] Vincular e emitir SSL para o domínio raiz w9campanhaseleitorais.com.br antes de divulgá-lo.
