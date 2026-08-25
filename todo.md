@@ -303,3 +303,6 @@
 - [x] Realizar auditoria independente de código, rotas, fluxos, segurança e operação para prontidão de produção.
 - [x] Submeter o inventário técnico à API da OpenAI e consolidar o parecer independente.
 - [x] Corrigir os pontos críticos identificados na auditoria de produção e validar a regressão completa.
+- [ ] Configurar monitoramento interno de disponibilidade e alertas operacionais, preparado para integração externa futura.
+- [ ] Criar e executar cenários de carga para CRM, relatórios e sincronização offline.
+- [x] Ampliar testes automatizados dos fluxos de login, MFA e autenticação por passkeys.

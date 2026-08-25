@@ -1,0 +1,35 @@
+{
+  "baseUrl": "http://127.0.0.1:3000",
+  "concurrent": 10,
+  "requestsPerScenario": 30,
+  "results": [
+    {
+      "scenario": "Disponibilidade",
+      "status": "aprovado",
+      "requests": 30,
+      "succeeded": 30,
+      "failed": 0,
+      "throughputPerSecond": 54,
+      "latencyMs": {
+        "p50": 29.1,
+        "p95": 440.7,
+        "max": 497.2
+      }
+    },
+    {
+      "scenario": "CRM",
+      "status": "não executado",
+      "reason": "rota controlada não configurada"
+    },
+    {
+      "scenario": "Relatórios",
+      "status": "não executado",
+      "reason": "rota controlada não configurada"
+    },
+    {
+      "scenario": "Sincronização offline",
+      "status": "não executado",
+      "reason": "rota controlada não configurada"
+    }
+  ]
+}

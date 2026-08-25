@@ -13,6 +13,7 @@ import { recordRoutePerformanceEvent } from "../campaignDb";
 import { generatePlatformCustomerPortfolioReport } from "../campaignDb";
 import { normalizeTelemetryRoute } from "../routeMetrics";
 import { sdk } from "./sdk";
+import { checkAvailability, runInternalAvailabilityCheck } from "./availability";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -55,6 +56,21 @@ async function startServer() {
   registerStorageProxy(app);
   registerGoogleAuthRoutes(app);
   registerOAuthRoutes(app);
+  app.get("/api/health", async (_req, res) => {
+    const status = await checkAvailability();
+    res.set("Cache-Control", "no-store");
+    return res.status(status.ok ? 200 : 503).json(status);
+  });
+  app.post("/api/scheduled/internal-availability", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
+      const status = await runInternalAvailabilityCheck();
+      return res.status(status.ok ? 200 : 503).json(status);
+    } catch (error) {
+      return res.status(500).json({ error: error instanceof Error ? error.message : String(error), timestamp: new Date().toISOString() });
+    }
+  });
   app.post("/api/scheduled/platform-customer-portfolio", async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req);
