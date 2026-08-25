@@ -350,7 +350,7 @@ describe("routers operacionais da campanha", () => {
     const caller = appRouter.createCaller(context());
     const startsAt = new Date("2026-09-02T09:00:00Z"); const endsAt = new Date("2026-09-02T12:00:00Z");
     await expect(caller.operations.shifts.reschedule({ campaignId: 1, shiftId: 77, startsAt, endsAt })).resolves.toEqual({ success: true });
-    expect(db.rescheduleTeamShift).toHaveBeenCalledWith(1, 77, startsAt, endsAt);
+    expect(db.rescheduleTeamShift).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, shiftId: 77, startsAt, endsAt, actorUserId: 99, conflictOverrideReason: null }));
   });
 
   it("permite à coordenação copiar uma escala para vários dias preservando a equipe", async () => {

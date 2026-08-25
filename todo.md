@@ -297,3 +297,6 @@
 - [x] Alertar visualmente conflitos de horários entre escalas da mesma equipe.
 - [x] Permitir copiar uma escala para múltiplos dias da semana no calendário.
 - [x] Exibir gráfico de tendência semanal de cobertura por território no dashboard executivo.
+- [x] Comparar visualmente a cobertura territorial planejada e a efetivamente realizada no dashboard executivo.
+- [x] Permitir configurar recorrência mensal de escalas diretamente no calendário.
+- [x] Permitir exceção de conflito de horário somente com justificativa textual auditável.
