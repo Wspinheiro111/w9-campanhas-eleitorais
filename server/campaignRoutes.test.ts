@@ -352,4 +352,13 @@ describe("routers operacionais da campanha", () => {
     await expect(caller.operations.shifts.reschedule({ campaignId: 1, shiftId: 77, startsAt, endsAt })).resolves.toEqual({ success: true });
     expect(db.rescheduleTeamShift).toHaveBeenCalledWith(1, 77, startsAt, endsAt);
   });
+
+  it("permite à coordenação copiar uma escala para vários dias preservando a equipe", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.listTeamShifts).mockResolvedValue([{ id: 77, campaignId: 1, title: "Mutirão", territory: "Centro", responsibility: null, notes: null, startsAt: new Date("2026-09-01T09:00:00Z"), endsAt: new Date("2026-09-01T12:00:00Z"), status: "scheduled", assignments: [{ id: 5, memberId: 10, memberName: "Coordenação", status: "confirmed" }] }] as never);
+    vi.mocked(db.createTeamShift).mockResolvedValueOnce(81).mockResolvedValueOnce(82);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.operations.shifts.copy({ campaignId: 1, sourceShiftId: 77, targetStartsAt: [new Date("2026-09-02T09:00:00Z"), new Date("2026-09-03T09:00:00Z")] })).resolves.toEqual({ ids: [81, 82] });
+    expect(db.createTeamShift).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, title: "Mutirão", memberIds: [10] }));
+  });
 });

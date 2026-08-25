@@ -294,3 +294,6 @@
 - [x] Criar mapa de calor de cobertura territorial no dashboard executivo.
 - [x] Adicionar filtros de território e equipe ao calendário semanal de escalas.
 - [x] Permitir remanejamento rápido de escalas por arrastar e soltar no calendário semanal.
+- [x] Alertar visualmente conflitos de horários entre escalas da mesma equipe.
+- [x] Permitir copiar uma escala para múltiplos dias da semana no calendário.
+- [x] Exibir gráfico de tendência semanal de cobertura por território no dashboard executivo.
