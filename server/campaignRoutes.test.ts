@@ -50,6 +50,7 @@ vi.mock("./campaignDb", () => ({
   createMemberAvailability: vi.fn(),
   listMemberAvailabilities: vi.fn(),
   listTeamShifts: vi.fn(),
+  rescheduleTeamShift: vi.fn(),
   listCampaignNotifications: vi.fn(),
   markCampaignNotificationsRead: vi.fn(),
   listCampaignReportTemplates: vi.fn(),
@@ -340,5 +341,15 @@ describe("routers operacionais da campanha", () => {
     vi.mocked(db.createMemberAvailability).mockResolvedValue(6);
     const caller = appRouter.createCaller(context());
     await expect(caller.operations.availability.create({ campaignId: 1, memberId: 10, startsAt: new Date("2026-09-01T09:00:00Z"), endsAt: new Date("2026-09-01T12:00:00Z"), status: "available" })).resolves.toEqual({ id: 6 });
+  });
+
+  it("permite à coordenação remanejar uma escala dentro da própria campanha", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.listTeamShifts).mockResolvedValue([{ id: 77, campaignId: 1, startsAt: new Date("2026-09-01T09:00:00Z"), endsAt: new Date("2026-09-01T12:00:00Z"), assignments: [] }] as never);
+    vi.mocked(db.rescheduleTeamShift).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(context());
+    const startsAt = new Date("2026-09-02T09:00:00Z"); const endsAt = new Date("2026-09-02T12:00:00Z");
+    await expect(caller.operations.shifts.reschedule({ campaignId: 1, shiftId: 77, startsAt, endsAt })).resolves.toEqual({ success: true });
+    expect(db.rescheduleTeamShift).toHaveBeenCalledWith(1, 77, startsAt, endsAt);
   });
 });

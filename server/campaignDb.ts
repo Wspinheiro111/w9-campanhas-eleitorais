@@ -1528,6 +1528,8 @@ export async function createTeamShift(input: { campaignId: number; title: string
   await db.insert(campaignNotifications).values({ organizationId, campaignId: input.campaignId, type: "shift", severity: "attention", title: `Nova escala: ${input.title}`, message: `Uma nova escala foi criada para ${input.startsAt.toLocaleString("pt-BR")}.`, actionPath: "/escalas" }); return shiftId;
 }
 
+export async function rescheduleTeamShift(campaignId: number, shiftId: number, startsAt: Date, endsAt: Date) { const db = requireDb(await getDb()); await db.update(campaignTeamShifts).set({ startsAt, endsAt, updatedAt: new Date() }).where(and(eq(campaignTeamShifts.id, shiftId), eq(campaignTeamShifts.campaignId, campaignId))); }
+
 export async function updateTeamShiftAssignmentStatus(campaignId: number, assignmentId: number, status: "assigned" | "confirmed" | "declined") { const db = requireDb(await getDb()); await db.update(campaignTeamShiftAssignments).set({ status }).where(and(eq(campaignTeamShiftAssignments.id, assignmentId), eq(campaignTeamShiftAssignments.campaignId, campaignId))); }
 
 export async function listCampaignNotifications(campaignId: number, memberId?: number | null) { const db = requireDb(await getDb()); const condition = memberId ? and(eq(campaignNotifications.campaignId, campaignId), or(isNull(campaignNotifications.targetMemberId), eq(campaignNotifications.targetMemberId, memberId))) : eq(campaignNotifications.campaignId, campaignId); return db.select().from(campaignNotifications).where(condition).orderBy(desc(campaignNotifications.createdAt)); }

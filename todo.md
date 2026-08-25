@@ -291,3 +291,6 @@
 - [x] Criar dashboard executivo integrado por campanha para a coordenação.
 - [x] Criar visualização em calendário semanal para gerenciamento das escalas da equipe.
 - [x] Adicionar indicadores visuais de cobertura territorial ao dashboard executivo da campanha.
+- [x] Criar mapa de calor de cobertura territorial no dashboard executivo.
+- [x] Adicionar filtros de território e equipe ao calendário semanal de escalas.
+- [x] Permitir remanejamento rápido de escalas por arrastar e soltar no calendário semanal.
