@@ -301,10 +301,12 @@
 - [x] Permitir configurar recorrência mensal de escalas diretamente no calendário.
 - [x] Permitir exceção de conflito de horário somente com justificativa textual auditável.
 - [x] Realizar auditoria independente de código, rotas, fluxos, segurança e operação para prontidão de produção.
-- [x] Submeter o inventário técnico à API da OpenAI e consolidar o parecer independente.
+- [x] Submeter o inventário técnico à API Anthropic e consolidar o parecer independente.
 - [x] Corrigir os pontos críticos identificados na auditoria de produção e validar a regressão completa.
-- [x] Configurar monitoramento interno de disponibilidade e alertas operacionais, preparado para integração externa futura.
-- [ ] Criar e executar cenários de carga em homologação para CRM, relatórios e sincronização offline.
-- [x] Ampliar testes automatizados dos fluxos de login, MFA e autenticação por passkeys.
-- [x] Integrar o acesso ao sistema ao final da página inicial comercial, preservando login, MFA e passkeys.
-- [x] Reproduzir os blocos e vídeos incorporados do modelo HTML enviado na página inicial do W9 Campanhas Eleitorais.
+- [x] Validar a compatibilidade entre registros CNAME e A fornecidos para o domínio Manus.
+- [ ] Aplicar na HostGator os registros DNS compatíveis para w9campanhaseleitorais.com.br sem alterar e-mail.
+- [x] Criar o CNAME de www para cname.manus.space como apontamento compatível confirmado.
+- [ ] Confirmar com a HostGator ou suporte a inclusão do segundo A raiz 104.18.27.246, que o editor não confirmou.
+- [ ] Validar a propagação DNS e vincular os domínios personalizados no painel Manus antes de ativá-los.
+- [x] Confirmar que www.w9campanhaseleitorais.com.br está propagado, vinculado e responde em HTTPS com a landing comercial.
+- [ ] Vincular e emitir SSL para o domínio raiz w9campanhaseleitorais.com.br antes de divulgá-lo.
