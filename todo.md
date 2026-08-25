@@ -300,3 +300,6 @@
 - [x] Comparar visualmente a cobertura territorial planejada e a efetivamente realizada no dashboard executivo.
 - [x] Permitir configurar recorrência mensal de escalas diretamente no calendário.
 - [x] Permitir exceção de conflito de horário somente com justificativa textual auditável.
+- [x] Realizar auditoria independente de código, rotas, fluxos, segurança e operação para prontidão de produção.
+- [x] Submeter o inventário técnico à API da OpenAI e consolidar o parecer independente.
+- [x] Corrigir os pontos críticos identificados na auditoria de produção e validar a regressão completa.
