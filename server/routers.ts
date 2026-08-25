@@ -102,6 +102,20 @@ export const appRouter = router({
       return { submitted: true, requestId };
     }),
   }),
+  contactRequests: router({
+    submit: publicProcedure.input(z.object({
+      name: z.string().trim().min(2).max(180),
+      email: z.string().trim().email().max(320),
+      phone: z.string().transform(value => value.replace(/\D/g, "")).refine(value => value.length === 10 || value.length === 11, "Informe um telefone brasileiro válido."),
+      message: z.string().trim().min(8).max(2000),
+      consent: z.literal(true),
+      website: z.string().max(200).optional(),
+    })).mutation(async ({ input }) => {
+      if (input.website?.trim()) return { submitted: true, ignored: true };
+      const requestId = await campaignDb.createPlatformContactRequest(input);
+      return { submitted: true, requestId };
+    }),
+  }),
   campaign: campaignRouter,
   organization: organizationRouter,
   platformAdmin: platformAdminRouter,

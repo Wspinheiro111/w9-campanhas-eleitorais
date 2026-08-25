@@ -39,6 +39,7 @@ import {
   organizations,
   pipelineFollowups,
   platformCustomers,
+  platformContactRequests,
   platformDemoRequests,
   platformCustomerInteractions,
   platformCustomerPortfolioReports,
@@ -251,6 +252,40 @@ export async function createPlatformDemoRequest(input: { name: string; email: st
     status: "new",
   });
   return Number(result[0].insertId);
+}
+
+export async function createPlatformContactRequest(input: { name: string; email: string; phone: string; message: string }) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(platformContactRequests).values({
+    name: input.name.trim(),
+    email: input.email.trim().toLowerCase(),
+    phone: input.phone.replace(/\D/g, ""),
+    message: input.message.trim(),
+    consent: true,
+    status: "new",
+  });
+  return Number(result[0].insertId);
+}
+
+export async function listPlatformContactRequests() {
+  const db = requireDb(await getDb());
+  return db.select().from(platformContactRequests).orderBy(desc(platformContactRequests.createdAt)).limit(100);
+}
+
+export async function countUnviewedPlatformContactRequests() {
+  const db = requireDb(await getDb());
+  const rows = await db.select({ total: sql<number>`count(*)` }).from(platformContactRequests).where(and(eq(platformContactRequests.status, "new"), isNull(platformContactRequests.viewedAt)));
+  return Number(rows[0]?.total ?? 0);
+}
+
+export async function markPlatformContactRequestsViewed() {
+  const db = requireDb(await getDb());
+  await db.update(platformContactRequests).set({ viewedAt: new Date() }).where(and(eq(platformContactRequests.status, "new"), isNull(platformContactRequests.viewedAt)));
+}
+
+export async function updatePlatformContactRequestStatus(input: { requestId: number; status: "new" | "contacted" | "archived" }) {
+  const db = requireDb(await getDb());
+  await db.update(platformContactRequests).set({ status: input.status }).where(eq(platformContactRequests.id, input.requestId));
 }
 
 export async function listPlatformDemoRequests() {

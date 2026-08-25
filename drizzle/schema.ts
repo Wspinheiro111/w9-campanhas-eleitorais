@@ -39,6 +39,7 @@ export const financialEntryStatusEnum = mysqlEnum("financial_entry_status", ["dr
 export const legalDocumentStatusEnum = mysqlEnum("legal_document_status", ["pending", "under_review", "approved", "rejected", "archived"]);
 export const platformCustomerStatusEnum = mysqlEnum("platform_customer_status", ["pending", "access_released", "active", "suspended"]);
 export const platformDemoRequestStatusEnum = mysqlEnum("platform_demo_request_status", ["new", "contacted", "qualified", "converted", "archived"]);
+export const platformContactRequestStatusEnum = mysqlEnum("platform_contact_request_status", ["new", "contacted", "archived"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -178,6 +179,20 @@ export const platformDemoRequests = mysqlTable("platform_demo_requests", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("platform_demo_request_status_created_idx").on(table.status, table.createdAt), index("platform_demo_request_email_idx").on(table.email), index("platform_demo_request_phone_idx").on(table.phone)]);
+
+/** Mensagens públicas de contato ainda não vinculadas a uma organização. */
+export const platformContactRequests = mysqlTable("platform_contact_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 180 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 32 }).notNull(),
+  message: text("message").notNull(),
+  consent: boolean("consent").notNull(),
+  status: platformContactRequestStatusEnum.notNull().default("new"),
+  viewedAt: timestamp("viewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("platform_contact_request_status_created_idx").on(table.status, table.createdAt), index("platform_contact_request_email_idx").on(table.email), index("platform_contact_request_phone_idx").on(table.phone)]);
 
 export const platformCustomerInteractions = mysqlTable("platform_customer_interactions", {
   id: int("id").autoincrement().primaryKey(),

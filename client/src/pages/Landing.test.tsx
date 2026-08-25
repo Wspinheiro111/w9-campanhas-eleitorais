@@ -4,7 +4,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const submitDemo = vi.fn();
-vi.mock("@/lib/trpc", () => ({ trpc: { demoRequests: { submit: { useMutation: () => ({ mutate: submitDemo, isPending: false, error: null }) } } } }));
+const submitContact = vi.fn();
+vi.mock("@/lib/trpc", () => ({ trpc: { demoRequests: { submit: { useMutation: () => ({ mutate: submitDemo, isPending: false, error: null }) } }, contactRequests: { submit: { useMutation: () => ({ mutate: submitContact, isPending: false, error: null }) } } } }));
 import Landing from "./Landing";
 
 describe("landing comercial", () => {
@@ -16,6 +17,8 @@ describe("landing comercial", () => {
     expect(screen.getByRole("link", { name: /entrar na conta/i })).toHaveAttribute("href", "/login");
     expect(screen.getByText("Quero uma demonstração")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /solicitar demonstração/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /enviar mensagem/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Como podemos ajudar?")).toBeInTheDocument();
     expect(screen.getByLabelText("Melhor data e horário para a demonstração")).toHaveAttribute("type", "datetime-local");
     expect(screen.getByLabelText("Vídeo de apresentação do W9 Campanhas Eleitorais")).toBeInTheDocument();
   });

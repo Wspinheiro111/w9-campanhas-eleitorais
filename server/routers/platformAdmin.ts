@@ -29,6 +29,18 @@ export const platformAdminRouter = router({
       return { updated: true };
     }),
   }),
+  contactRequests: router({
+    list: platformAdminProcedure.query(() => campaignDb.listPlatformContactRequests()),
+    unseenCount: platformAdminProcedure.query(() => campaignDb.countUnviewedPlatformContactRequests()),
+    markViewed: platformAdminProcedure.mutation(async () => {
+      await campaignDb.markPlatformContactRequestsViewed();
+      return { updated: true };
+    }),
+    setStatus: platformAdminProcedure.input(z.object({ requestId: z.number().int().positive(), status: z.enum(["new", "contacted", "archived"]) })).mutation(async ({ input }) => {
+      await campaignDb.updatePlatformContactRequestStatus(input);
+      return { updated: true };
+    }),
+  }),
   customers: router({
     list: platformAdminProcedure.query(() => campaignDb.listPlatformCustomers()),
     create: platformAdminProcedure.input(z.object({ organizationName: z.string().min(2).max(160), legalName: z.string().max(220).optional(), fiscalId: z.string().max(32).optional(), contactName: z.string().min(2).max(180), contactPhone: phoneSchema })).mutation(async ({ ctx, input }) => campaignDb.createPlatformCustomer({ ...input, actorUserId: ctx.user.id })),
