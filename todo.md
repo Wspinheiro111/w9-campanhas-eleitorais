@@ -321,5 +321,5 @@
 - [x] Permitir ao administrador exclusivo cadastrar usuários master por CPF ou CNPJ com validação e histórico de liberação.
 - [x] Garantir que usuários master não recebam acesso ao /paineladmin nem privilégios administrativos globais.
 - [x] Separar /paineladmin do DashboardLayout e da navegação do sistema, mantendo-o como página administrativa externa e exclusiva.
-- [ ] Restaurar o acesso exclusivo do administrador e confirmar a publicação da página externa correta em /paineladmin.
-- [ ] Permitir que uma conta autenticada por Google configure uma senha local sem expor credenciais ou alterar a identidade da conta.
+- [x] Restaurar o acesso exclusivo do administrador e confirmar a publicação da página externa correta em /paineladmin.
+- [x] Permitir que uma conta autenticada por Google configure uma senha local sem expor credenciais ou alterar a identidade da conta.
