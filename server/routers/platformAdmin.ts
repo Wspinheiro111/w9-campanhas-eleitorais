@@ -20,6 +20,7 @@ const portfolioFrequencySchema = z.enum(["daily", "weekly", "monthly"]);
 const portfolioCronByFrequency = { daily: "0 0 12 * * *", weekly: "0 0 12 * * 1", monthly: "0 0 12 1 * *" } as const;
 
 export const platformAdminRouter = router({
+  overview: platformAdminProcedure.query(() => campaignDb.getPlatformCommandCenterOverview()),
   demoRequests: router({
     list: platformAdminProcedure.query(() => campaignDb.listPlatformDemoRequests()),
     unseenCount: platformAdminProcedure.query(() => campaignDb.countUnviewedPlatformDemoRequests()),

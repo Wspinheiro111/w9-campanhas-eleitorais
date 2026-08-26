@@ -330,3 +330,10 @@
 - [x] Confirmar novamente o login por e-mail do gerente e o acesso ao /paineladmin externo no domínio raiz ativo.
 - [x] Permitir definir senha provisória no cadastro de novo usuário master pelo /paineladmin.
 - [x] Exigir que o usuário master altere a senha provisória antes de acessar o sistema operacional.
+- [x] Mapear módulos administrativos existentes e definir os recursos da Central de Comando compatíveis com o W9.
+- [x] Redesenhar a navegação e a visão geral do /paineladmin como Central de Comando SaaS independente.
+- [x] Consolidar gestão real de clientes, usuários master, segurança, auditoria, integrações e saúde da plataforma.
+- [x] Documentar módulos não aplicáveis ou dependentes de integração futura, sem criar dados simulados.
+- [x] Criar visão geral com métricas agregadas reais de organizações, clientes, usuários, leads, contatos, erros e saúde.
+- [x] Organizar os módulos reais em navegação própria: visão geral, clientes, usuários, comercial, segurança, auditoria e saúde.
+- [x] Exibir estados explícitos para capacidades ainda sem fonte de dados, sem criar planos, cobranças, tickets ou métricas fictícias.

@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 
 vi.mock("./campaignDb", () => ({
   listPlatformDemoRequests: vi.fn(),
+  getPlatformCommandCenterOverview: vi.fn(),
   countUnviewedPlatformDemoRequests: vi.fn(),
   markPlatformDemoRequestsViewed: vi.fn(),
   updatePlatformDemoRequestStatus: vi.fn(),
@@ -42,6 +43,13 @@ const ordinaryUserContext: TrpcContext = {
 afterEach(() => vi.clearAllMocks());
 
 describe("administração geral de compradores diretos", () => {
+  it("expõe indicadores agregados apenas ao proprietário da plataforma", async () => {
+    const summary = { organizations: { total: 1, active: 1, suspended: 0 }, customers: { total: 0, pending: 0, accessReleased: 0, active: 0, suspended: 0 }, users: { total: 1, firstAccessPending: 0 }, commercial: { newDemoRequests: 0, newContactRequests: 0 }, security: { mfaFactors: 1, passkeys: 0, events24h: 2, failedLogins24h: 0 }, operations: { requests24h: 4, serverErrors24h: 0, averageDurationMs: 34, interfaceErrors7d: 0, auditEvents7d: 0 } };
+    vi.mocked(db.getPlatformCommandCenterOverview).mockResolvedValue(summary);
+    const caller = appRouter.createCaller(platformAdminContext);
+    await expect(caller.platformAdmin.overview()).resolves.toEqual(summary);
+    await expect(appRouter.createCaller(ordinaryUserContext).platformAdmin.overview()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
   it("mantém a fila de demonstrações restrita à administração da plataforma", async () => {
     vi.mocked(db.listPlatformDemoRequests).mockResolvedValue([] as never);
     const caller = appRouter.createCaller(platformAdminContext);

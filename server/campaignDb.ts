@@ -4,6 +4,9 @@ import { and, desc, eq, gte, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import {
   aiMessages,
   audioCrmLogs,
+  authMfaFactors,
+  authPasskeys,
+  authenticationAuditLogs,
   campaignIndicators,
   campaignExportVersions,
   campaignFinancialEntries,
@@ -223,6 +226,35 @@ export async function listPlatformCustomers() {
     .innerJoin(organizations, eq(organizations.id, platformCustomers.organizationId))
     .leftJoin(organizationInvitations, eq(organizationInvitations.id, platformCustomers.lastInvitationId))
     .orderBy(desc(platformCustomers.updatedAt));
+}
+
+/** Agregados seguros e reais para a Central de Comando da plataforma. */
+export async function getPlatformCommandCenterOverview() {
+  const db = requireDb(await getDb());
+  const since24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const since7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [organizationRows, customerRows, userRows, demoRows, contactRows, mfaRows, passkeyRows, securityRows, routeRows, interfaceErrorRows, auditRows] = await Promise.all([
+    db.select({ total: sql<number>`count(*)`, active: sql<number>`coalesce(sum(case when ${organizations.status} = 'active' then 1 else 0 end), 0)`, suspended: sql<number>`coalesce(sum(case when ${organizations.status} = 'suspended' then 1 else 0 end), 0)` }).from(organizations),
+    db.select({ total: sql<number>`count(*)`, pending: sql<number>`coalesce(sum(case when ${platformCustomers.status} = 'pending' then 1 else 0 end), 0)`, accessReleased: sql<number>`coalesce(sum(case when ${platformCustomers.status} = 'access_released' then 1 else 0 end), 0)`, active: sql<number>`coalesce(sum(case when ${platformCustomers.status} = 'active' then 1 else 0 end), 0)`, suspended: sql<number>`coalesce(sum(case when ${platformCustomers.status} = 'suspended' then 1 else 0 end), 0)` }).from(platformCustomers),
+    db.select({ total: sql<number>`count(*)`, firstAccessPending: sql<number>`coalesce(sum(case when ${users.mustChangePassword} = true then 1 else 0 end), 0)` }).from(users),
+    db.select({ new: sql<number>`coalesce(sum(case when ${platformDemoRequests.status} = 'new' then 1 else 0 end), 0)` }).from(platformDemoRequests),
+    db.select({ new: sql<number>`coalesce(sum(case when ${platformContactRequests.status} = 'new' then 1 else 0 end), 0)` }).from(platformContactRequests),
+    db.select({ total: sql<number>`count(*)` }).from(authMfaFactors),
+    db.select({ total: sql<number>`count(*)` }).from(authPasskeys),
+    db.select({ total: sql<number>`count(*)`, failed: sql<number>`coalesce(sum(case when ${authenticationAuditLogs.success} = false then 1 else 0 end), 0)` }).from(authenticationAuditLogs).where(gte(authenticationAuditLogs.createdAt, since24Hours)),
+    db.select({ requests: sql<number>`count(*)`, serverErrors: sql<number>`coalesce(sum(case when ${routePerformanceEvents.statusCode} >= 500 then 1 else 0 end), 0)`, averageDurationMs: sql<number>`coalesce(round(avg(${routePerformanceEvents.durationMs})), 0)` }).from(routePerformanceEvents).where(gte(routePerformanceEvents.createdAt, since24Hours)),
+    db.select({ total: sql<number>`count(*)` }).from(clientInterfaceErrors).where(gte(clientInterfaceErrors.createdAt, since7Days)),
+    db.select({ total: sql<number>`count(*)` }).from(organizationAuditLogs).where(gte(organizationAuditLogs.createdAt, since7Days)),
+  ]);
+  const number = (value: unknown) => Number(value ?? 0);
+  return {
+    organizations: { total: number(organizationRows[0]?.total), active: number(organizationRows[0]?.active), suspended: number(organizationRows[0]?.suspended) },
+    customers: { total: number(customerRows[0]?.total), pending: number(customerRows[0]?.pending), accessReleased: number(customerRows[0]?.accessReleased), active: number(customerRows[0]?.active), suspended: number(customerRows[0]?.suspended) },
+    users: { total: number(userRows[0]?.total), firstAccessPending: number(userRows[0]?.firstAccessPending) },
+    commercial: { newDemoRequests: number(demoRows[0]?.new), newContactRequests: number(contactRows[0]?.new) },
+    security: { mfaFactors: number(mfaRows[0]?.total), passkeys: number(passkeyRows[0]?.total), events24h: number(securityRows[0]?.total), failedLogins24h: number(securityRows[0]?.failed) },
+    operations: { requests24h: number(routeRows[0]?.requests), serverErrors24h: number(routeRows[0]?.serverErrors), averageDurationMs: number(routeRows[0]?.averageDurationMs), interfaceErrors7d: number(interfaceErrorRows[0]?.total), auditEvents7d: number(auditRows[0]?.total) },
+  };
 }
 
 export async function createPlatformCustomer(input: { organizationName: string; legalName?: string | null; fiscalId?: string | null; contactName: string; contactPhone: string; contactEmail: string; temporaryPassword: string; actorUserId: number }) {
