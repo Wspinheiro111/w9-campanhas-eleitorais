@@ -129,7 +129,7 @@ export const organizations = mysqlTable("organizations", {
   createdById: int("createdById").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [index("organization_status_idx").on(table.status), index("organization_fiscal_idx").on(table.fiscalId)]);
+}, (table) => [index("organization_status_idx").on(table.status), uniqueIndex("organization_fiscal_unique_idx").on(table.fiscalId)]);
 
 export const organizationMembers = mysqlTable("organization_members", {
   id: int("id").autoincrement().primaryKey(),
