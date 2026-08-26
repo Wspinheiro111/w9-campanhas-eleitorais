@@ -26,6 +26,7 @@ const CrisisRoom = lazy(() => import("./pages/CrisisRoom"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ExecutiveDashboard = lazy(() => import("./pages/ExecutiveDashboard"));
 const FieldOps = lazy(() => import("./pages/FieldOps"));
+const FirstAccess = lazy(() => import("./pages/FirstAccess"));
 const Login = lazy(() => import("./pages/Login"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Monitoring = lazy(() => import("./pages/Monitoring"));
@@ -95,6 +96,7 @@ function App() {
   return <ErrorBoundary><ThemeProvider defaultTheme="w9"><TooltipProvider><Toaster /><PwaUpdateBanner /><W9GlobalReportGenerationFeedback /><Suspense fallback={<PageLoading />}><Switch>
     <Route path="/" component={Landing} />
     <Route path="/login" component={Login} />
+    <Route path="/primeiro-acesso" component={FirstAccess} />
     <Route path="/paineladmin" component={AdminPortal} />
     <Route path="/onboarding" component={Onboarding} />
     <Route path="/cadastro/:campaignId" component={PublicSignup} />

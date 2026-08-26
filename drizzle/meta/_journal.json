@@ -414,6 +414,13 @@
       "when": 1787751561389,
       "tag": "0058_perfect_blur",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1787754852333,
+      "tag": "0059_lowly_zarda",
+      "breakpoints": true
     }
   ]
 }

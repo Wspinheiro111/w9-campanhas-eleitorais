@@ -95,14 +95,14 @@ function passwordMatches(password: string, storedHash: string) {
   return timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(expected, "hex"));
 }
 
-export async function registerLocalUser(input: { name: string; email: string; password: string }) {
+export async function registerLocalUser(input: { name: string; email: string; password: string; requirePasswordChange?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const email = input.email.trim().toLowerCase();
   const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (existing[0]) throw new Error("EMAIL_ALREADY_REGISTERED");
   const openId = `local:${createHash("sha256").update(email).digest("hex").slice(0, 56)}`;
-  await db.insert(users).values({ openId, email, name: input.name.trim(), passwordHash: passwordDigest(input.password), loginMethod: "password", role: "user", lastSignedIn: new Date() });
+  await db.insert(users).values({ openId, email, name: input.name.trim(), passwordHash: passwordDigest(input.password), mustChangePassword: Boolean(input.requirePasswordChange), loginMethod: "password", role: "user", lastSignedIn: new Date() });
   return (await getUserByOpenId(openId))!;
 }
 
@@ -129,7 +129,7 @@ export async function setLocalPassword(input: { userId: number; password: string
   const user = (await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, input.userId)).limit(1))[0];
   if (!user) throw new Error("USER_NOT_FOUND");
   if (user.passwordHash && (!input.currentPassword || !passwordMatches(input.currentPassword, user.passwordHash))) throw new Error("CURRENT_PASSWORD_REQUIRED");
-  await db.update(users).set({ passwordHash: passwordDigest(input.password), updatedAt: new Date() }).where(eq(users.id, input.userId));
+  await db.update(users).set({ passwordHash: passwordDigest(input.password), mustChangePassword: false, updatedAt: new Date() }).where(eq(users.id, input.userId));
 }
 
 export async function getLoginSecurityState(email: string) {

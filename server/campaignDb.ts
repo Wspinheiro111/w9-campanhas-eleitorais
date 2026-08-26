@@ -61,7 +61,7 @@ import {
   voterInteractions,
   voters,
 } from "../drizzle/schema";
-import { getDb } from "./db";
+import { getDb, getUserByEmail, registerLocalUser } from "./db";
 import { summarizePerformanceEvents } from "./routeMetrics";
 import { getInitialFinancialEntryStatus, isFinancialEntryIncludedInActiveBalance } from "./financialStatus";
 
@@ -225,20 +225,29 @@ export async function listPlatformCustomers() {
     .orderBy(desc(platformCustomers.updatedAt));
 }
 
-export async function createPlatformCustomer(input: { organizationName: string; legalName?: string | null; fiscalId?: string | null; contactName: string; contactPhone: string; actorUserId: number }) {
+export async function createPlatformCustomer(input: { organizationName: string; legalName?: string | null; fiscalId?: string | null; contactName: string; contactPhone: string; contactEmail: string; temporaryPassword: string; actorUserId: number }) {
   const db = requireDb(await getDb());
   const fiscalId = input.fiscalId?.replace(/\D/g, "") || null;
   if (fiscalId) {
     const existing = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.fiscalId, fiscalId)).limit(1);
     if (existing[0]) throw new Error("PLATFORM_FISCAL_ID_EXISTS");
   }
+  if (await getUserByEmail(input.contactEmail)) throw new Error("PLATFORM_MASTER_EMAIL_EXISTS");
   const organizationResult = await db.insert(organizations).values({ name: input.organizationName, legalName: input.legalName || null, fiscalId, status: "active", createdById: input.actorUserId });
   const organizationId = Number(organizationResult[0].insertId);
-  const customerResult = await db.insert(platformCustomers).values({ organizationId, contactName: input.contactName, contactPhone: input.contactPhone.replace(/\D/g, ""), status: "pending", createdByUserId: input.actorUserId });
+  let masterUser: Awaited<ReturnType<typeof registerLocalUser>>;
+  try {
+    masterUser = await registerLocalUser({ name: input.contactName, email: input.contactEmail, password: input.temporaryPassword, requirePasswordChange: true });
+  } catch (error) {
+    await db.delete(organizations).where(eq(organizations.id, organizationId));
+    throw error;
+  }
+  await db.insert(organizationMembers).values({ organizationId, userId: masterUser.id, role: "admin", active: true });
+  const customerResult = await db.insert(platformCustomers).values({ organizationId, contactName: input.contactName, contactPhone: input.contactPhone.replace(/\D/g, ""), masterUserId: masterUser.id, status: "active", accessReleasedAt: new Date(), createdByUserId: input.actorUserId });
   const customerId = Number(customerResult[0].insertId);
-  await db.insert(platformCustomerInteractions).values({ customerId, kind: "customer_created", description: "Usuário master cadastrado na administração exclusiva.", createdByUserId: input.actorUserId });
-  await createOrganizationAuditLog({ organizationId, actorUserId: input.actorUserId, action: "platform_customer.created", entityType: "platform_customer", entityId: customerId, metadata: { contactPhone: input.contactPhone.replace(/\D/g, "") } });
-  return { customerId, organizationId };
+  await db.insert(platformCustomerInteractions).values({ customerId, kind: "customer_created", description: "Usuário master cadastrado com senha provisória e troca obrigatória no primeiro acesso.", createdByUserId: input.actorUserId });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.actorUserId, action: "platform_customer.created", entityType: "platform_customer", entityId: customerId, metadata: { masterUserId: masterUser.id, provisioning: "temporary_password" } });
+  return { customerId, organizationId, masterUserId: masterUser.id };
 }
 
 export async function createPlatformDemoRequest(input: { name: string; email: string; phone: string; organizationName: string; role: string; city?: string | null; state?: string | null; message?: string | null; preferredDemoAt: Date }) {

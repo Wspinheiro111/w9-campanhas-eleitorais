@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const loginMutate = vi.fn();
 const navigate = vi.fn();
-let loginOptions: { onSuccess?: (result: { requiresMfa?: boolean }) => void } | undefined;
-let finishPasskeyOptions: { onSuccess?: () => void } | undefined;
+let loginOptions: { onSuccess?: (result: { requiresMfa?: boolean; user?: { mustChangePassword?: boolean } | null }) => void } | undefined;
+let finishPasskeyOptions: { onSuccess?: (result: { user?: { mustChangePassword?: boolean } | null }) => void } | undefined;
 
 vi.mock("wouter", () => ({ useLocation: () => ["/login", navigate] }));
 vi.mock("@/lib/trpc", () => ({ trpc: { auth: { login: { useMutation: (options: typeof loginOptions) => { loginOptions = options; return { mutate: loginMutate, isPending: false }; } }, register: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) }, beginPasskeyLogin: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) }, finishPasskeyLogin: { useMutation: (options: typeof finishPasskeyOptions) => { finishPasskeyOptions = options; return { mutateAsync: vi.fn(), isPending: false }; } } } } }));
@@ -26,11 +26,13 @@ afterEach(() => {
 describe("acesso local", () => {
   it("redireciona ao dashboard após login normal, MFA e passkey", () => {
     render(<Login />);
-    act(() => loginOptions?.onSuccess?.({}));
+    act(() => loginOptions?.onSuccess?.({ user: { mustChangePassword: false } }));
     expect(navigate).toHaveBeenCalledWith("/painel");
+    act(() => loginOptions?.onSuccess?.({ user: { mustChangePassword: true } }));
+    expect(navigate).toHaveBeenCalledWith("/primeiro-acesso");
     act(() => loginOptions?.onSuccess?.({ requiresMfa: true }));
     expect(screen.getByLabelText(/código do autenticador/i)).toBeInTheDocument();
-    act(() => finishPasskeyOptions?.onSuccess?.());
+    act(() => finishPasskeyOptions?.onSuccess?.({ user: { mustChangePassword: false } }));
     expect(navigate).toHaveBeenCalledWith("/painel");
   });
 

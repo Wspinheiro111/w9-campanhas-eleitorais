@@ -65,7 +65,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem(SIDEBAR_WIDTH_KEY)) || DEFAULT_WIDTH);
   const { loading, user } = useAuth();
   useEffect(() => { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth)); }, [sidebarWidth]);
-  useEffect(() => { if (!loading && !user) window.location.assign("/login"); }, [loading, user]);
+  useEffect(() => { if (!loading && !user) window.location.assign("/login"); else if (user?.mustChangePassword) window.location.assign("/primeiro-acesso"); }, [loading, user]);
   if (loading) return <DashboardLayoutSkeleton />;
   if (!user) return <DashboardLayoutSkeleton />;
   return <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}><DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent></SidebarProvider>;

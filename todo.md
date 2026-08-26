@@ -326,3 +326,7 @@
 - [x] Remover ou confirmar a inexistência de referências ao subdomínio duplicado incorreto.
 - [x] Validar o login por e-mail e senha do administrador exclusivo no /paineladmin.
 - [x] Gerar texto completo de divulgação comercial do W9 Campanhas Eleitorais.
+- [ ] Validar o redirecionamento canônico e o login do administrador no /paineladmin após o ajuste de domínio.
+- [x] Confirmar novamente o login por e-mail do gerente e o acesso ao /paineladmin externo no domínio raiz ativo.
+- [x] Permitir definir senha provisória no cadastro de novo usuário master pelo /paineladmin.
+- [x] Exigir que o usuário master altere a senha provisória antes de acessar o sistema operacional.

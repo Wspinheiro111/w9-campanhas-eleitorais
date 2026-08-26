@@ -48,6 +48,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   passwordHash: varchar("passwordHash", { length: 255 }),
+  mustChangePassword: boolean("mustChangePassword").notNull().default(false),
   googleId: varchar("googleId", { length: 128 }).unique(),
   avatarUrl: varchar("avatarUrl", { length: 1200 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
@@ -162,6 +163,7 @@ export const platformCustomers = mysqlTable("platform_customers", {
   organizationId: int("organizationId").notNull().references(() => organizations.id),
   contactName: varchar("contactName", { length: 180 }).notNull(),
   contactPhone: varchar("contactPhone", { length: 32 }).notNull(),
+  masterUserId: int("masterUserId").references(() => users.id),
   status: platformCustomerStatusEnum.default("pending").notNull(),
   lastInvitationId: int("lastInvitationId"),
   accessReleasedAt: timestamp("accessReleasedAt"),
@@ -170,7 +172,7 @@ export const platformCustomers = mysqlTable("platform_customers", {
   createdByUserId: int("createdByUserId").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [uniqueIndex("platform_customer_organization_unique_idx").on(table.organizationId), index("platform_customer_status_idx").on(table.status, table.updatedAt), index("platform_customer_next_contact_idx").on(table.status, table.nextContactAt)]);
+}, (table) => [uniqueIndex("platform_customer_organization_unique_idx").on(table.organizationId), uniqueIndex("platform_customer_master_user_unique_idx").on(table.masterUserId), index("platform_customer_status_idx").on(table.status, table.updatedAt), index("platform_customer_next_contact_idx").on(table.status, table.nextContactAt)]);
 
 /** Solicitações públicas de demonstração ainda não vinculadas a uma organização. */
 export const platformDemoRequests = mysqlTable("platform_demo_requests", {

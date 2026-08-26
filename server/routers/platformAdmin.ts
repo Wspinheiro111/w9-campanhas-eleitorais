@@ -46,11 +46,12 @@ export const platformAdminRouter = router({
   }),
   customers: router({
     list: platformAdminProcedure.query(() => campaignDb.listPlatformCustomers()),
-    create: platformAdminProcedure.input(z.object({ organizationName: z.string().min(2).max(160), legalName: z.string().max(220).optional(), fiscalId: fiscalIdSchema, contactName: z.string().min(2).max(180), contactPhone: phoneSchema })).mutation(async ({ ctx, input }) => {
+    create: platformAdminProcedure.input(z.object({ organizationName: z.string().min(2).max(160), legalName: z.string().max(220).optional(), fiscalId: fiscalIdSchema, contactName: z.string().min(2).max(180), contactPhone: phoneSchema, contactEmail: z.string().trim().email().max(320), temporaryPassword: z.string().min(10).max(128) })).mutation(async ({ ctx, input }) => {
       try {
         return await campaignDb.createPlatformCustomer({ ...input, actorUserId: ctx.user.id });
       } catch (error) {
         if (error instanceof Error && error.message === "PLATFORM_FISCAL_ID_EXISTS") throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário master cadastrado para este CPF ou CNPJ." });
+        if (error instanceof Error && error.message === "PLATFORM_MASTER_EMAIL_EXISTS") throw new TRPCError({ code: "CONFLICT", message: "Já existe uma conta com este e-mail." });
         throw error;
       }
     }),

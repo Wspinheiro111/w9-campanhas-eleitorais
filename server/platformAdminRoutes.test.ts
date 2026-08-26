@@ -70,11 +70,11 @@ describe("administração geral de compradores diretos", () => {
     await expect(caller.platformAdmin.customers.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("cadastra comprador direto normalizando o telefone", async () => {
+  it("cadastra usuário master com senha provisória normalizando o telefone", async () => {
     vi.mocked(db.createPlatformCustomer).mockResolvedValue({ customerId: 7, organizationId: 22 });
     const caller = appRouter.createCaller(platformAdminContext);
-    await expect(caller.platformAdmin.customers.create({ organizationName: "Comitê Direto", fiscalId: "529.982.247-25", contactName: "Pessoa Compradora", contactPhone: "(51) 99999-8888" })).resolves.toEqual({ customerId: 7, organizationId: 22 });
-    expect(db.createPlatformCustomer).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 1, contactPhone: "51999998888", fiscalId: "52998224725" }));
+    await expect(caller.platformAdmin.customers.create({ organizationName: "Comitê Direto", fiscalId: "529.982.247-25", contactName: "Pessoa Compradora", contactPhone: "(51) 99999-8888", contactEmail: "master@example.com", temporaryPassword: "SenhaTemp#2026" })).resolves.toEqual({ customerId: 7, organizationId: 22 });
+    expect(db.createPlatformCustomer).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 1, contactPhone: "51999998888", fiscalId: "52998224725", contactEmail: "master@example.com", temporaryPassword: "SenhaTemp#2026" }));
   });
 
   it("libera acesso por convite seguro somente para um comprador cadastrado", async () => {
