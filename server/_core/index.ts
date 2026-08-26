@@ -13,7 +13,6 @@ import { recordRoutePerformanceEvent } from "../campaignDb";
 import { generatePlatformCustomerPortfolioReport } from "../campaignDb";
 import { normalizeTelemetryRoute } from "../routeMetrics";
 import { sdk } from "./sdk";
-import { canonicalW9HostRedirect } from "../canonicalHost";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,7 +39,6 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  app.use(canonicalW9HostRedirect);
   app.use((req, res, next) => {
     const startedAt = performance.now();
     res.on("finish", () => {

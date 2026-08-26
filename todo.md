@@ -311,6 +311,7 @@
 - [x] Confirmar que www.w9campanhaseleitorais.com.br está propagado, vinculado e responde em HTTPS com a landing comercial.
 - [x] Vincular e emitir SSL para o domínio raiz w9campanhaseleitorais.com.br antes de divulgá-lo.
 - [x] Confirmar que w9campanhaseleitorais.com.br está vinculado, redireciona HTTP para HTTPS e responde em HTTPS com a landing comercial.
-- [x] Redirecionar canonicamente o domínio raiz para www.w9campanhaseleitorais.com.br.
+- [ ] Definir www.w9campanhaseleitorais.com.br como domínio canônico na plataforma e só então ativar o redirecionamento raiz → www sem criar ciclo.
 - [x] Adicionar formulário público de contato à landing com captação segura de leads.
 - [x] Adicionar rolagem suave, animações de entrada acessíveis e otimizações de carregamento visual à landing.
+- [ ] Diagnosticar e restaurar a disponibilidade pública dos domínios da landing sem alterar e-mail ou dados de leads.
