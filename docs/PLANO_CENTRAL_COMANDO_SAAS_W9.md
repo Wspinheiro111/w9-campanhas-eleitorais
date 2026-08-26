@@ -67,3 +67,18 @@ O primeiro acesso de novos usuários master continuará exigindo troca de senha.
 5. Validar a interface publicada com o proprietário e registrar o que ficou propositalmente pendente de integração futura.
 
 > A Central de Comando será adaptada ao W9 Campanhas Eleitorais. Ela não exibirá módulos artificiais nem substituirá a operação de campanha dos clientes.
+
+## Implementação concluída em 26 de agosto de 2026
+
+O `/paineladmin` foi reorganizado como **Central de Comando W9**, mantendo a página independente do sistema operacional e a autorização exclusiva no backend. A navegação publicada agora contém Visão geral, Clientes e usuários, Segurança, Saúde da plataforma e Capacidades futuras.
+
+| Entrega | Estado confirmado |
+| --- | --- |
+| Visão geral | Agrega organizações, clientes, usuários, solicitações de demonstração, mensagens de contato e primeiro acesso pendente a partir das tabelas reais. |
+| Clientes e usuários | Mantém a carteira comercial e o cadastro de usuário master com CPF/CNPJ, senha provisória e troca obrigatória no primeiro acesso. |
+| Segurança | Agrega MFA, passkeys e eventos de autenticação sem retornar hashes, senhas, sessões ou segredos. |
+| Saúde | Agrega telemetria de rotas, latência, erros 5xx, erros de interface e eventos organizacionais em janelas de tempo explícitas. |
+| Capacidades futuras | Declara planos/licenças, cobrança, tickets e feature flags como não integrados, sem números ou registros simulados. |
+| Validação | TypeScript e 191 testes aprovados; validação visual publicada documentada em `VALIDACAO_CENTRAL_COMANDO_2026-08-26.md`. |
+
+O redirecionamento canônico do domínio raiz para `www` não faz parte da Central de Comando e permanece dependente de ajuste externo pela plataforma, para evitar a reintrodução de um ciclo de redirecionamento.
