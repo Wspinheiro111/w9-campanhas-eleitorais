@@ -323,3 +323,6 @@
 - [x] Separar /paineladmin do DashboardLayout e da navegação do sistema, mantendo-o como página administrativa externa e exclusiva.
 - [x] Restaurar o acesso exclusivo do administrador e confirmar a publicação da página externa correta em /paineladmin.
 - [x] Permitir que uma conta autenticada por Google configure uma senha local sem expor credenciais ou alterar a identidade da conta.
+- [x] Remover ou confirmar a inexistência de referências ao subdomínio duplicado incorreto.
+- [x] Validar o login por e-mail e senha do administrador exclusivo no /paineladmin.
+- [x] Gerar texto completo de divulgação comercial do W9 Campanhas Eleitorais.
