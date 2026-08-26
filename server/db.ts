@@ -116,6 +116,22 @@ export async function authenticateLocalUser(emailInput: string, password: string
   return user;
 }
 
+export async function hasLocalPassword(userId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const user = (await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId)).limit(1))[0];
+  return Boolean(user?.passwordHash);
+}
+
+export async function setLocalPassword(input: { userId: number; password: string; currentPassword?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const user = (await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, input.userId)).limit(1))[0];
+  if (!user) throw new Error("USER_NOT_FOUND");
+  if (user.passwordHash && (!input.currentPassword || !passwordMatches(input.currentPassword, user.passwordHash))) throw new Error("CURRENT_PASSWORD_REQUIRED");
+  await db.update(users).set({ passwordHash: passwordDigest(input.password), updatedAt: new Date() }).where(eq(users.id, input.userId));
+}
+
 export async function getLoginSecurityState(email: string) {
   const db = await getDb(); if (!db) return null;
   const emailHash = hashSecurityIdentifier(email); const row = (await db.select().from(loginSecurityStates).where(eq(loginSecurityStates.emailHash, emailHash)).limit(1))[0];

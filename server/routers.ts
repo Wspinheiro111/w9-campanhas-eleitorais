@@ -47,7 +47,12 @@ export const appRouter = router({
       return { user: db.toPublicUser(user) };
     }),
     securityStatus: protectedProcedure.query(async ({ ctx }) => {
-      const [factor, passkeys] = await Promise.all([db.getMfaFactor(ctx.user.id), db.listPasskeys(ctx.user.id)]); return { mfaEnabled: Boolean(factor), passkeysEnabled: passkeys.length > 0 };
+      const [factor, passkeys, localPasswordEnabled] = await Promise.all([db.getMfaFactor(ctx.user.id), db.listPasskeys(ctx.user.id), db.hasLocalPassword(ctx.user.id)]); return { mfaEnabled: Boolean(factor), passkeysEnabled: passkeys.length > 0, localPasswordEnabled };
+    }),
+    setLocalPassword: protectedProcedure.input(z.object({ password: z.string().min(10).max(128), currentPassword: z.string().min(1).max(128).optional() })).mutation(async ({ ctx, input }) => {
+      await db.setLocalPassword({ userId: ctx.user.id, password: input.password, currentPassword: input.currentPassword });
+      await db.recordLoginAudit({ email: ctx.user.email ?? String(ctx.user.id), userId: ctx.user.id, action: "local_password_configured", success: true, ip: ctx.req.ip });
+      return { success: true };
     }),
     beginMfaEnrollment: protectedProcedure.mutation(async ({ ctx }) => {
       const enrollment = createMfaEnrollment(ctx.user.email ?? ctx.user.name ?? `user-${ctx.user.id}`);
