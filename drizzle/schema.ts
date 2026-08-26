@@ -88,6 +88,17 @@ export const authChallenges = mysqlTable("auth_challenges", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("auth_challenge_user_purpose_idx").on(table.userId, table.purpose, table.expiresAt)]);
 
+/** Código de uso único para concluir uma sessão Google no domínio de origem do visitante. */
+export const googleAuthHandoffs = mysqlTable("google_auth_handoffs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  secretHash: varchar("secretHash", { length: 128 }).notNull(),
+  returnOrigin: varchar("returnOrigin", { length: 500 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  consumedAt: timestamp("consumedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("google_handoff_secret_unique").on(table.secretHash), index("google_handoff_expiry_idx").on(table.expiresAt), index("google_handoff_user_idx").on(table.userId)]);
+
 export const loginSecurityStates = mysqlTable("login_security_states", {
   id: int("id").autoincrement().primaryKey(),
   emailHash: varchar("emailHash", { length: 128 }).notNull(),

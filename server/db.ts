@@ -1,7 +1,7 @@
-import { and, eq, gt, or } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
-import { authChallenges, authMfaFactors, authPasskeys, authenticationAuditLogs, InsertUser, loginSecurityStates, User, users } from "../drizzle/schema";
+import { authChallenges, authMfaFactors, authPasskeys, authenticationAuditLogs, googleAuthHandoffs, InsertUser, loginSecurityStates, User, users } from "../drizzle/schema";
 import { hashIp, hashSecurityIdentifier } from "./authSecurity";
 import { ENV } from "./_core/env";
 
@@ -38,6 +38,11 @@ export async function getUserByOpenId(openId: string) {
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result[0];
+}
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  return (await db.select().from(users).where(eq(users.id, id)).limit(1))[0];
 }
 export async function getUserByEmail(email: string) { const db = await getDb(); if (!db) return undefined; return (await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1))[0]; }
 
@@ -136,6 +141,23 @@ export async function saveMfaFactor(userId: number, secretCiphertext: string) { 
 export async function markMfaUsed(userId: number) { const db = await getDb(); if (!db) return; await db.update(authMfaFactors).set({ lastUsedAt: new Date() }).where(eq(authMfaFactors.userId, userId)); }
 export async function saveAuthChallenge(userId: number, purpose: string, challenge: string) { const db = await getDb(); if (!db) throw new Error("Database not available"); await db.delete(authChallenges).where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose))); await db.insert(authChallenges).values({ userId, purpose, challenge, expiresAt: new Date(Date.now() + 5 * 60_000) }); }
 export async function takeAuthChallenge(userId: number, purpose: string) { const db = await getDb(); if (!db) return null; const row = (await db.select().from(authChallenges).where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose), gt(authChallenges.expiresAt, new Date()))).limit(1))[0] ?? null; if (row) await db.delete(authChallenges).where(eq(authChallenges.id, row.id)); return row; }
+
+function googleHandoffDigest(code: string) { return createHash("sha256").update(code).digest("hex"); }
+
+export async function createGoogleAuthHandoff(userId: number, returnOrigin: string) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  const code = randomBytes(32).toString("base64url");
+  await db.insert(googleAuthHandoffs).values({ userId, secretHash: googleHandoffDigest(code), returnOrigin, expiresAt: new Date(Date.now() + 5 * 60_000) });
+  return code;
+}
+
+export async function consumeGoogleAuthHandoff(code: string) {
+  const db = await getDb(); if (!db) return null;
+  const row = (await db.select().from(googleAuthHandoffs).where(and(eq(googleAuthHandoffs.secretHash, googleHandoffDigest(code)), gt(googleAuthHandoffs.expiresAt, new Date()), isNull(googleAuthHandoffs.consumedAt))).limit(1))[0] ?? null;
+  if (!row) return null;
+  await db.update(googleAuthHandoffs).set({ consumedAt: new Date() }).where(and(eq(googleAuthHandoffs.id, row.id), isNull(googleAuthHandoffs.consumedAt)));
+  return row;
+}
 export async function listPasskeys(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(authPasskeys).where(eq(authPasskeys.userId, userId)); }
 export async function getPasskey(credentialId: string) { const db = await getDb(); if (!db) return null; return (await db.select().from(authPasskeys).where(eq(authPasskeys.credentialId, credentialId)).limit(1))[0] ?? null; }
 export async function savePasskey(input: { userId: number; credentialId: string; publicKey: string; counter: number; transports: string[] | null; label: string }) { const db = await getDb(); if (!db) throw new Error("Database not available"); await db.insert(authPasskeys).values(input); }

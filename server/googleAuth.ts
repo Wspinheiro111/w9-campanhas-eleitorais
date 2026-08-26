@@ -6,8 +6,10 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
+import { normalizeGoogleReturnOrigin } from "../shared/googleAuth";
 
 const GOOGLE_STATE_COOKIE = "w9_google_oauth_state";
+const GOOGLE_RETURN_ORIGIN_COOKIE = "w9_google_return_origin";
 const GOOGLE_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
@@ -22,7 +24,14 @@ export function registerGoogleAuthRoutes(app: Express) {
   app.get("/api/auth/google", (req: Request, res: Response) => {
     if (!configured()) return res.status(503).json({ error: "Google login is not configured" });
     const state = randomBytes(32).toString("base64url");
+    const returnOrigin = normalizeGoogleReturnOrigin(typeof req.query.returnOrigin === "string" ? req.query.returnOrigin : null);
     res.cookie(GOOGLE_STATE_COOKIE, state, {
+      ...getSessionCookieOptions(req),
+      httpOnly: true,
+      maxAge: 10 * 60 * 1000,
+      sameSite: "lax",
+    });
+    res.cookie(GOOGLE_RETURN_ORIGIN_COOKIE, returnOrigin, {
       ...getSessionCookieOptions(req),
       httpOnly: true,
       maxAge: 10 * 60 * 1000,
@@ -43,10 +52,12 @@ export function registerGoogleAuthRoutes(app: Express) {
     const code = typeof req.query.code === "string" ? req.query.code : "";
     const state = typeof req.query.state === "string" ? req.query.state : "";
     const expectedState = parseCookieHeader(req.headers.cookie ?? "")[GOOGLE_STATE_COOKIE];
+    const returnOrigin = normalizeGoogleReturnOrigin(parseCookieHeader(req.headers.cookie ?? "")[GOOGLE_RETURN_ORIGIN_COOKIE]);
     res.clearCookie(GOOGLE_STATE_COOKIE, { ...getSessionCookieOptions(req), sameSite: "lax" });
+    res.clearCookie(GOOGLE_RETURN_ORIGIN_COOKIE, { ...getSessionCookieOptions(req), sameSite: "lax" });
 
     if (!configured() || !code || !state || !expectedState || state !== expectedState) {
-      return res.redirect(302, "/?authError=google_state");
+      return res.redirect(302, `${returnOrigin}/login?authError=google_state`);
     }
 
     try {
@@ -76,12 +87,22 @@ export function registerGoogleAuthRoutes(app: Express) {
         name: profile.name ?? null,
         avatarUrl: profile.picture ?? null,
       });
-      const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
-      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
-      res.redirect(302, "/onboarding");
+      const handoffCode = await db.createGoogleAuthHandoff(user.id, returnOrigin);
+      res.redirect(302, `${returnOrigin}/api/auth/google/complete?code=${encodeURIComponent(handoffCode)}`);
     } catch (error) {
       console.error("[GoogleAuth] Callback failed", error);
-      res.redirect(302, "/?authError=google");
+      res.redirect(302, `${returnOrigin}/login?authError=google`);
     }
+  });
+
+  app.get("/api/auth/google/complete", async (req: Request, res: Response) => {
+    const code = typeof req.query.code === "string" ? req.query.code : "";
+    const handoff = code ? await db.consumeGoogleAuthHandoff(code) : null;
+    if (!handoff) return res.redirect(302, "/login?authError=google_handoff");
+    const user = await db.getUserById(handoff.userId);
+    if (!user) return res.redirect(302, "/login?authError=google_handoff");
+    const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
+    res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+    res.redirect(302, "/onboarding");
   });
 }

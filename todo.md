@@ -316,3 +316,4 @@
 - [x] Adicionar rolagem suave, animações de entrada acessíveis e otimizações de carregamento visual à landing.
 - [x] Diagnosticar e restaurar a disponibilidade pública dos domínios da landing sem alterar e-mail ou dados de leads.
 - [x] Restaurar o áudio acionável do vídeo da landing, preservando controles e compatibilidade com navegadores.
+- [ ] Diagnosticar e restaurar o login publicado, incluindo redirecionamentos, MFA, passkeys e sessão.
