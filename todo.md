@@ -314,5 +314,5 @@
 - [ ] Definir www.w9campanhaseleitorais.com.br como domínio canônico na plataforma e só então ativar o redirecionamento raiz → www sem criar ciclo.
 - [x] Adicionar formulário público de contato à landing com captação segura de leads.
 - [x] Adicionar rolagem suave, animações de entrada acessíveis e otimizações de carregamento visual à landing.
-- [ ] Diagnosticar e restaurar a disponibilidade pública dos domínios da landing sem alterar e-mail ou dados de leads.
-- [ ] Restaurar o áudio acionável do vídeo da landing, preservando controles e compatibilidade com navegadores.
+- [x] Diagnosticar e restaurar a disponibilidade pública dos domínios da landing sem alterar e-mail ou dados de leads.
+- [x] Restaurar o áudio acionável do vídeo da landing, preservando controles e compatibilidade com navegadores.
