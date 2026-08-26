@@ -6,13 +6,16 @@ import { COOKIE_NAME } from "@shared/const";
 import { createHeartbeatJob, updateHeartbeatJob } from "../_core/heartbeat";
 import { protectedProcedure, router } from "../_core/trpc";
 import * as campaignDb from "../campaignDb";
+import { isValidCpfOrCnpj, normalizeBrDocument } from "../../shared/brDocument";
+import { isPlatformAdminEmail } from "../../shared/platformAdmin";
 
 const platformAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Acesso restrito à administração geral." });
+  if (!isPlatformAdminEmail(ctx.user.email)) throw new TRPCError({ code: "FORBIDDEN", message: "Acesso restrito ao administrador exclusivo da plataforma." });
   return next();
 });
 
 const phoneSchema = z.string().transform(value => value.replace(/\D/g, "")).refine(value => value.length === 10 || value.length === 11, "Informe um telefone brasileiro válido.");
+const fiscalIdSchema = z.string().transform(normalizeBrDocument).refine(isValidCpfOrCnpj, "Informe um CPF ou CNPJ válido.");
 const portfolioFrequencySchema = z.enum(["daily", "weekly", "monthly"]);
 const portfolioCronByFrequency = { daily: "0 0 12 * * *", weekly: "0 0 12 * * 1", monthly: "0 0 12 1 * *" } as const;
 
@@ -43,13 +46,20 @@ export const platformAdminRouter = router({
   }),
   customers: router({
     list: platformAdminProcedure.query(() => campaignDb.listPlatformCustomers()),
-    create: platformAdminProcedure.input(z.object({ organizationName: z.string().min(2).max(160), legalName: z.string().max(220).optional(), fiscalId: z.string().max(32).optional(), contactName: z.string().min(2).max(180), contactPhone: phoneSchema })).mutation(async ({ ctx, input }) => campaignDb.createPlatformCustomer({ ...input, actorUserId: ctx.user.id })),
-    releaseAccess: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive(), role: z.enum(["admin", "manager", "operator", "viewer"]).default("admin"), origin: z.string().url() })).mutation(async ({ ctx, input }) => {
+    create: platformAdminProcedure.input(z.object({ organizationName: z.string().min(2).max(160), legalName: z.string().max(220).optional(), fiscalId: fiscalIdSchema, contactName: z.string().min(2).max(180), contactPhone: phoneSchema })).mutation(async ({ ctx, input }) => {
+      try {
+        return await campaignDb.createPlatformCustomer({ ...input, actorUserId: ctx.user.id });
+      } catch (error) {
+        if (error instanceof Error && error.message === "PLATFORM_FISCAL_ID_EXISTS") throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário master cadastrado para este CPF ou CNPJ." });
+        throw error;
+      }
+    }),
+    releaseAccess: platformAdminProcedure.input(z.object({ customerId: z.number().int().positive(), origin: z.string().url() })).mutation(async ({ ctx, input }) => {
       const customer = await campaignDb.getPlatformCustomer(input.customerId);
       if (!customer) throw new TRPCError({ code: "NOT_FOUND", message: "Comprador não encontrado." });
       const token = randomBytes(32).toString("hex");
       const tokenHash = createHash("sha256").update(token).digest("hex");
-      const invitationId = await campaignDb.createOrganizationInvitation({ organizationId: customer.organization.id, phone: customer.customer.contactPhone, role: input.role, tokenHash, invitedById: ctx.user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) });
+      const invitationId = await campaignDb.createOrganizationInvitation({ organizationId: customer.organization.id, phone: customer.customer.contactPhone, role: "admin", tokenHash, invitedById: ctx.user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) });
       await campaignDb.markPlatformCustomerAccessReleased({ customerId: input.customerId, invitationId, actorUserId: ctx.user.id });
       return { invitationUrl: `${input.origin}/onboarding?invite=${token}`, phone: customer.customer.contactPhone };
     }),

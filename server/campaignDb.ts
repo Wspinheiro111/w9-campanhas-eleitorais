@@ -227,11 +227,16 @@ export async function listPlatformCustomers() {
 
 export async function createPlatformCustomer(input: { organizationName: string; legalName?: string | null; fiscalId?: string | null; contactName: string; contactPhone: string; actorUserId: number }) {
   const db = requireDb(await getDb());
-  const organizationResult = await db.insert(organizations).values({ name: input.organizationName, legalName: input.legalName || null, fiscalId: input.fiscalId || null, status: "active", createdById: input.actorUserId });
+  const fiscalId = input.fiscalId?.replace(/\D/g, "") || null;
+  if (fiscalId) {
+    const existing = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.fiscalId, fiscalId)).limit(1);
+    if (existing[0]) throw new Error("PLATFORM_FISCAL_ID_EXISTS");
+  }
+  const organizationResult = await db.insert(organizations).values({ name: input.organizationName, legalName: input.legalName || null, fiscalId, status: "active", createdById: input.actorUserId });
   const organizationId = Number(organizationResult[0].insertId);
   const customerResult = await db.insert(platformCustomers).values({ organizationId, contactName: input.contactName, contactPhone: input.contactPhone.replace(/\D/g, ""), status: "pending", createdByUserId: input.actorUserId });
   const customerId = Number(customerResult[0].insertId);
-  await db.insert(platformCustomerInteractions).values({ customerId, kind: "customer_created", description: "Comprador cadastrado na administração geral.", createdByUserId: input.actorUserId });
+  await db.insert(platformCustomerInteractions).values({ customerId, kind: "customer_created", description: "Usuário master cadastrado na administração exclusiva.", createdByUserId: input.actorUserId });
   await createOrganizationAuditLog({ organizationId, actorUserId: input.actorUserId, action: "platform_customer.created", entityType: "platform_customer", entityId: customerId, metadata: { contactPhone: input.contactPhone.replace(/\D/g, "") } });
   return { customerId, organizationId };
 }

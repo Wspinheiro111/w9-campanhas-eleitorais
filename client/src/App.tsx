@@ -59,7 +59,7 @@ function Router() {
     <Route path="/executivo" component={ExecutiveDashboard} />
     <Route path="/notificacoes" component={Notifications} />
     <Route path="/escalas" component={Operations} />
-    <Route path="/administracao-geral" component={AdminGeneral} />
+    <Route path="/paineladmin" component={AdminGeneral} />
     <Route path="/seguranca" component={AccountSecurity} />
     <Route path="/instalar-app" component={PwaInstallGuide} />
     <Route path="/organizacoes" component={Organizations} />

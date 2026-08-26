@@ -26,7 +26,12 @@ const baseContext: Omit<TrpcContext, "user"> = {
 
 const platformAdminContext: TrpcContext = {
   ...baseContext,
-  user: { id: 1, openId: "platform-admin", name: "Administração", email: "admin@w9.local", loginMethod: "password", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
+  user: { id: 1, openId: "platform-admin", name: "Administração", email: "gerentewilliam.pinheiro@gmail.com", loginMethod: "password", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
+};
+
+const otherGlobalAdminContext: TrpcContext = {
+  ...baseContext,
+  user: { id: 3, openId: "other-platform-admin", name: "Outro Admin", email: "admin@w9.local", loginMethod: "password", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
 };
 
 const ordinaryUserContext: TrpcContext = {
@@ -60,11 +65,16 @@ describe("administração geral de compradores diretos", () => {
     await expect(caller.platformAdmin.customers.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("impede qualquer outro administrador global de acessar o portal exclusivo", async () => {
+    const caller = appRouter.createCaller(otherGlobalAdminContext);
+    await expect(caller.platformAdmin.customers.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
   it("cadastra comprador direto normalizando o telefone", async () => {
     vi.mocked(db.createPlatformCustomer).mockResolvedValue({ customerId: 7, organizationId: 22 });
     const caller = appRouter.createCaller(platformAdminContext);
-    await expect(caller.platformAdmin.customers.create({ organizationName: "Comitê Direto", contactName: "Pessoa Compradora", contactPhone: "(51) 99999-8888" })).resolves.toEqual({ customerId: 7, organizationId: 22 });
-    expect(db.createPlatformCustomer).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 1, contactPhone: "51999998888" }));
+    await expect(caller.platformAdmin.customers.create({ organizationName: "Comitê Direto", fiscalId: "529.982.247-25", contactName: "Pessoa Compradora", contactPhone: "(51) 99999-8888" })).resolves.toEqual({ customerId: 7, organizationId: 22 });
+    expect(db.createPlatformCustomer).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 1, contactPhone: "51999998888", fiscalId: "52998224725" }));
   });
 
   it("libera acesso por convite seguro somente para um comprador cadastrado", async () => {
@@ -72,7 +82,7 @@ describe("administração geral de compradores diretos", () => {
     vi.mocked(db.createOrganizationInvitation).mockResolvedValue(91);
     vi.mocked(db.markPlatformCustomerAccessReleased).mockResolvedValue(undefined);
     const caller = appRouter.createCaller(platformAdminContext);
-    const result = await caller.platformAdmin.customers.releaseAccess({ customerId: 7, role: "admin", origin: "https://w9.example" });
+    const result = await caller.platformAdmin.customers.releaseAccess({ customerId: 7, origin: "https://w9.example" });
     expect(result.phone).toBe("51999998888");
     expect(result.invitationUrl).toMatch(/^https:\/\/w9\.example\/onboarding\?invite=[a-f0-9]{64}$/);
     expect(db.createOrganizationInvitation).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 22, phone: "51999998888", invitedById: 1, role: "admin" }));

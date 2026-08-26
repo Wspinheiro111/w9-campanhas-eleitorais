@@ -317,3 +317,6 @@
 - [x] Diagnosticar e restaurar a disponibilidade pública dos domínios da landing sem alterar e-mail ou dados de leads.
 - [x] Restaurar o áudio acionável do vídeo da landing, preservando controles e compatibilidade com navegadores.
 - [ ] Diagnosticar e restaurar o login publicado, incluindo redirecionamentos, MFA, passkeys e sessão.
+- [x] Criar rota /paineladmin restrita exclusivamente a gerentewilliam.pinheiro@gmail.com.
+- [x] Permitir ao administrador exclusivo cadastrar usuários master por CPF ou CNPJ com validação e histórico de liberação.
+- [x] Garantir que usuários master não recebam acesso ao /paineladmin nem privilégios administrativos globais.
