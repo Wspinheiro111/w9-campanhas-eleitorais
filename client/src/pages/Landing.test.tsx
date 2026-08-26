@@ -20,6 +20,9 @@ describe("landing comercial", () => {
     expect(screen.getByRole("button", { name: /enviar mensagem/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Como podemos ajudar?")).toBeInTheDocument();
     expect(screen.getByLabelText("Melhor data e horário para a demonstração")).toHaveAttribute("type", "datetime-local");
-    expect(screen.getByLabelText("Vídeo de apresentação do W9 Campanhas Eleitorais")).toBeInTheDocument();
+    expect(screen.getByLabelText("Vídeo visual de apresentação do W9 Campanhas Eleitorais")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^ouvir$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /som ligado/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/locução pt-br/i)).toHaveLength(2);
   });
 });

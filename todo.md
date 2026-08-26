@@ -315,3 +315,4 @@
 - [x] Adicionar formulário público de contato à landing com captação segura de leads.
 - [x] Adicionar rolagem suave, animações de entrada acessíveis e otimizações de carregamento visual à landing.
 - [ ] Diagnosticar e restaurar a disponibilidade pública dos domínios da landing sem alterar e-mail ou dados de leads.
+- [ ] Restaurar o áudio acionável do vídeo da landing, preservando controles e compatibilidade com navegadores.

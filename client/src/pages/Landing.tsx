@@ -17,13 +17,16 @@ import {
   MapPinned,
   Megaphone,
   MessageCircle,
+  Pause,
   Play,
   ShieldCheck,
   Target,
   UsersRound,
+  Volume2,
+  VolumeX,
   WifiOff,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 
 const storyLines = [
@@ -56,6 +59,10 @@ const allModules = [
 
 export default function Landing() {
   const [activeLine, setActiveLine] = useState(0);
+  const [isTrailerPlaying, setIsTrailerPlaying] = useState(false);
+  const [speechRate, setSpeechRate] = useState(1);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const trailerTimerRef = useRef<number | null>(null);
   const [demoForm, setDemoForm] = useState({ name: "", email: "", phone: "", organizationName: "", role: "candidate" as "candidate" | "party" | "coordination" | "other", city: "", state: "", message: "", preferredDemoAt: "", consent: false, website: "" });
   const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "", message: "", consent: false, website: "" });
   const [demoSubmitted, setDemoSubmitted] = useState(false);
@@ -85,7 +92,42 @@ export default function Landing() {
     return () => observer.disconnect();
   }, []);
 
-  const openTrailer = () => document.getElementById("trailer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const stopTrailer = () => {
+    if (typeof window === "undefined") return;
+    if (trailerTimerRef.current) window.clearTimeout(trailerTimerRef.current);
+    trailerTimerRef.current = null;
+    window.speechSynthesis?.cancel();
+    setIsTrailerPlaying(false);
+  };
+
+  const speakLine = (index: number, continuePlayback = false) => {
+    setActiveLine(index);
+    if (typeof window === "undefined") return;
+    if (!soundEnabled || !("speechSynthesis" in window)) {
+      if (continuePlayback) trailerTimerRef.current = window.setTimeout(() => index < storyLines.length - 1 ? speakLine(index + 1, true) : stopTrailer(), 3400 / speechRate);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(storyLines[index]);
+    utterance.lang = "pt-BR";
+    utterance.rate = speechRate;
+    utterance.onend = () => {
+      if (continuePlayback) trailerTimerRef.current = window.setTimeout(() => index < storyLines.length - 1 ? speakLine(index + 1, true) : stopTrailer(), 380);
+    };
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const openTrailer = () => {
+    document.getElementById("trailer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    stopTrailer();
+    setIsTrailerPlaying(true);
+    window.setTimeout(() => speakLine(activeLine, true), 300);
+  };
+
+  useEffect(() => () => {
+    if (trailerTimerRef.current) window.clearTimeout(trailerTimerRef.current);
+    window.speechSynthesis?.cancel();
+  }, []);
 
   return <main className="min-h-screen overflow-hidden bg-[#0A132E] font-sans text-white selection:bg-[#FFC300] selection:text-[#0F1C3F]">
     <section className="relative overflow-hidden border-b border-white/10 bg-[#0A132E]">
@@ -109,7 +151,7 @@ export default function Landing() {
           </h1>
           <p className="mt-7 max-w-xl text-base leading-7 text-white/65 sm:text-lg">O sistema que transforma <strong className="text-white">caos em estratégia</strong> e estratégia em <strong className="text-[#FFC300]">execução.</strong> O <strong className="text-white">W9 Campanhas Eleitorais</strong> centraliza a operação para candidatos, partidos e coordenações.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button onClick={openTrailer} className="rounded-full bg-[#FFC300] px-6 font-black tracking-wide text-[#0F1C3F] hover:bg-white"><Play className="mr-2 size-4 fill-current" />OUVIR TRAILER DE 30s</Button>
+            <Button onClick={openTrailer} className="rounded-full bg-[#FFC300] px-6 font-black tracking-wide text-[#0F1C3F] hover:bg-white"><Volume2 className="mr-2 size-4" />OUVIR TRAILER DE 30s</Button>
             <a href="#roteiro" className="inline-flex items-center rounded-full border border-white/20 px-5 py-2 text-xs font-bold tracking-wide text-white/90 transition hover:bg-white/10">LER ROTEIRO COMPLETO <ArrowDown className="ml-2 size-3.5" /></a>
           </div>
           <div className="mt-10 grid max-w-xl grid-cols-3 gap-4 border-t border-white/10 pt-6">
@@ -118,13 +160,14 @@ export default function Landing() {
         </div>
 
         <section id="trailer" className="landing-reveal relative rounded-[28px] border border-white/10 bg-[#12204A]/90 p-3 shadow-[0_40px_120px_rgba(0,0,0,.55)] backdrop-blur" style={{ animationDelay: "100ms" }}>
-          <div className="flex items-center justify-between border-b border-white/10 px-3 pb-3"><div className="flex gap-1.5"><i className="size-2.5 rounded-full bg-red-400" /><i className="size-2.5 rounded-full bg-[#FFC300]" /><i className="size-2.5 rounded-full bg-[#00A859]" /></div><p className="text-[9px] font-black tracking-[.18em] text-white/40">W9_PLAYER • ÁUDIO REAL</p></div>
-          <div className="p-3 sm:p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[.14em] text-[#FFC300]">PRONTO PARA APRESENTAR • 30s</p><p className="mt-3 font-[Anton,sans-serif] text-2xl uppercase leading-none sm:text-3xl">{storyLines[activeLine]}</p></div><span className="shrink-0 rounded-full bg-[#00A859]/20 px-2 py-1 text-[9px] font-bold text-[#67ecad]">VOZ PT-BR</span></div>
+          <div className="flex items-center justify-between border-b border-white/10 px-3 pb-3"><div className="flex gap-1.5"><i className="size-2.5 rounded-full bg-red-400" /><i className="size-2.5 rounded-full bg-[#FFC300]" /><i className="size-2.5 rounded-full bg-[#00A859]" /></div><p className="text-[9px] font-black tracking-[.18em] text-white/40">W9_PLAYER • LOCUÇÃO PT-BR</p></div>
+          <div className="p-3 sm:p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[.14em] text-[#FFC300]">{isTrailerPlaying ? "REPRODUZINDO LOCUÇÃO" : "PRONTO PARA FALAR"} • {activeLine + 1}/{storyLines.length} FRASES</p><p className="mt-3 font-[Anton,sans-serif] text-2xl uppercase leading-none sm:text-3xl">{storyLines[activeLine]}</p></div><span className="shrink-0 rounded-full bg-[#00A859]/20 px-2 py-1 text-[9px] font-bold text-[#67ecad]">VOZ PT-BR</span></div>
             <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#FFC300] transition-all" style={{ width: `${((activeLine + 1) / storyLines.length) * 100}%` }} /></div>
             <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-              <video className="aspect-video w-full" controls playsInline preload="metadata" aria-label="Vídeo de apresentação do W9 Campanhas Eleitorais"><source src="/manus-storage/w9-campanhas-eleitorais-apresentacao_dece88d3.mp4" type="video/mp4" />Seu navegador não suporta a reprodução de vídeo.</video>
+              <video className="aspect-video w-full" autoPlay muted loop controls playsInline preload="metadata" aria-label="Vídeo visual de apresentação do W9 Campanhas Eleitorais"><source src="/manus-storage/w9-campanhas-eleitorais-apresentacao_dece88d3.mp4" type="video/mp4" />Seu navegador não suporta a reprodução de vídeo.</video>
             </div>
-            <div className="mt-4 max-h-36 space-y-1 overflow-auto pr-1">{storyLines.map((line, index) => <button type="button" key={line} onClick={() => setActiveLine(index)} className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-xs transition ${activeLine === index ? "bg-[#FFC300] text-[#0F1C3F]" : "text-white/65 hover:bg-white/10"}`}><span className="grid size-5 shrink-0 place-items-center rounded-full bg-black/20 text-[10px] font-black">{index + 1}</span><span className="line-clamp-2 leading-5">{line}</span></button>)}</div>
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-b border-white/10 pb-4"><Button type="button" onClick={isTrailerPlaying ? stopTrailer : openTrailer} size="sm" className="bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white">{isTrailerPlaying ? <Pause className="mr-1.5 size-3.5 fill-current" /> : <Play className="mr-1.5 size-3.5 fill-current" />}{isTrailerPlaying ? "PAUSAR" : "OUVIR"}</Button><Button type="button" variant="outline" size="sm" onClick={() => { const next = !soundEnabled; setSoundEnabled(next); if (!next) stopTrailer(); }} className="border-white/20 text-white hover:bg-white/10 hover:text-white">{soundEnabled ? <Volume2 className="mr-1.5 size-3.5" /> : <VolumeX className="mr-1.5 size-3.5" />}{soundEnabled ? "SOM LIGADO" : "SOM DESLIGADO"}</Button>{[0.9, 1, 1.15].map(rate => <button type="button" key={rate} onClick={() => setSpeechRate(rate)} className={`rounded-md px-2 py-1 text-[10px] font-black transition ${speechRate === rate ? "bg-[#00A859] text-[#071a13]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>{rate}×</button>)}</div>
+            <div className="mt-4 max-h-36 space-y-1 overflow-auto pr-1">{storyLines.map((line, index) => <button type="button" key={line} onClick={() => { stopTrailer(); setIsTrailerPlaying(true); speakLine(index); }} className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-xs transition ${activeLine === index ? "bg-[#FFC300] text-[#0F1C3F]" : "text-white/65 hover:bg-white/10"}`}><span className="grid size-5 shrink-0 place-items-center rounded-full bg-black/20 text-[10px] font-black">{index + 1}</span><span className="line-clamp-2 leading-5">{line}</span></button>)}</div>
           </div>
         </section>
       </div>
@@ -135,7 +178,7 @@ export default function Landing() {
         <div><p className="text-[11px] font-black uppercase tracking-[.2em] text-[#FFC300]">0–25s • A dor real</p><h2 className="mt-3 max-w-lg font-[Anton,sans-serif] text-5xl uppercase leading-[.88] sm:text-6xl">Você conhece <span className="text-white/35">essa cena?</span></h2>
           <div className="mt-8 space-y-3">{painPoints.map(({ icon: Icon, title, text }) => <article key={title} className="flex gap-4 rounded-xl border border-white/10 bg-white/[.035] p-4 transition hover:border-[#FFC300]/35 hover:bg-white/[.06]"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white/10 text-[#FFC300]"><Icon className="size-4" /></span><div><h3 className="text-sm font-bold">{title}</h3><p className="mt-1 text-xs leading-5 text-white/50">{text}</p></div></article>)}</div>
         </div>
-        <aside className="relative overflow-hidden rounded-[28px] border border-[#FFC300]/20 bg-gradient-to-br from-[#FFC300] to-[#00A859] p-[1px] shadow-[0_25px_70px_rgba(0,0,0,.35)]"><div className="relative h-full rounded-[27px] bg-[#0A132E] p-7"><p className="text-[10px] font-black tracking-[.16em] text-[#FFC300]">LOCUÇÃO REAL • CLIQUE PARA OUVIR</p><p className="mt-5 font-[Anton,sans-serif] text-3xl uppercase leading-[.95]">“O caos não é falta de trabalho. É falta de sistema.”</p><p className="mt-5 text-sm leading-6 text-white/60">Centralize contatos, agenda, território, tarefas e evidências para que a campanha tenha memória, ritmo e responsáveis claros.</p><Button onClick={openTrailer} variant="outline" className="mt-7 border-[#FFC300]/60 bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white"><Play className="mr-2 size-4 fill-current" />OUVIR AGORA</Button></div></aside>
+        <aside className="relative overflow-hidden rounded-[28px] border border-[#FFC300]/20 bg-gradient-to-br from-[#FFC300] to-[#00A859] p-[1px] shadow-[0_25px_70px_rgba(0,0,0,.35)]"><div className="relative h-full rounded-[27px] bg-[#0A132E] p-7"><p className="text-[10px] font-black tracking-[.16em] text-[#FFC300]">LOCUÇÃO PT-BR • CLIQUE PARA OUVIR</p><p className="mt-5 font-[Anton,sans-serif] text-3xl uppercase leading-[.95]">“O caos não é falta de trabalho. É falta de sistema.”</p><p className="mt-5 text-sm leading-6 text-white/60">Centralize contatos, agenda, território, tarefas e evidências para que a campanha tenha memória, ritmo e responsáveis claros.</p><Button onClick={openTrailer} variant="outline" className="mt-7 border-[#FFC300]/60 bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white"><Volume2 className="mr-2 size-4" />OUVIR AGORA</Button></div></aside>
       </div>
     </section>
 
