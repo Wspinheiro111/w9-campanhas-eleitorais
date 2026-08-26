@@ -15,6 +15,7 @@ const AIStudio = lazy(() => import("./pages/AIStudio"));
 const AccountSecurity = lazy(() => import("./pages/AccountSecurity"));
 const Agenda = lazy(() => import("./pages/Agenda"));
 const AdminGeneral = lazy(() => import("./pages/AdminGeneral"));
+const AdminPortal = lazy(() => import("./pages/AdminPortal"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const AudioCRM = lazy(() => import("./pages/AudioCRM"));
 const CertificateValidation = lazy(() => import("./pages/CertificateValidation"));
@@ -59,7 +60,6 @@ function Router() {
     <Route path="/executivo" component={ExecutiveDashboard} />
     <Route path="/notificacoes" component={Notifications} />
     <Route path="/escalas" component={Operations} />
-    <Route path="/paineladmin" component={AdminGeneral} />
     <Route path="/seguranca" component={AccountSecurity} />
     <Route path="/instalar-app" component={PwaInstallGuide} />
     <Route path="/organizacoes" component={Organizations} />
@@ -95,6 +95,7 @@ function App() {
   return <ErrorBoundary><ThemeProvider defaultTheme="w9"><TooltipProvider><Toaster /><PwaUpdateBanner /><W9GlobalReportGenerationFeedback /><Suspense fallback={<PageLoading />}><Switch>
     <Route path="/" component={Landing} />
     <Route path="/login" component={Login} />
+    <Route path="/paineladmin" component={AdminPortal} />
     <Route path="/onboarding" component={Onboarding} />
     <Route path="/cadastro/:campaignId" component={PublicSignup} />
     <Route path="/evento/feedback/:token" component={EventFeedback} />

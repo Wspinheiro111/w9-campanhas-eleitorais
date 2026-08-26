@@ -320,3 +320,4 @@
 - [x] Criar rota /paineladmin restrita exclusivamente a gerentewilliam.pinheiro@gmail.com.
 - [x] Permitir ao administrador exclusivo cadastrar usuários master por CPF ou CNPJ com validação e histórico de liberação.
 - [x] Garantir que usuários master não recebam acesso ao /paineladmin nem privilégios administrativos globais.
+- [x] Separar /paineladmin do DashboardLayout e da navegação do sistema, mantendo-o como página administrativa externa e exclusiva.
