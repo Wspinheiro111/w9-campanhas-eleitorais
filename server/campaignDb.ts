@@ -848,6 +848,71 @@ export async function createGoal(input: Omit<typeof goals.$inferInsert, "organiz
   return Number(result[0].insertId);
 }
 
+export async function updateGoalProgress(input: { campaignId: number; goalId: number; currentValue: number; actorUserId: number }) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(goals).where(and(eq(goals.id, input.goalId), eq(goals.campaignId, input.campaignId))).limit(1);
+  const goal = rows[0];
+  if (!goal) throw new Error("GOAL_NOT_FOUND");
+  const now = new Date();
+  const status = input.currentValue >= goal.targetValue ? "completed" : (goal.deadline && goal.deadline < now ? "attention" : "on_track");
+  await db.update(goals).set({ currentValue: input.currentValue, status }).where(and(eq(goals.id, input.goalId), eq(goals.campaignId, input.campaignId)));
+  await createOrganizationAuditLog({ organizationId: goal.organizationId, actorUserId: input.actorUserId, action: "goal.progress_updated", entityType: "goal", entityId: input.goalId, metadata: { currentValue: input.currentValue, targetValue: goal.targetValue, status } });
+  return { status, targetValue: goal.targetValue };
+}
+
+export async function getDailyCoordinationReport(campaignId: number) {
+  const [daily, goalRows, volunteerRows, assignmentRows, availabilityRows, shiftRows, streetRows, demandRows] = await Promise.all([
+    getDailySummary(campaignId),
+    listGoals(campaignId),
+    listVolunteers(campaignId),
+    listVolunteerAssignments(campaignId),
+    listMemberAvailabilities(campaignId),
+    listTeamShifts(campaignId),
+    listStreetActions(campaignId),
+    listCommunityDemands(campaignId),
+  ]);
+  const now = new Date();
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+  const openAssignments = assignmentRows.filter(item => !["completed", "cancelled"].includes(item.status));
+  const activeVolunteers = volunteerRows.filter(item => item.status === "active");
+  const attentionGoals = goalRows.filter(item => item.status === "attention" || (item.deadline && item.deadline < now && item.currentValue < item.targetValue));
+  const openDemands = demandRows.filter(item => item.demand.status !== "closed");
+  const overdueDemands = openDemands.filter(item => item.demand.dueAt && item.demand.dueAt < now);
+  const todayStreetActions = streetRows.filter(item => item.action.startsAt >= today && item.action.startsAt < tomorrow);
+  const scheduledShifts = shiftRows.filter(item => item.status === "scheduled" && item.startsAt >= today);
+  const territoryCoverage = Array.from(scheduledShifts.reduce((map, shift) => {
+    const territory = shift.territory || "Território a definir";
+    const current = map.get(territory) ?? { territory, shifts: 0, assigned: 0, confirmed: 0 };
+    current.shifts += 1;
+    current.assigned += shift.assignments.length;
+    current.confirmed += shift.assignments.filter(item => item.status === "confirmed").length;
+    map.set(territory, current);
+    return map;
+  }, new Map<string, { territory: string; shifts: number; assigned: number; confirmed: number }>()).values()).map(item => ({ ...item, coverageRate: item.assigned ? Math.round((item.confirmed / item.assigned) * 100) : 0 })).sort((a, b) => a.coverageRate - b.coverageRate || b.shifts - a.shifts);
+  return {
+    generatedAt: now,
+    daily,
+    metrics: {
+      activeVolunteers: activeVolunteers.length,
+      trainingCompleted: activeVolunteers.filter(item => item.trainingStatus === "completed").length,
+      availabilityWindows: availabilityRows.filter(item => item.availability.endsAt >= now && item.availability.status !== "unavailable").length,
+      openAssignments: openAssignments.length,
+      attentionGoals: attentionGoals.length,
+      openDemands: openDemands.length,
+      overdueDemands: overdueDemands.length,
+      todayStreetActions: todayStreetActions.length,
+    },
+    goals: goalRows,
+    attentionGoals,
+    openAssignments: openAssignments.slice(0, 8),
+    openDemands: openDemands.slice(0, 8),
+    overdueDemands: overdueDemands.slice(0, 8),
+    todayStreetActions,
+    territoryCoverage,
+  };
+}
+
 export async function listTasks(campaignId: number, memberId?: number | null) {
   const db = requireDb(await getDb());
   const condition = memberId ? and(eq(tasks.campaignId, campaignId), eq(tasks.assignedToId, memberId)) : eq(tasks.campaignId, campaignId);

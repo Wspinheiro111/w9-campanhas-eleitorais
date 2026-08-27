@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #0A192F; color: #FFFFFF; font-family: Arial, Helvetica, sans-serif; padding-top: 58px; }
+    .header { margin-left: 76px; margin-right: 76px; border-top: 2px solid #FFC107; padding-top: 16px; display: flex; justify-content: space-between; }
+    .eyebrow { color: #10B981; font-size: 14px; font-weight: 800; letter-spacing: 2.4px; text-transform: uppercase; }
+    .page { color: #9EB1C6; font-size: 14px; font-weight: 800; letter-spacing: 1.5px; }
+    .layout { margin: 42px 76px 0; display: grid; grid-template-columns: 5fr 7fr; gap: 68px; }
+    h1 { font-size: 57px; line-height: .98; letter-spacing: -2px; font-weight: 900; max-width: 470px; }
+    h1 span { color: #FFC107; }
+    .intro { margin-top: 25px; color: #B9C9DA; max-width: 430px; font-size: 20px; line-height: 1.38; }
+    .modules { border-top: 2px solid rgba(255,255,255,.25); }
+    .module { min-height: 94px; display: grid; grid-template-columns: 150px 1fr; align-items: center; border-bottom: 2px solid rgba(255,255,255,.15); }
+    .module .area { color: #10B981; font-size: 14px; font-weight: 900; letter-spacing: 1.7px; text-transform: uppercase; }
+    .module .content { font-size: 22px; line-height: 1.18; font-weight: 800; }
+    .module .content span { color: #AABDD0; font-size: 16px; font-weight: 400; display: block; margin-top: 7px; }
+    .footer { margin: 43px 76px 0; border-top: 2px solid #10B981; display: grid; grid-template-columns: 92px 1fr; gap: 20px; padding-top: 18px; align-items: start; }
+    .footer .tag { color: #FFC107; font-size: 14px; font-weight: 900; letter-spacing: 1.7px; text-transform: uppercase; }
+    .footer p { font-size: 22px; line-height: 1.28; font-weight: 800; max-width: 880px; }
+    .footer p b { color: #FFC107; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <header class="header"><div class="eyebrow">Ecossistema W9</div><div class="page">09 / 10</div></header>
+    <main class="layout">
+      <section>
+        <h1>Uma plataforma para organizar a <span>execução.</span></h1>
+        <p class="intro">Os módulos trabalham conectados para dar contexto à rotina de uma campanha e apoiar quem coordena a operação.</p>
+      </section>
+      <section class="modules">
+        <div class="module"><div class="area">Campo</div><div class="content">Agenda de rua, escalas e cobertura territorial<span>Atividades e responsáveis conectados ao território.</span></div></div>
+        <div class="module"><div class="area">Relação</div><div class="content">CRM, eventos e demandas comunitárias<span>Contato, protocolo e devolutiva em uma mesma leitura.</span></div></div>
+        <div class="module"><div class="area">Equipe</div><div class="content">Treinamentos, playbooks e disponibilidade<span>Mais preparo e organização para a atuação diária.</span></div></div>
+        <div class="module"><div class="area">Controle</div><div class="content">Materiais, documentos, financeiro e indicadores<span>Rastreabilidade para acompanhar a execução com clareza.</span></div></div>
+      </section>
+    </main>
+    <footer class="footer"><div class="tag">Princípio</div><p>A ferramenta organiza informação e processos. <b>A decisão e a responsabilidade permanecem com a coordenação.</b></p></footer>
+  </div>
+</body>
+</html>

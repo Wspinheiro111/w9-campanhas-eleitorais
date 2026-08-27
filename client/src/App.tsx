@@ -24,6 +24,7 @@ const Contents = lazy(() => import("./pages/Contents"));
 const ConsentCenter = lazy(() => import("./pages/ConsentCenter"));
 const CrisisRoom = lazy(() => import("./pages/CrisisRoom"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DailyCoordination = lazy(() => import("./pages/DailyCoordination"));
 const ExecutiveDashboard = lazy(() => import("./pages/ExecutiveDashboard"));
 const FieldOps = lazy(() => import("./pages/FieldOps"));
 const FirstAccess = lazy(() => import("./pages/FirstAccess"));
@@ -34,6 +35,7 @@ const Mobilization = lazy(() => import("./pages/Mobilization"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Operations = lazy(() => import("./pages/Operations"));
+const OperationalGoals = lazy(() => import("./pages/OperationalGoals"));
 const Organizations = lazy(() => import("./pages/Organizations"));
 const Pipeline = lazy(() => import("./pages/Pipeline"));
 const PwaInstallGuide = lazy(() => import("./pages/PwaInstallGuide"));
@@ -59,6 +61,7 @@ function PageLoading() { return <div className="min-h-[55vh] animate-pulse round
 function Router() {
   return <Switch>
     <Route path="/painel" component={Dashboard} />
+    <Route path="/coordenacao-diaria" component={DailyCoordination} />
     <Route path="/executivo" component={ExecutiveDashboard} />
     <Route path="/notificacoes" component={Notifications} />
     <Route path="/escalas" component={Operations} />
@@ -75,6 +78,7 @@ function Router() {
     <Route path="/agenda" component={Agenda} />
     <Route path="/comunicacao" component={CommunicationCenter} />
     <Route path="/tarefas" component={Tasks} />
+    <Route path="/metas-operacionais" component={OperationalGoals} />
     <Route path="/contatos" component={Voters} />
     <Route path="/campo" component={FieldOps} />
     <Route path="/operacoes-rua" component={StreetOperations} />

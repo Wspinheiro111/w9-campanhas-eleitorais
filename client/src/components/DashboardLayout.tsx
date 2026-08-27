@@ -8,7 +8,7 @@ import { startLogin } from "@/const";
 import { useCampaign } from "@/contexts/CampaignContext";
 import { isPaletteAccessible, type CustomPalette, useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Activity, BarChart3, BellRing, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Download, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, Palette, PanelLeft, Radar, Scale, ShieldCheck, Siren, UsersRound } from "lucide-react";
+import { Activity, BarChart3, BellRing, BookOpenText, Bot, Building2, Calculator, CalendarDays, CheckSquare, ClipboardCheck, ContactRound, Download, Flag, Flame, Gauge, HeartHandshake, LayoutDashboard, LogOut, MapPinned, MessageSquare, Mic, Palette, PanelLeft, Radar, Scale, ShieldCheck, Siren, UsersRound } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -28,6 +28,8 @@ export const menuItems = [
   { icon: BarChart3, label: "Indicadores de eventos", path: "/eventos/indicadores", requiresManage: true },
   { icon: Scale, label: "Prestação de contas", path: "/prestacao-contas", requiresManage: true },
   { icon: CheckSquare, label: "Tarefas", path: "/tarefas" },
+  { icon: Flag, label: "Metas operacionais", path: "/metas-operacionais", requiresManage: true },
+  { icon: CalendarDays, label: "Coordenação diária", path: "/coordenacao-diaria", requiresManage: true },
   { icon: ContactRound, label: "Contatos", path: "/contatos" },
   { icon: MessageSquare, label: "Comunicação", path: "/comunicacao", requiresManage: true },
   { icon: ClipboardCheck, label: "Campo offline", path: "/campo" },

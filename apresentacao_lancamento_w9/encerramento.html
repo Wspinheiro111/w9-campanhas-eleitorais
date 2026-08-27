@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #0A192F; color: #FFFFFF; font-family: Arial, Helvetica, sans-serif; position: relative; display: grid; grid-template-columns: 4fr 8fr; }
+    .brand-zone { border-right: 2px solid rgba(255,255,255,.22); padding-top: 87px; padding-left: 76px; padding-right: 48px; }
+    .overline { color: #10B981; font-size: 14px; font-weight: 800; letter-spacing: 2.8px; text-transform: uppercase; }
+    .mark { margin-top: 38px; color: #FFFFFF; font-size: 127px; font-weight: 900; letter-spacing: -15px; line-height: .76; }
+    .mark b { color: #10B981; }
+    .brand-name { margin-top: 43px; color: #FFC107; font-size: 15px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; line-height: 1.35; }
+    .main { padding-top: 108px; padding-left: 67px; padding-right: 76px; display: flex; flex-direction: column; justify-content: space-between; }
+    h1 { max-width: 670px; font-size: 57px; font-weight: 900; letter-spacing: -2px; line-height: .98; }
+    h1 span { color: #FFC107; }
+    .lead { margin-top: 27px; max-width: 610px; color: #C0CDDC; font-size: 24px; line-height: 1.28; }
+    .cta { margin-top: 52px; border-top: 2px solid #10B981; border-bottom: 2px solid #FFC107; padding-top: 16px; min-height: 61px; max-width: 610px; color: #FFFFFF; font-size: 24px; font-weight: 800; letter-spacing: -.3px; }
+    .url { margin-bottom: 68px; color: #FFFFFF; font-size: 25px; font-weight: 900; letter-spacing: -.5px; }
+    .url small { color: #10B981; font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 10px; }
+    .motif { position: absolute; right: 76px; top: 78px; width: 142px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+    .motif i { display: block; height: 27px; border: 2px solid rgba(16,185,129,.7); }
+    .motif i:nth-child(2), .motif i:nth-child(7), .motif i:nth-child(10) { background: #FFC107; border-color: #FFC107; }
+    .rule { position: absolute; left: 76px; right: 76px; bottom: 38px; height: 2px; background: rgba(255,255,255,.18); }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <section class="brand-zone">
+      <div class="overline">Lançamento</div>
+      <div class="mark">W<b>9</b></div>
+      <div class="brand-name">Campanhas<br>Eleitorais</div>
+    </section>
+    <section class="main">
+      <div>
+        <h1>Sua operação merece um <span>comando central.</span></h1>
+        <p class="lead">Organize a rotina, acompanhe o território e conduza a execução com mais clareza.</p>
+        <div class="cta">Solicite uma demonstração da plataforma.</div>
+      </div>
+      <div class="url"><small>Conheça a plataforma</small>www.w9campanhaseleitorais.com.br</div>
+    </section>
+    <div class="motif"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="rule"></div>
+  </div>
+</body>
+</html>

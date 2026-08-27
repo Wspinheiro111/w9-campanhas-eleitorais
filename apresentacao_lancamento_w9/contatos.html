@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #0A192F; color: #FFFFFF; font-family: Arial, Helvetica, sans-serif; padding-top: 56px; }
+    .header { margin-left: 76px; margin-right: 76px; display: flex; justify-content: space-between; align-items: flex-start; border-top: 2px solid #FFC107; padding-top: 16px; }
+    .eyebrow { color: #10B981; font-size: 14px; font-weight: 800; letter-spacing: 2.4px; text-transform: uppercase; }
+    h1 { margin-top: 19px; max-width: 760px; font-size: 53px; line-height: 1; letter-spacing: -1.8px; font-weight: 900; }
+    h1 span { color: #FFC107; }
+    .index { color: rgba(255,255,255,.45); font-size: 17px; font-weight: 800; letter-spacing: 2px; }
+    .sub { margin: 24px 76px 0; color: #B8C8DA; max-width: 760px; font-size: 20px; line-height: 1.35; }
+    .flow { margin: 62px 76px 0; display: grid; grid-template-columns: 1.1fr 30px 1.1fr 30px 1.1fr 30px 1.1fr; align-items: stretch; }
+    .stage { min-height: 222px; border-top: 2px solid rgba(255,255,255,.28); border-bottom: 2px solid rgba(255,255,255,.16); padding-top: 24px; }
+    .stage:nth-child(1) { border-top-color: #10B981; }
+    .stage:nth-child(7) { border-top-color: #FFC107; }
+    .num { font-size: 15px; font-weight: 900; color: #10B981; letter-spacing: 1.5px; }
+    .stage h2 { margin-top: 21px; font-size: 24px; line-height: 1.08; letter-spacing: -.5px; }
+    .stage p { margin-top: 13px; max-width: 205px; color: #B8C8DA; font-size: 16px; line-height: 1.35; }
+    .arrow { display: flex; align-items: center; justify-content: center; color: #FFC107; font-size: 25px; font-weight: 900; }
+    .footer { margin: 43px 76px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 55px; border-top: 2px solid rgba(16,185,129,.72); padding-top: 18px; }
+    .footer p { color: #DCE7F1; font-size: 18px; line-height: 1.3; }
+    .footer b { color: #FFC107; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <header class="header">
+      <div>
+        <div class="eyebrow">Relacionamento e devolutivas</div>
+        <h1>Contatos e demandas com <span>rastreabilidade.</span></h1>
+      </div>
+      <div class="index">04 / 10</div>
+    </header>
+    <p class="sub">Da entrada de uma informação ao encaminhamento responsável: cada etapa ganha contexto, responsável e histórico.</p>
+    <main class="flow">
+      <section class="stage"><div class="num">01 · CRM</div><h2>Centralize contatos</h2><p>Organize bases, interações e dados necessários à rotina da campanha.</p></section>
+      <div class="arrow">→</div>
+      <section class="stage"><div class="num">02 · VALIDAÇÃO</div><h2>Importe com controle</h2><p>Validação de campos e deduplicação ajudam a manter a base organizada.</p></section>
+      <div class="arrow">→</div>
+      <section class="stage"><div class="num">03 · PROTOCOLO</div><h2>Registre a demanda</h2><p>Pedidos comunitários viram protocolos com prazo e responsável definidos.</p></section>
+      <div class="arrow">→</div>
+      <section class="stage"><div class="num">04 · DEVOLUTIVA</div><h2>Acompanhe o retorno</h2><p>O histórico preserva encaminhamentos e apoia a coordenação.</p></section>
+    </main>
+    <footer class="footer">
+      <p><b>Dados organizados</b> para apoiar o trabalho de cada equipe e território.</p>
+      <p><b>Controles de acesso</b> e finalidade operacional para uma gestão mais responsável.</p>
+    </footer>
+  </div>
+</body>
+</html>

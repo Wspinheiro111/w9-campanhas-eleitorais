@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #0A192F; color: #FFFFFF; font-family: Arial, Helvetica, sans-serif; padding-top: 58px; }
+    .header { margin-left: 76px; margin-right: 76px; border-top: 2px solid #FFC107; padding-top: 15px; display: flex; justify-content: space-between; align-items: baseline; }
+    .header p { color: #10B981; font-size: 14px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; }
+    .header span { color: #9FB3C8; font-size: 14px; letter-spacing: 1px; }
+    h1 { margin: 42px 76px 0; font-size: 62px; line-height: .96; letter-spacing: -2px; font-weight: 900; }
+    h1 b { color: #FFC107; }
+    .sub { margin: 19px 76px 0; color: #B8C8D9; font-size: 22px; line-height: 1.3; max-width: 760px; }
+    .flow { margin: 60px 76px 0; display: grid; grid-template-columns: 1fr 78px 1fr 78px 1fr; align-items: stretch; }
+    .stage { min-height: 205px; border-top: 2px solid rgba(255,255,255,.35); border-bottom: 2px solid rgba(255,255,255,.16); padding-top: 23px; }
+    .stage .index { color: #10B981; font-size: 16px; font-weight: 900; letter-spacing: 2px; }
+    .stage h2 { margin-top: 24px; font-size: 31px; letter-spacing: -1px; }
+    .stage p { margin-top: 14px; color: #B8C8D9; font-size: 18px; line-height: 1.35; max-width: 245px; }
+    .arrow { display: flex; justify-content: center; align-items: center; color: #FFC107; font-size: 42px; font-weight: 900; }
+    .links { margin: 46px 76px 0; border-top: 2px solid #10B981; display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 30px; padding-top: 18px; }
+    .links div { color: #FFFFFF; font-size: 18px; font-weight: 800; }
+    .links span { display: block; margin-top: 8px; color: #9FB3C8; font-size: 15px; font-weight: 400; line-height: 1.3; }
+    .footer { margin: 32px 76px 0; color: #FFC107; font-weight: 800; font-size: 18px; letter-spacing: .3px; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <div class="header"><p>Operação territorial</p><span>Controle de materiais</span></div>
+    <h1>Materiais sob <b>controle.</b></h1>
+    <p class="sub">Da entrada à devolução, cada movimentação ganha contexto operacional e rastreabilidade.</p>
+    <div class="flow">
+      <section class="stage"><div class="index">01 / ESTOQUE</div><h2>Disponibilidade</h2><p>Cadastre itens e acompanhe o saldo necessário para planejar cada atividade.</p></section>
+      <div class="arrow">→</div>
+      <section class="stage"><div class="index">02 / DISTRIBUIÇÃO</div><h2>Destino definido</h2><p>Registre a entrega com equipe, território ou evento de referência.</p></section>
+      <div class="arrow">→</div>
+      <section class="stage"><div class="index">03 / DEVOLUÇÃO</div><h2>Saldo rastreado</h2><p>Documente retornos e mantenha a leitura do ciclo de materiais atualizada.</p></section>
+    </div>
+    <div class="links">
+      <div>Equipe<span>Quem recebeu ou movimentou o item.</span></div>
+      <div>Território<span>Onde o material apoia a operação.</span></div>
+      <div>Evento<span>Qual atividade motivou a distribuição.</span></div>
+    </div>
+    <div class="footer">Menos improviso. Mais capacidade de acompanhar a execução.</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,133 @@
+{
+  "project_info": {
+    "title": "W9 Campanhas Eleitorais",
+    "created": 1787806428.106,
+    "last_updated": 1787806611.94,
+    "total_slides": 11
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "operacao",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "estrategia",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "territorio",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "contatos",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "materiais",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "equipes",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "indicadores",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "seguranca",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "plataforma",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "encerramento",
+      "state": "edited",
+      "pageNum": 11
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "W9 Campanhas Eleitorais",
+      "summary": "Capa de lançamento com proposta de valor: organização, território e operação em um único ambiente.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "operacao",
+      "title": "Uma campanha exige visão em tempo real",
+      "summary": "O desafio operacional de coordenar equipes, agendas, contatos e entregas sem dispersão.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "estrategia",
+      "title": "Da estratégia à rotina operacional",
+      "summary": "Planejamento por campanha, equipe e território apoiado por dashboard e alertas internos.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "territorio",
+      "title": "Território organizado, campo acompanhado",
+      "summary": "Agenda de rua, check-in, escalas e operação com conectividade limitada.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "contatos",
+      "title": "Contatos e demandas com rastreabilidade",
+      "summary": "CRM, importação validada e protocolos de demandas comunitárias com devolutivas.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "materiais",
+      "title": "Materiais sob controle",
+      "summary": "Estoque, distribuição e devolução vinculados a equipe, território e evento.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "equipes",
+      "title": "Equipes preparadas para executar",
+      "summary": "Disponibilidade, escalas, treinamentos, certificados e playbooks.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "indicadores",
+      "title": "Indicadores para decidir com clareza",
+      "summary": "Cobertura territorial, eventos, tarefas e relatórios para coordenação.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "seguranca",
+      "title": "Administração com segurança e controle",
+      "summary": "Organizações isoladas, autenticação reforçada, auditoria e saúde técnica.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "plataforma",
+      "title": "Uma plataforma para organizar a execução",
+      "summary": "Síntese dos módulos integrados e do papel da coordenação na tomada de decisão.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "encerramento",
+      "title": "Sua operação merece um comando central",
+      "summary": "Encerramento com marca W9, convite para demonstração e endereço do site.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}

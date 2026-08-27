@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #0A192F; color: #fff; font-family: Arial, Helvetica, sans-serif; display: grid; grid-template-columns: 7fr 5fr; position: relative; }
+    .left { padding-top: 74px; padding-left: 76px; padding-right: 56px; display: flex; flex-direction: column; justify-content: space-between; border-right: 2px solid rgba(255,255,255,.22); }
+    .eyebrow { color: #10B981; font-size: 15px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; }
+    h1 { font-size: 66px; line-height: .98; max-width: 650px; font-weight: 900; letter-spacing: -2px; margin-top: 25px; }
+    h1 span { color: #FFC107; }
+    .subtitle { border-top: 2px solid #FFC107; padding-top: 19px; max-width: 520px; font-size: 25px; line-height: 1.25; font-weight: 500; }
+    .site { color: #9bb0c8; letter-spacing: 1px; font-size: 17px; margin-bottom: 60px; }
+    .right { padding-top: 70px; padding-left: 68px; padding-right: 68px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #0A192F 0%, #112C4F 100%); }
+    .mark { font-size: 168px; line-height: .76; letter-spacing: -18px; font-weight: 900; color: #fff; }
+    .mark b { color: #10B981; }
+    .tag { margin-top: 44px; color: #FFC107; border-top: 2px solid #FFC107; border-bottom: 2px solid #FFC107; padding-top: 12px; font-size: 14px; letter-spacing: 3px; font-weight: 800; text-transform: uppercase; text-align: center; min-height: 40px; }
+    .grid { width: 100%; margin-top: 55px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .grid i { height: 36px; border: 2px solid rgba(16,185,129,.65); display: block; }
+    .grid i:nth-child(2), .grid i:nth-child(5), .grid i:nth-child(8) { border-color: #FFC107; }
+    .rule { position: absolute; left: 76px; right: 76px; bottom: 38px; height: 2px; background: rgba(255,255,255,.2); }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <section class="left">
+      <div>
+        <div class="eyebrow">Lançamento da plataforma</div>
+        <h1>W9 Campanhas <span>Eleitorais</span></h1>
+      </div>
+      <div class="subtitle">Organização, território e operação em um único ambiente.</div>
+      <div class="site">www.w9campanhaseleitorais.com.br</div>
+    </section>
+    <section class="right">
+      <div class="mark">W<b>9</b></div>
+      <div class="tag">Campanhas Eleitorais</div>
+      <div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </section>
+    <div class="rule"></div>
+  </div>
+</body>
+</html>

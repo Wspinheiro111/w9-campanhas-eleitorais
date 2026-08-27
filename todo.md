@@ -343,3 +343,10 @@
 - [x] Implementar central de demandas comunitárias com protocolos, responsáveis, prazos e histórico de devolutivas.
 - [x] Implementar gestão de materiais com estoque, distribuição, devolução e vínculo com equipe, território e evento.
 - [x] Reordenar o menu lateral para deixar Segurança e Auditoria como os dois últimos itens operacionais.
+- [x] Criar arte de lançamento para Instagram apresentando funcionalidades do W9 Campanhas Eleitorais.
+- [x] Editar a arte do Instagram para remover o conteúdo inferior e exibir somente www.w9campanhaseleitorais.com.br.
+- [x] Criar apresentação em slides para o lançamento comercial do W9 Campanhas Eleitorais.
+- [x] Implementar monitor de metas operacionais com definição, acompanhamento e estados de atenção.
+- [x] Implementar painel de voluntariado com participação, disponibilidade, formação e histórico operacional.
+- [x] Implementar relatório diário de coordenação com pendências, agenda, cobertura territorial e alertas reais.
+- [x] Corrigir a prévia de desenvolvimento para refletir as novas rotas de metas e coordenação sem retornar 404.
