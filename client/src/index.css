@@ -164,6 +164,10 @@
   h1, h2, h3, .font-serif {
     font-family: "Libre Baskerville", Georgia, serif;
   }
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 3px;
+  }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -252,5 +256,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
   .landing-reveal, .landing-observe { opacity: 1; transform: none; animation: none; }
 }

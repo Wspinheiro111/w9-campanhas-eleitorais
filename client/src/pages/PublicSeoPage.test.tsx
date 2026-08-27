@@ -16,6 +16,9 @@ describe("páginas públicas de SEO", () => {
     expect(screen.getByText(/consentimento e acesso/i)).toBeInTheDocument();
     expect(screen.getByText(/não deve ser usado para perfilamento ilícito/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /demonstração/i })[0]).toHaveAttribute("href", "/#demonstracao");
+    expect(screen.getByRole("link", { name: /pular para o conteúdo/i })).toHaveAttribute("href", "#conteudo-principal");
+    expect(screen.getByRole("navigation", { name: /navegação da página de solução/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("list")).toHaveLength(2);
     expect(document.title).toContain("CRM eleitoral");
     expect(document.head.querySelector("#w9-seo-page-schema")?.textContent).toContain("SoftwareApplication");
   });

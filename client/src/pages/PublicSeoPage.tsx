@@ -175,15 +175,16 @@ export default function PublicSeoPage({ pageKey }: { pageKey: SeoPageKey }) {
   usePageMetadata(page);
 
   return (
-    <main className="min-h-screen bg-[#07142f] text-white">
+    <main id="conteudo-principal" className="min-h-screen bg-[#07142f] text-white">
+      <a href="#conteudo-principal" className="sr-only fixed left-4 top-4 z-50 rounded-md bg-[#f5c518] px-4 py-2 text-sm font-bold text-[#07142f] focus:not-sr-only focus:outline-none">Pular para o conteúdo</a>
       <header className="border-b border-white/10 bg-[#07142f]/95">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-5 py-5 sm:px-8">
+        <nav aria-label="Navegação da página de solução" className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-5 py-5 sm:px-8">
           <a href="/" className="flex items-center gap-3 font-bold tracking-tight" aria-label="Voltar para a página inicial do W9 Campanhas Eleitorais">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#f5c518] text-sm font-black text-[#07142f]">W9</span>
             <span className="text-sm leading-tight sm:text-base">W9 <span className="text-[#f5c518]">CAMPANHAS</span><br />ELEITORAIS</span>
           </a>
-          <a href="/#demonstracao" className="rounded-full bg-[#f5c518] px-4 py-2 text-xs font-black uppercase tracking-wide text-[#07142f] transition hover:bg-[#ffe06c] sm:px-5">Solicitar demonstração</a>
-        </div>
+          <a href="/#demonstracao" className="rounded-full bg-[#f5c518] px-4 py-2 text-xs font-black uppercase tracking-wide text-[#07142f] transition hover:bg-[#ffe06c] motion-reduce:transition-none sm:px-5">Solicitar demonstração</a>
+        </nav>
       </header>
 
       <section className="border-b border-white/10 bg-[radial-gradient(circle_at_82%_15%,rgba(0,191,166,0.24),transparent_31%),radial-gradient(circle_at_12%_84%,rgba(245,197,24,0.18),transparent_28%)]">
@@ -192,58 +193,58 @@ export default function PublicSeoPage({ pageKey }: { pageKey: SeoPageKey }) {
           <h1 className="max-w-4xl font-['Anton'] text-4xl uppercase leading-[0.98] tracking-wide sm:text-6xl">{page.title}</h1>
           <p className="mt-7 max-w-3xl text-lg leading-8 text-slate-200 sm:text-xl">{page.introduction}</p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <a href="/#demonstracao" className="rounded-full bg-[#f5c518] px-6 py-3 text-sm font-black uppercase tracking-wide text-[#07142f] transition hover:bg-[#ffe06c]">Quero uma demonstração</a>
-            <a href="/" className="rounded-full border border-white/30 px-6 py-3 text-sm font-bold text-white transition hover:border-white hover:bg-white/10">Conhecer o W9</a>
+            <a href="/#demonstracao" className="rounded-full bg-[#f5c518] px-6 py-3 text-sm font-black uppercase tracking-wide text-[#07142f] transition hover:bg-[#ffe06c] motion-reduce:transition-none">Quero uma demonstração</a>
+            <a href="/" className="rounded-full border border-white/30 px-6 py-3 text-sm font-bold text-white transition hover:border-white hover:bg-white/10 motion-reduce:transition-none">Conhecer o W9</a>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24">
+      <section aria-labelledby="solucao-recursos" className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.8fr] lg:gap-16">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#00bfa6]">O que a coordenação organiza</p>
-            <h2 className="mt-4 font-['Anton'] text-3xl uppercase leading-tight tracking-wide sm:text-4xl">Uma operação visível para quem precisa decidir e executar.</h2>
+            <h2 id="solucao-recursos" className="mt-4 font-['Anton'] text-3xl uppercase leading-tight tracking-wide sm:text-4xl">Uma operação visível para quem precisa decidir e executar.</h2>
           </div>
-          <div className="grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 md:grid-cols-3">
+          <ul className="grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 md:grid-cols-3">
             {page.modules.map((module) => (
-              <article key={module.title} className="bg-[#0a1b3d] p-7">
+              <li key={module.title} className="bg-[#0a1b3d] p-7">
                 <h3 className="text-lg font-black text-[#f5c518]">{module.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-slate-300">{module.description}</p>
-              </article>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
-      <section className="border-y border-white/10 bg-[#0a1b3d]">
+      <section aria-labelledby="solucao-fluxo" className="border-y border-white/10 bg-[#0a1b3d]">
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f5c518]">Fluxo de trabalho</p>
-          <h2 className="mt-4 font-['Anton'] text-3xl uppercase tracking-wide sm:text-4xl">Do planejamento ao acompanhamento.</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <h2 id="solucao-fluxo" className="mt-4 font-['Anton'] text-3xl uppercase tracking-wide sm:text-4xl">Do planejamento ao acompanhamento.</h2>
+          <ol className="mt-10 grid gap-6 md:grid-cols-3">
             {page.workflow.map((step) => (
-              <article key={step.number} className="border-t-2 border-[#00bfa6] pt-5">
+              <li key={step.number} className="border-t-2 border-[#00bfa6] pt-5">
                 <span className="font-['Anton'] text-4xl text-[#f5c518]">{step.number}</span>
                 <h3 className="mt-3 text-xl font-black">{step.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-300">{step.description}</p>
-              </article>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24">
+      <section aria-labelledby="solucao-uso-responsavel" className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24">
         <div className="grid gap-8 border border-[#f5c518]/35 bg-[#102650] p-8 md:grid-cols-[1.3fr_0.7fr] md:p-12">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f5c518]">Uso responsável</p>
+            <h2 id="solucao-uso-responsavel" className="text-xs font-black uppercase tracking-[0.18em] text-[#f5c518]">Uso responsável</h2>
             <p className="mt-4 max-w-3xl text-base leading-7 text-slate-100">{page.guardrail}</p>
           </div>
           <div className="flex items-center md:justify-end">
-            <a href="/#demonstracao" className="w-full rounded-full bg-[#f5c518] px-6 py-4 text-center text-sm font-black uppercase tracking-wide text-[#07142f] transition hover:bg-[#ffe06c] md:w-auto">Agendar demonstração</a>
+            <a href="/#demonstracao" className="w-full rounded-full bg-[#f5c518] px-6 py-4 text-center text-sm font-black uppercase tracking-wide text-[#07142f] transition hover:bg-[#ffe06c] motion-reduce:transition-none md:w-auto">Agendar demonstração</a>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-white/10 px-5 py-9 text-center text-sm text-slate-400 sm:px-8">
+      <footer className="border-t border-white/10 px-5 py-9 text-center text-sm text-slate-300 sm:px-8">
         <p>W9 Campanhas Eleitorais · Gestão operacional, dados organizados e execução responsável.</p>
         <a href="/login" className="mt-3 inline-block font-bold text-[#f5c518] hover:text-[#ffe06c]">Acessar a conta</a>
       </footer>

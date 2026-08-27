@@ -73,6 +73,7 @@ export default function Landing() {
   const [isTrailerPlaying, setIsTrailerPlaying] = useState(false);
   const [speechRate, setSpeechRate] = useState(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const narrationRef = useRef<HTMLAudioElement | null>(null);
   const [demoForm, setDemoForm] = useState({ name: "", email: "", phone: "", organizationName: "", role: "candidate" as "candidate" | "party" | "coordination" | "other", city: "", state: "", message: "", preferredDemoAt: "", consent: false, website: "" });
   const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "", message: "", consent: false, website: "" });
@@ -93,6 +94,21 @@ export default function Landing() {
     },
   });
 
+  const playNarration = async () => {
+    const narration = narrationRef.current;
+    if (!narration) return;
+    narration.playbackRate = speechRate;
+    narration.muted = !soundEnabled;
+    try {
+      await narration.play();
+      setIsTrailerPlaying(true);
+      setAutoplayBlocked(false);
+    } catch {
+      setIsTrailerPlaying(false);
+      setAutoplayBlocked(true);
+    }
+  };
+
   useEffect(() => {
     if (!("IntersectionObserver" in window)) return;
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
@@ -105,22 +121,13 @@ export default function Landing() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    void playNarration();
+  }, []);
+
   const stopTrailer = () => {
     narrationRef.current?.pause();
     setIsTrailerPlaying(false);
-  };
-
-  const playNarration = async () => {
-    const narration = narrationRef.current;
-    if (!narration) return;
-    narration.playbackRate = speechRate;
-    narration.muted = !soundEnabled;
-    try {
-      await narration.play();
-      setIsTrailerPlaying(true);
-    } catch {
-      setIsTrailerPlaying(false);
-    }
   };
 
   const playFromLine = (index: number) => {
@@ -141,18 +148,20 @@ export default function Landing() {
     narrationRef.current?.pause();
   }, []);
 
-  return <main className="min-h-screen overflow-hidden bg-[#0A132E] font-sans text-white selection:bg-[#FFC300] selection:text-[#0F1C3F]">
+  return <main id="conteudo-principal" className="min-h-screen overflow-x-hidden bg-[#0A132E] font-sans text-white selection:bg-[#FFC300] selection:text-[#0F1C3F]">
+    <a href="#conteudo-principal" className="sr-only fixed left-4 top-4 z-50 rounded-md bg-[#FFC300] px-4 py-2 text-sm font-bold text-[#0F1C3F] focus:not-sr-only focus:outline-none">Pular para o conteúdo</a>
     <section className="relative overflow-hidden border-b border-white/10 bg-[#0A132E]">
       <div className="pointer-events-none absolute inset-0 opacity-[0.22]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.22) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
       <div className="pointer-events-none absolute -right-40 top-[-13rem] size-[35rem] rounded-full bg-[#00A859]/20 blur-[110px]" />
       <div className="pointer-events-none absolute -left-40 bottom-[-15rem] size-[35rem] rounded-full bg-[#FFC300]/15 blur-[110px]" />
 
-      <nav className="relative z-10 mx-auto flex max-w-[1280px] items-center justify-between border-b border-white/10 px-5 py-4 sm:px-8">
-        <div className="flex items-center gap-3">
-          <BrandMark />
-          <Badge className="hidden border-white/15 bg-white/5 text-[10px] font-bold tracking-wider text-white/75 sm:inline-flex">ELEIÇÕES 2026</Badge>
+      <nav aria-label="Navegação principal" style={{ paddingTop: "max(0.9rem, env(safe-area-inset-top))" }} className="relative z-10 mx-auto flex min-h-16 max-w-[1280px] items-center justify-between gap-2 border-b border-white/10 px-3 pb-3 sm:gap-4 sm:px-8 sm:pb-4">
+        <div className="shrink-0">
+          <div className="sm:hidden"><BrandMark compact /></div>
+          <div className="hidden sm:block"><BrandMark /></div>
         </div>
-        <div className="flex items-center gap-2"><a href="#contato" className="hidden rounded-full px-3 py-2 text-[11px] font-bold text-white/75 transition hover:bg-white/10 sm:inline-flex">FALE COM A W9</a><Link href="/login" className="rounded-full border border-[#FFC300]/70 bg-[#FFC300] px-4 py-2 text-xs font-black tracking-wide text-[#0F1C3F] transition hover:bg-white sm:px-5">VER SISTEMA AO VIVO</Link></div>
+        <Badge className="hidden shrink-0 border-white/15 bg-white/5 text-[10px] font-bold tracking-wider text-white/75 lg:inline-flex">ELEIÇÕES 2026</Badge>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2"><a href="#contato" className="hidden rounded-full px-3 py-2 text-[11px] font-bold text-white/75 transition hover:bg-white/10 sm:inline-flex">FALE COM A W9</a><Link href="/login" className="rounded-full border border-[#FFC300]/70 bg-[#FFC300] px-3 py-2 text-[10px] font-black tracking-wide text-[#0F1C3F] transition hover:bg-white sm:px-5 sm:text-xs">VER SISTEMA AO VIVO</Link></div>
       </nav>
 
       <div className="relative z-10 mx-auto grid max-w-[1280px] gap-12 px-5 pb-20 pt-16 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:gap-16 lg:pb-28 lg:pt-24">
@@ -173,12 +182,13 @@ export default function Landing() {
 
           <section id="trailer" className="landing-reveal relative rounded-[28px] border border-white/10 bg-[#12204A]/90 p-3 shadow-[0_40px_120px_rgba(0,0,0,.55)] backdrop-blur" style={{ animationDelay: "100ms" }}>
           <div className="flex items-center justify-between border-b border-white/10 px-3 pb-3"><div className="flex gap-1.5"><i className="size-2.5 rounded-full bg-red-400" /><i className="size-2.5 rounded-full bg-[#FFC300]" /><i className="size-2.5 rounded-full bg-[#00A859]" /></div><p className="text-[9px] font-black tracking-[.18em] text-white/40">W9_PLAYER • LOCUÇÃO PT-BR</p></div>
-          <div className="p-3 sm:p-5"><audio ref={narrationRef} preload="none" onTimeUpdate={(event) => { const time = event.currentTarget.currentTime; const cueIndex = storyCueSeconds.reduce((current, cue, index) => time >= cue ? index : current, 0); setActiveLine(cueIndex); }} onEnded={() => setIsTrailerPlaying(false)}><source src="/manus-storage/w9-trailer-narracao-natural_557e1c29.wav" type="audio/wav" />Seu navegador não suporta a reprodução de áudio.</audio><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[.14em] text-[#FFC300]">{isTrailerPlaying ? "REPRODUZINDO NARRAÇÃO" : "PRONTO PARA OUVIR"} • {activeLine + 1}/{storyLines.length} FRASES</p><p className="mt-3 font-[Anton,sans-serif] text-2xl uppercase leading-none sm:text-3xl">{storyLines[activeLine]}</p></div><span className="shrink-0 rounded-full bg-[#00A859]/20 px-2 py-1 text-[9px] font-bold text-[#67ecad]">VOZ NATURAL PT-BR</span></div>
-            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#FFC300] transition-all" style={{ width: `${((activeLine + 1) / storyLines.length) * 100}%` }} /></div>
+          <div className="p-3 sm:p-5"><audio ref={narrationRef} autoPlay preload="auto" onTimeUpdate={(event) => { const time = event.currentTarget.currentTime; const cueIndex = storyCueSeconds.reduce((current, cue, index) => time >= cue ? index : current, 0); setActiveLine(cueIndex); }} onEnded={() => setIsTrailerPlaying(false)}><source src="/manus-storage/w9-trailer-narracao-natural_557e1c29.wav" type="audio/wav" />Seu navegador não suporta a reprodução de áudio.</audio><div className="flex items-start justify-between gap-3"><div><p aria-live="polite" aria-atomic="true" className="text-[10px] font-black tracking-[.14em] text-[#FFC300]">{isTrailerPlaying ? "REPRODUZINDO NARRAÇÃO" : "PRONTO PARA OUVIR"} • {activeLine + 1}/{storyLines.length} FRASES</p><p className="mt-3 font-[Anton,sans-serif] text-2xl uppercase leading-none sm:text-3xl">{storyLines[activeLine]}</p></div><span className="shrink-0 rounded-full bg-[#00A859]/20 px-2 py-1 text-[9px] font-bold text-[#67ecad]">VOZ NATURAL PT-BR</span></div>
+            {autoplayBlocked && <p id="audio-autoplay-status" role="status" className="mt-3 text-xs leading-5 text-white/80">Seu navegador protege o som automático. Toque em <strong className="text-[#FFC300]">Ouvir</strong> para iniciar a narração agora.</p>}
+            <div role="progressbar" aria-label="Progresso do roteiro da narração" aria-valuemin={1} aria-valuemax={storyLines.length} aria-valuenow={activeLine + 1} aria-valuetext={`Frase ${activeLine + 1} de ${storyLines.length}`} className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#FFC300] transition-all motion-reduce:transition-none" style={{ width: `${((activeLine + 1) / storyLines.length) * 100}%` }} /></div>
             <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
               <video className="aspect-video w-full" autoPlay muted loop controls playsInline preload="metadata" poster="/manus-storage/w9-campanhas-eleitorais-trailer-poster_d8022fb8.jpg" aria-label="Vídeo visual de apresentação do W9 Campanhas Eleitorais"><source src="/manus-storage/w9-campanhas-eleitorais-trailer-web_ba22df5b.mp4" type="video/mp4" />Seu navegador não suporta a reprodução de vídeo.</video>
             </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-b border-white/10 pb-4"><Button type="button" onClick={isTrailerPlaying ? stopTrailer : openTrailer} size="sm" className="bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white">{isTrailerPlaying ? <Pause className="mr-1.5 size-3.5 fill-current" /> : <Play className="mr-1.5 size-3.5 fill-current" />}{isTrailerPlaying ? "PAUSAR" : "OUVIR"}</Button><Button type="button" variant="outline" size="sm" onClick={() => { const next = !soundEnabled; setSoundEnabled(next); if (narrationRef.current) narrationRef.current.muted = !next; }} className="border-white/20 text-white hover:bg-white/10 hover:text-white">{soundEnabled ? <Volume2 className="mr-1.5 size-3.5" /> : <VolumeX className="mr-1.5 size-3.5" />}{soundEnabled ? "SOM LIGADO" : "SOM DESLIGADO"}</Button>{[0.9, 1, 1.15].map(rate => <button type="button" key={rate} onClick={() => { setSpeechRate(rate); if (narrationRef.current) narrationRef.current.playbackRate = rate; }} className={`rounded-md px-2 py-1 text-[10px] font-black transition ${speechRate === rate ? "bg-[#00A859] text-[#071a13]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>{rate}×</button>)}</div>
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-b border-white/10 pb-4"><Button type="button" aria-describedby={autoplayBlocked ? "audio-autoplay-status" : undefined} onClick={isTrailerPlaying ? stopTrailer : openTrailer} size="sm" className="bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white">{isTrailerPlaying ? <Pause className="mr-1.5 size-3.5 fill-current" /> : <Play className="mr-1.5 size-3.5 fill-current" />}{isTrailerPlaying ? "PAUSAR" : "OUVIR"}</Button><Button type="button" variant="outline" size="sm" onClick={() => { const next = !soundEnabled; setSoundEnabled(next); if (narrationRef.current) narrationRef.current.muted = !next; }} className="border-white/20 text-white hover:bg-white/10 hover:text-white">{soundEnabled ? <Volume2 className="mr-1.5 size-3.5" /> : <VolumeX className="mr-1.5 size-3.5" />}{soundEnabled ? "SOM LIGADO" : "SOM DESLIGADO"}</Button>{[0.9, 1, 1.15].map(rate => <button type="button" key={rate} onClick={() => { setSpeechRate(rate); if (narrationRef.current) narrationRef.current.playbackRate = rate; }} className={`rounded-md px-2 py-1 text-[10px] font-black transition ${speechRate === rate ? "bg-[#00A859] text-[#071a13]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>{rate}×</button>)}</div>
             <div className="mt-4 max-h-36 space-y-1 overflow-auto pr-1">{storyLines.map((line, index) => <button type="button" key={line} onClick={() => playFromLine(index)} className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-xs transition ${activeLine === index ? "bg-[#FFC300] text-[#0F1C3F]" : "text-white/65 hover:bg-white/10"}`}><span className="grid size-5 shrink-0 place-items-center rounded-full bg-black/20 text-[10px] font-black">{index + 1}</span><span className="line-clamp-2 leading-5">{line}</span></button>)}</div>
           </div>
         </section>

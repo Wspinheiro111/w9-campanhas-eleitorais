@@ -44,3 +44,15 @@ A landing publicada no domínio raiz contém os controles e os elementos de víd
 O link com o parâmetro `code` fornecido pelo usuário exibe a mesma estrutura da landing e o vídeo permanece em carregamento. Ao acionar o controle “OUVIR”, a narração mudou para o estado “REPRODUZINDO NARRAÇÃO”, confirmando que o áudio funciona quando iniciado por uma interação explícita, como planejado para respeitar as regras de autoplay dos navegadores. A diferença percebida pelo usuário não está no código da landing; o defeito reproduzido é o vídeo MP4 publicado, que permanece visualmente escuro e apresenta erro de leitura do demuxer.
 
 Uma nova cópia do trailer foi gerada em H.264/AAC, 960×540, `yuv420p`, com `faststart`, 3,24 MB e MIME `video/mp4` no armazenamento. A landing local atualizada exibe um poster JPEG de 57 KB imediatamente e o novo vídeo foi reproduzido automaticamente, de forma silenciosa, com `readyState: 4`, `paused: false` e sem erro. A narração continua sob ação explícita do visitante, o comportamento necessário para compatibilidade com as políticas de autoplay; o botão de ouvir a aciona corretamente.
+
+Após o checkpoint de publicação, o domínio raiz `https://w9campanhaseleitorais.com.br/` passou a exibir o novo trailer visual sem o parâmetro `code`. A reprodução do vídeo aparece no carregamento e o acionamento de “OUVIR” altera o estado para “REPRODUZINDO NARRAÇÃO”, confirmando o áudio no endereço normal. O parâmetro de código não é necessário para carregar os recursos de mídia na versão corrigida.
+
+## Nova aferição de desempenho — 27 ago. 2026
+
+Uma nova execução móvel do PageSpeed Insights foi iniciada após a correção de mídia. A ferramenta reconheceu o domínio e registrou o horário de execução, mas permaneceu na validação “Enter a valid URL” e não expôs notas de laboratório nesta tentativa. Portanto, esta execução não substitui a medição anterior de 81 em performance, 94 em acessibilidade e 92 em SEO. A validação local e publicada da troca de vídeo confirmou redução de 6,39 MB para 3,24 MB, poster de 57 KB e remoção do erro de leitura no navegador.
+
+## Autoplay e área segura superior — 27 ago. 2026
+
+A landing passou a declarar `autoplay` e `preload="auto"` para a narração e também realiza tentativa programática no carregamento. No navegador de validação, o elemento de áudio permaneceu pausado, embora sem erro de mídia, comportamento compatível com bloqueio de autoplay com som sem interação. A página agora mostra mensagem acessível e oferece o botão de ouvir como acionamento imediato nesses navegadores. O cabeçalho inclui área segura para dispositivos com recorte de tela, altura mínima e marca compacta em telas estreitas. Na validação local, o cabeçalho tinha 67,39 px e a marca foi considerada totalmente visível.
+
+Uma captura em viewport móvel de 375×812, após a renderização completa, confirmou que o monograma W9, a ação “Ver sistema ao vivo”, o selo do trailer, o título, os botões e os indicadores iniciais são exibidos dentro da área visível, sem corte superior. A primeira captura sem espera exibiu apenas a tela inicial do aplicativo; ela foi descartada como evidência visual por não aguardar a renderização.
