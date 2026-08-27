@@ -1,0 +1,23 @@
+{
+  "model": "gpt-5",
+  "input": [
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Você é um arquiteto sênior de web, DNS, TLS e autenticação. Dê uma análise técnica conservadora. Não invente controles de plataforma, não recomende mudança destrutiva, e diferencie claramente fatos observados, hipóteses e ações que dependem do provedor." 
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Analise este caso e proponha a solução mais segura para canonicalização de domínio. Aplicação React/Express publicada em plataforma gerenciada. Domínios conectados: w9campanhaseleitorais.com.br e www.w9campanhaseleitorais.com.br. DNS preserva e-mail; raiz usa A 104.18.26.246 e www usa CNAME cname.manus.space. Em consulta HTTPS recente, a raiz retorna HTTP 200 e www retorna HTTP 301 Location: https://w9campanhaseleitorais.com.br/. A camada de domínio da plataforma aparentemente executa esse www->raiz antes de atingir a aplicação. Tentamos middleware aplicativo raiz->www; isso criou risco de ciclo raiz<->www e foi removido antes da continuidade. Ambos os hosts possuem TLS ativo e o login Google/e-mail precisa preservar sessão e callback no domínio em que o usuário iniciou o acesso. Objetivo: definir www.w9campanhaseleitorais.com.br como canônico e obter redirecionamento 301 da raiz para www, preservando HTTPS, path e query string, sem mexer em MX/SPF/DKIM/DMARC/SRV. Forneça: (1) diagnóstico da causa mais provável; (2) ordem segura de ações; (3) critérios objetivos para decidir se a ação deve ser no painel do provedor/plataforma, DNS ou aplicação; (4) plano de rollback; (5) testes pós-alteração para raiz, www, login por senha e Google OAuth. Não sugira criar www.www nem remover e-mail." 
+        }
+      ]
+    }
+  ]
+}
