@@ -33,6 +33,7 @@ const menuItems = [
   { icon: ContactRound, label: "Contatos", path: "/contatos" },
   { icon: MessageSquare, label: "Comunicação", path: "/comunicacao", requiresManage: true },
   { icon: ClipboardCheck, label: "Campo offline", path: "/campo" },
+  { icon: MapPinned, label: "Rua, demandas e materiais", path: "/operacoes-rua" },
   { icon: ShieldCheck, label: "Consentimentos", path: "/consentimentos" },
   { icon: Siren, label: "Sala de crise", path: "/crise" },
   { icon: UsersRound, label: "Pipeline", path: "/pipeline" },

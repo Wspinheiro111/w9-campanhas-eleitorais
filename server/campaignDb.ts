@@ -16,6 +16,8 @@ import {
   campaignComplianceRules,
   campaignCommunicationLogs,
   campaignCommunicationTemplates,
+  campaignMaterialMovements,
+  campaignMaterials,
   campaignTrainingRecognitionRules,
   campaignMemberAvailabilities,
   campaignNotifications,
@@ -26,6 +28,8 @@ import {
   campaignMembers,
   campaigns,
   clientInterfaceErrors,
+  communityDemandUpdates,
+  communityDemands,
   consentRecords,
   crisisCases,
   crisisDecisionLogs,
@@ -48,6 +52,8 @@ import {
   platformCustomerPortfolioReports,
   platformCustomerPortfolioSchedules,
   routePerformanceEvents,
+  streetActionCheckins,
+  streetActions,
   campaignSurveys,
   surveyResponses,
   tasks,
@@ -1463,6 +1469,145 @@ export async function syncFieldVisits(input: Array<{ campaignId: number; voterId
     created += 1;
   }
   return { created, duplicates };
+}
+
+export async function getStreetAction(campaignId: number, streetActionId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(streetActions).where(and(eq(streetActions.id, streetActionId), eq(streetActions.campaignId, campaignId))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listStreetActions(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ action: streetActions, event: events, responsible: campaignMembers, presentCount: sql<number>`coalesce(sum(case when ${streetActionCheckins.attendanceStatus} = 'present' then 1 else 0 end), 0)`, absentCount: sql<number>`coalesce(sum(case when ${streetActionCheckins.attendanceStatus} = 'absent' then 1 else 0 end), 0)` })
+    .from(streetActions)
+    .leftJoin(events, eq(events.id, streetActions.eventId))
+    .leftJoin(campaignMembers, eq(campaignMembers.id, streetActions.responsibleMemberId))
+    .leftJoin(streetActionCheckins, eq(streetActionCheckins.streetActionId, streetActions.id))
+    .where(eq(streetActions.campaignId, campaignId))
+    .groupBy(streetActions.id, events.id, campaignMembers.id)
+    .orderBy(streetActions.startsAt)
+    .limit(200);
+}
+
+export async function createStreetAction(input: { campaignId: number; eventId?: number | null; title: string; startsAt: Date; endsAt?: Date | null; territory?: string | null; neighborhood?: string | null; region?: string | null; responsibleMemberId?: number | null; notes?: string | null; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  if (input.eventId) {
+    const event = await getEvent(input.eventId);
+    if (!event || event.campaignId !== input.campaignId) throw new Error("STREET_ACTION_EVENT_INVALID");
+  }
+  if (input.responsibleMemberId && !await getCampaignMember(input.campaignId, input.responsibleMemberId)) throw new Error("STREET_ACTION_MEMBER_INVALID");
+  const result = await db.insert(streetActions).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId), eventId: input.eventId ?? null, endsAt: input.endsAt ?? null, territory: input.territory ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, responsibleMemberId: input.responsibleMemberId ?? null, notes: input.notes ?? null });
+  const id = Number(result[0].insertId);
+  await createOrganizationAuditLog({ organizationId: await organizationIdForCampaign(input.campaignId), actorUserId: input.createdByUserId, action: "street_action.created", entityType: "street_action", entityId: id, metadata: { eventId: input.eventId ?? null, territory: input.territory ?? null } });
+  return id;
+}
+
+export async function listStreetActionCheckins(campaignId: number, streetActionId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ checkin: streetActionCheckins, member: campaignMembers }).from(streetActionCheckins).innerJoin(campaignMembers, eq(campaignMembers.id, streetActionCheckins.memberId)).where(and(eq(streetActionCheckins.campaignId, campaignId), eq(streetActionCheckins.streetActionId, streetActionId))).orderBy(desc(streetActionCheckins.checkedInAt)).limit(200);
+}
+
+export async function saveStreetActionCheckin(input: { campaignId: number; streetActionId: number; memberId: number; attendanceStatus: "present" | "absent"; notes?: string | null; actorUserId: number }) {
+  const db = requireDb(await getDb());
+  const [action, member] = await Promise.all([getStreetAction(input.campaignId, input.streetActionId), getCampaignMember(input.campaignId, input.memberId)]);
+  if (!action) throw new Error("STREET_ACTION_NOT_FOUND");
+  if (!member) throw new Error("STREET_ACTION_MEMBER_INVALID");
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  await db.insert(streetActionCheckins).values({ organizationId, campaignId: input.campaignId, streetActionId: input.streetActionId, memberId: input.memberId, attendanceStatus: input.attendanceStatus, checkedInAt: new Date(), notes: input.notes ?? null }).onDuplicateKeyUpdate({ set: { attendanceStatus: input.attendanceStatus, checkedInAt: new Date(), notes: input.notes ?? null } });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.actorUserId, action: "street_action.checkin_saved", entityType: "street_action", entityId: input.streetActionId, metadata: { memberId: input.memberId, attendanceStatus: input.attendanceStatus } });
+}
+
+function communityDemandProtocol(campaignId: number) {
+  return `W9-${campaignId}-${randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+}
+
+export async function getCommunityDemand(campaignId: number, demandId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(communityDemands).where(and(eq(communityDemands.id, demandId), eq(communityDemands.campaignId, campaignId))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listCommunityDemands(campaignId: number, assignedToMemberId?: number | null) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(communityDemands.campaignId, campaignId)];
+  if (assignedToMemberId) conditions.push(eq(communityDemands.assignedToMemberId, assignedToMemberId));
+  return db.select({ demand: communityDemands, voter: voters, assignee: campaignMembers }).from(communityDemands).leftJoin(voters, eq(voters.id, communityDemands.sourceVoterId)).leftJoin(campaignMembers, eq(campaignMembers.id, communityDemands.assignedToMemberId)).where(and(...conditions)).orderBy(communityDemands.status, communityDemands.dueAt).limit(200);
+}
+
+export async function listCommunityDemandUpdates(campaignId: number, demandId: number) {
+  const db = requireDb(await getDb());
+  return db.select({ update: communityDemandUpdates, author: campaignMembers }).from(communityDemandUpdates).leftJoin(campaignMembers, eq(campaignMembers.id, communityDemandUpdates.authorMemberId)).where(and(eq(communityDemandUpdates.campaignId, campaignId), eq(communityDemandUpdates.demandId, demandId))).orderBy(desc(communityDemandUpdates.createdAt)).limit(200);
+}
+
+export async function createCommunityDemand(input: { campaignId: number; sourceVoterId?: number | null; title: string; description: string; category: string; neighborhood?: string | null; region?: string | null; assignedToMemberId?: number | null; dueAt?: Date | null; createdByUserId: number; authorMemberId?: number | null }) {
+  const db = requireDb(await getDb());
+  if (input.sourceVoterId) {
+    const voterRows = await db.select({ id: voters.id }).from(voters).where(and(eq(voters.id, input.sourceVoterId), eq(voters.campaignId, input.campaignId))).limit(1);
+    if (!voterRows[0]) throw new Error("COMMUNITY_DEMAND_VOTER_INVALID");
+  }
+  if (input.assignedToMemberId && !await getCampaignMember(input.campaignId, input.assignedToMemberId)) throw new Error("COMMUNITY_DEMAND_MEMBER_INVALID");
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const protocol = communityDemandProtocol(input.campaignId);
+  const result = await db.insert(communityDemands).values({ organizationId, campaignId: input.campaignId, sourceVoterId: input.sourceVoterId ?? null, protocol, title: input.title, description: input.description, category: input.category, neighborhood: input.neighborhood ?? null, region: input.region ?? null, assignedToMemberId: input.assignedToMemberId ?? null, dueAt: input.dueAt ?? null, createdByUserId: input.createdByUserId });
+  const id = Number(result[0].insertId);
+  await db.insert(communityDemandUpdates).values({ organizationId, campaignId: input.campaignId, demandId: id, authorMemberId: input.authorMemberId ?? null, kind: "created", note: "Demanda registrada e aguardando triagem." });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.createdByUserId, action: "community_demand.created", entityType: "community_demand", entityId: id, metadata: { protocol, category: input.category } });
+  return { id, protocol };
+}
+
+export async function updateCommunityDemand(input: { campaignId: number; demandId: number; status: "received" | "triaged" | "in_progress" | "waiting_response" | "returned" | "closed"; assignedToMemberId?: number | null; dueAt?: Date | null; note: string; actorUserId: number; authorMemberId?: number | null }) {
+  const db = requireDb(await getDb());
+  const demand = await getCommunityDemand(input.campaignId, input.demandId);
+  if (!demand) throw new Error("COMMUNITY_DEMAND_NOT_FOUND");
+  if (input.assignedToMemberId && !await getCampaignMember(input.campaignId, input.assignedToMemberId)) throw new Error("COMMUNITY_DEMAND_MEMBER_INVALID");
+  await db.update(communityDemands).set({ status: input.status, assignedToMemberId: input.assignedToMemberId ?? null, dueAt: input.dueAt ?? null, closedAt: input.status === "closed" ? new Date() : null }).where(and(eq(communityDemands.id, input.demandId), eq(communityDemands.campaignId, input.campaignId)));
+  await db.insert(communityDemandUpdates).values({ organizationId: demand.organizationId, campaignId: input.campaignId, demandId: input.demandId, authorMemberId: input.authorMemberId ?? null, kind: input.status, note: input.note });
+  await createOrganizationAuditLog({ organizationId: demand.organizationId, actorUserId: input.actorUserId, action: "community_demand.updated", entityType: "community_demand", entityId: input.demandId, metadata: { status: input.status, assignedToMemberId: input.assignedToMemberId ?? null } });
+}
+
+export async function listCampaignMaterials(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignMaterials).where(eq(campaignMaterials.campaignId, campaignId)).orderBy(campaignMaterials.category, campaignMaterials.name).limit(200);
+}
+
+export async function listCampaignMaterialMovements(campaignId: number, materialId?: number) {
+  const db = requireDb(await getDb());
+  const conditions = [eq(campaignMaterialMovements.campaignId, campaignId)];
+  if (materialId) conditions.push(eq(campaignMaterialMovements.materialId, materialId));
+  return db.select({ movement: campaignMaterialMovements, material: campaignMaterials, recipient: campaignMembers, event: events, action: streetActions }).from(campaignMaterialMovements).innerJoin(campaignMaterials, eq(campaignMaterials.id, campaignMaterialMovements.materialId)).leftJoin(campaignMembers, eq(campaignMembers.id, campaignMaterialMovements.recipientMemberId)).leftJoin(events, eq(events.id, campaignMaterialMovements.eventId)).leftJoin(streetActions, eq(streetActions.id, campaignMaterialMovements.streetActionId)).where(and(...conditions)).orderBy(desc(campaignMaterialMovements.occurredAt)).limit(300);
+}
+
+export async function createCampaignMaterial(input: { campaignId: number; name: string; category: string; unit?: string | null; stockQuantity?: number; minimumQuantity?: number; notes?: string | null; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const initialQuantity = input.stockQuantity ?? 0;
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignMaterials).values({ organizationId, campaignId: input.campaignId, name: input.name, category: input.category, unit: input.unit || "unidade", stockQuantity: initialQuantity, minimumQuantity: input.minimumQuantity ?? 0, notes: input.notes ?? null, createdByUserId: input.createdByUserId });
+  const id = Number(result[0].insertId);
+  if (initialQuantity > 0) await db.insert(campaignMaterialMovements).values({ organizationId, campaignId: input.campaignId, materialId: id, movementType: "stock_in", quantity: initialQuantity, notes: "Estoque inicial do material.", createdByUserId: input.createdByUserId });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.createdByUserId, action: "campaign_material.created", entityType: "campaign_material", entityId: id, metadata: { category: input.category, initialQuantity } });
+  return id;
+}
+
+export async function recordCampaignMaterialMovement(input: { campaignId: number; materialId: number; movementType: "stock_in" | "distribution" | "return" | "adjustment_in" | "adjustment_out"; quantity: number; eventId?: number | null; streetActionId?: number | null; recipientMemberId?: number | null; territory?: string | null; notes?: string | null; occurredAt?: Date; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const materialRows = await db.select().from(campaignMaterials).where(and(eq(campaignMaterials.id, input.materialId), eq(campaignMaterials.campaignId, input.campaignId))).limit(1);
+  const material = materialRows[0];
+  if (!material) throw new Error("MATERIAL_NOT_FOUND");
+  if (input.eventId) { const event = await getEvent(input.eventId); if (!event || event.campaignId !== input.campaignId) throw new Error("MATERIAL_EVENT_INVALID"); }
+  if (input.streetActionId && !await getStreetAction(input.campaignId, input.streetActionId)) throw new Error("MATERIAL_STREET_ACTION_INVALID");
+  if (input.recipientMemberId && !await getCampaignMember(input.campaignId, input.recipientMemberId)) throw new Error("MATERIAL_MEMBER_INVALID");
+  const decreasesStock = input.movementType === "distribution" || input.movementType === "adjustment_out";
+  const delta = decreasesStock ? -input.quantity : input.quantity;
+  const conditions = [eq(campaignMaterials.id, input.materialId), eq(campaignMaterials.campaignId, input.campaignId)];
+  if (decreasesStock) conditions.push(gte(campaignMaterials.stockQuantity, input.quantity));
+  const updated = await db.update(campaignMaterials).set({ stockQuantity: sql`${campaignMaterials.stockQuantity} + ${delta}` }).where(and(...conditions));
+  if (Number(updated[0].affectedRows ?? 0) !== 1) throw new Error("MATERIAL_INSUFFICIENT_STOCK");
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignMaterialMovements).values({ organizationId, campaignId: input.campaignId, materialId: input.materialId, movementType: input.movementType, quantity: input.quantity, eventId: input.eventId ?? null, streetActionId: input.streetActionId ?? null, recipientMemberId: input.recipientMemberId ?? null, territory: input.territory ?? null, notes: input.notes ?? null, occurredAt: input.occurredAt ?? new Date(), createdByUserId: input.createdByUserId });
+  const id = Number(result[0].insertId);
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.createdByUserId, action: "campaign_material.movement_recorded", entityType: "campaign_material_movement", entityId: id, metadata: { materialId: input.materialId, movementType: input.movementType, quantity: input.quantity } });
+  return id;
 }
 
 export async function listConsentRecords(voterId: number) {

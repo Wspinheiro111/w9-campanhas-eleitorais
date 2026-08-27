@@ -40,6 +40,10 @@ export const legalDocumentStatusEnum = mysqlEnum("legal_document_status", ["pend
 export const platformCustomerStatusEnum = mysqlEnum("platform_customer_status", ["pending", "access_released", "active", "suspended"]);
 export const platformDemoRequestStatusEnum = mysqlEnum("platform_demo_request_status", ["new", "contacted", "qualified", "converted", "archived"]);
 export const platformContactRequestStatusEnum = mysqlEnum("platform_contact_request_status", ["new", "contacted", "archived"]);
+export const streetActionStatusEnum = mysqlEnum("street_action_status", ["planned", "in_progress", "completed", "cancelled"]);
+export const streetAttendanceStatusEnum = mysqlEnum("street_attendance_status", ["present", "absent"]);
+export const communityDemandStatusEnum = mysqlEnum("community_demand_status", ["received", "triaged", "in_progress", "waiting_response", "returned", "closed"]);
+export const materialMovementTypeEnum = mysqlEnum("material_movement_type", ["stock_in", "distribution", "return", "adjustment_in", "adjustment_out"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -711,6 +715,109 @@ export const events = mysqlTable("events", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("event_campaign_start_idx").on(table.campaignId, table.startsAt)]);
+
+/** Ações planejadas de rua vinculáveis a evento, equipe e território. */
+export const streetActions = mysqlTable("street_actions", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  eventId: int("eventId").references(() => events.id),
+  title: varchar("title", { length: 220 }).notNull(),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt"),
+  territory: varchar("territory", { length: 180 }),
+  neighborhood: varchar("neighborhood", { length: 120 }),
+  region: varchar("region", { length: 120 }),
+  responsibleMemberId: int("responsibleMemberId").references(() => campaignMembers.id),
+  status: streetActionStatusEnum.notNull().default("planned"),
+  notes: text("notes"),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("street_action_campaign_start_idx").on(table.campaignId, table.startsAt), index("street_action_event_idx").on(table.eventId), index("street_action_organization_idx").on(table.organizationId)]);
+
+/** Presença da equipe em uma ação de rua, com observações de campo. */
+export const streetActionCheckins = mysqlTable("street_action_checkins", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  streetActionId: int("streetActionId").notNull().references(() => streetActions.id),
+  memberId: int("memberId").notNull().references(() => campaignMembers.id),
+  attendanceStatus: streetAttendanceStatusEnum.notNull().default("present"),
+  checkedInAt: timestamp("checkedInAt").defaultNow().notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("street_action_checkin_member_unique").on(table.streetActionId, table.memberId), index("street_action_checkin_campaign_idx").on(table.campaignId, table.checkedInAt), index("street_action_checkin_organization_idx").on(table.organizationId)]);
+
+/** Demandas comunitárias registradas e acompanhadas pela coordenação. */
+export const communityDemands = mysqlTable("community_demands", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  sourceVoterId: int("sourceVoterId").references(() => voters.id),
+  protocol: varchar("protocol", { length: 40 }).notNull().unique(),
+  title: varchar("title", { length: 220 }).notNull(),
+  description: text("description").notNull(),
+  category: varchar("category", { length: 120 }).notNull(),
+  neighborhood: varchar("neighborhood", { length: 120 }),
+  region: varchar("region", { length: 120 }),
+  status: communityDemandStatusEnum.notNull().default("received"),
+  assignedToMemberId: int("assignedToMemberId").references(() => campaignMembers.id),
+  dueAt: timestamp("dueAt"),
+  receivedAt: timestamp("receivedAt").defaultNow().notNull(),
+  closedAt: timestamp("closedAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("community_demand_campaign_status_idx").on(table.campaignId, table.status, table.dueAt), index("community_demand_assignee_idx").on(table.assignedToMemberId), index("community_demand_organization_idx").on(table.organizationId)]);
+
+/** Linha do tempo imutável de encaminhamentos e devolutivas da demanda. */
+export const communityDemandUpdates = mysqlTable("community_demand_updates", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  demandId: int("demandId").notNull().references(() => communityDemands.id),
+  authorMemberId: int("authorMemberId").references(() => campaignMembers.id),
+  kind: varchar("kind", { length: 40 }).notNull().default("update"),
+  note: text("note").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("community_demand_update_demand_idx").on(table.demandId, table.createdAt), index("community_demand_update_campaign_idx").on(table.campaignId, table.createdAt), index("community_demand_update_organization_idx").on(table.organizationId)]);
+
+/** Catálogo de materiais físicos por campanha, com estoque corrente rastreável. */
+export const campaignMaterials = mysqlTable("campaign_materials", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  name: varchar("name", { length: 180 }).notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  unit: varchar("unit", { length: 40 }).notNull().default("unidade"),
+  stockQuantity: int("stockQuantity").notNull().default(0),
+  minimumQuantity: int("minimumQuantity").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  notes: text("notes"),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("campaign_material_campaign_active_idx").on(table.campaignId, table.active), index("campaign_material_organization_idx").on(table.organizationId)]);
+
+/** Entradas, distribuições, devoluções e ajustes de materiais com rastreabilidade. */
+export const campaignMaterialMovements = mysqlTable("campaign_material_movements", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  materialId: int("materialId").notNull().references(() => campaignMaterials.id),
+  movementType: materialMovementTypeEnum.notNull(),
+  quantity: int("quantity").notNull(),
+  eventId: int("eventId").references(() => events.id),
+  streetActionId: int("streetActionId").references(() => streetActions.id),
+  recipientMemberId: int("recipientMemberId").references(() => campaignMembers.id),
+  territory: varchar("territory", { length: 180 }),
+  notes: text("notes"),
+  occurredAt: timestamp("occurredAt").defaultNow().notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("material_movement_campaign_occurred_idx").on(table.campaignId, table.occurredAt), index("material_movement_material_idx").on(table.materialId, table.occurredAt), index("material_movement_organization_idx").on(table.organizationId)]);
 
 export const eventRegistrations = mysqlTable("event_registrations", {
   id: int("id").autoincrement().primaryKey(),

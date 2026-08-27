@@ -42,6 +42,7 @@ const PublicEventSignup = lazy(() => import("./pages/PublicEventSignup"));
 const EventFeedback = lazy(() => import("./pages/EventFeedback"));
 const Reports = lazy(() => import("./pages/Reports"));
 const ScenarioSimulator = lazy(() => import("./pages/ScenarioSimulator"));
+const StreetOperations = lazy(() => import("./pages/StreetOperations"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const TechnicalPerformance = lazy(() => import("./pages/TechnicalPerformance"));
 const Team = lazy(() => import("./pages/Team"));
@@ -76,6 +77,7 @@ function Router() {
     <Route path="/tarefas" component={Tasks} />
     <Route path="/contatos" component={Voters} />
     <Route path="/campo" component={FieldOps} />
+    <Route path="/operacoes-rua" component={StreetOperations} />
     <Route path="/consentimentos" component={ConsentCenter} />
     <Route path="/crise" component={CrisisRoom} />
     <Route path="/pipeline" component={Pipeline} />

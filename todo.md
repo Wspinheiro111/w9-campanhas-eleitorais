@@ -339,3 +339,6 @@
 - [x] Organizar os módulos reais em navegação própria: visão geral, clientes, usuários, comercial, segurança, auditoria e saúde.
 - [x] Exibir estados explícitos para capacidades ainda sem fonte de dados, sem criar planos, cobranças, tickets ou métricas fictícias.
 - [x] Obter e sintetizar dez sugestões do GPT para evolução do W9 com foco em conformidade eleitoral e proteção de dados.
+- [x] Implementar agenda de rua com check-in, presença, materiais, ocorrências e encaminhamentos por ação de campo.
+- [x] Implementar central de demandas comunitárias com protocolos, responsáveis, prazos e histórico de devolutivas.
+- [x] Implementar gestão de materiais com estoque, distribuição, devolução e vínculo com equipe, território e evento.
