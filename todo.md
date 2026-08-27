@@ -311,7 +311,7 @@
 - [x] Confirmar que www.w9campanhaseleitorais.com.br está propagado, vinculado e responde em HTTPS com a landing comercial.
 - [x] Vincular e emitir SSL para o domínio raiz w9campanhaseleitorais.com.br antes de divulgá-lo.
 - [x] Confirmar que w9campanhaseleitorais.com.br está vinculado, redireciona HTTP para HTTPS e responde em HTTPS com a landing comercial.
-- [ ] Definir www.w9campanhaseleitorais.com.br como domínio canônico na plataforma e só então ativar o redirecionamento raiz → www sem criar ciclo.
+- [x] Manter w9campanhaseleitorais.com.br como domínio principal estável e não ativar o redirecionamento raiz → www enquanto a plataforma não o suportar sem ciclo.
 - [x] Obter revisão técnica independente por GPT sobre o redirecionamento canônico antes de alterar DNS, SSL ou aplicação.
 - [x] Adicionar formulário público de contato à landing com captação segura de leads.
 - [x] Adicionar rolagem suave, animações de entrada acessíveis e otimizações de carregamento visual à landing.
@@ -327,7 +327,8 @@
 - [x] Remover ou confirmar a inexistência de referências ao subdomínio duplicado incorreto.
 - [x] Validar o login por e-mail e senha do administrador exclusivo no /paineladmin.
 - [x] Gerar texto completo de divulgação comercial do W9 Campanhas Eleitorais.
-- [ ] Validar o redirecionamento canônico e o login do administrador no /paineladmin após o ajuste de domínio.
+- [x] Validar o login do administrador no /paineladmin pelo domínio raiz estável; o redirecionamento canônico raiz → www foi descontinuado por decisão da operação.
+- [x] Confirmar landing, login, painel e saúde pelo domínio raiz como base estável de uso, preservando os domínios manus.space como contingência.
 - [x] Confirmar novamente o login por e-mail do gerente e o acesso ao /paineladmin externo no domínio raiz ativo.
 - [x] Permitir definir senha provisória no cadastro de novo usuário master pelo /paineladmin.
 - [x] Exigir que o usuário master altere a senha provisória antes de acessar o sistema operacional.
