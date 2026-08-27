@@ -38,6 +38,8 @@ const storyLines = [
   "Esse é o W9 Campanhas Eleitorais: operação, inteligência e equipe na mesma direção.",
 ];
 
+const storyCueSeconds = [0, 7.7, 15.6, 23.7, 31.2, 39.2];
+
 const painPoints = [
   { icon: Megaphone, title: "Mensagens e contatos dispersos", text: "Conversas, demandas e pessoas importantes acabam separadas em grupos e planilhas." },
   { icon: UsersRound, title: "Lideranças sem acompanhamento", text: "A coordenação precisa saber quem está ativo, em qual região e com qual prioridade." },
@@ -62,7 +64,7 @@ export default function Landing() {
   const [isTrailerPlaying, setIsTrailerPlaying] = useState(false);
   const [speechRate, setSpeechRate] = useState(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const trailerTimerRef = useRef<number | null>(null);
+  const narrationRef = useRef<HTMLAudioElement | null>(null);
   const [demoForm, setDemoForm] = useState({ name: "", email: "", phone: "", organizationName: "", role: "candidate" as "candidate" | "party" | "coordination" | "other", city: "", state: "", message: "", preferredDemoAt: "", consent: false, website: "" });
   const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "", message: "", consent: false, website: "" });
   const [demoSubmitted, setDemoSubmitted] = useState(false);
@@ -93,40 +95,38 @@ export default function Landing() {
   }, []);
 
   const stopTrailer = () => {
-    if (typeof window === "undefined") return;
-    if (trailerTimerRef.current) window.clearTimeout(trailerTimerRef.current);
-    trailerTimerRef.current = null;
-    window.speechSynthesis?.cancel();
+    narrationRef.current?.pause();
     setIsTrailerPlaying(false);
   };
 
-  const speakLine = (index: number, continuePlayback = false) => {
-    setActiveLine(index);
-    if (typeof window === "undefined") return;
-    if (!soundEnabled || !("speechSynthesis" in window)) {
-      if (continuePlayback) trailerTimerRef.current = window.setTimeout(() => index < storyLines.length - 1 ? speakLine(index + 1, true) : stopTrailer(), 3400 / speechRate);
-      return;
+  const playNarration = async () => {
+    const narration = narrationRef.current;
+    if (!narration) return;
+    narration.playbackRate = speechRate;
+    narration.muted = !soundEnabled;
+    try {
+      await narration.play();
+      setIsTrailerPlaying(true);
+    } catch {
+      setIsTrailerPlaying(false);
     }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(storyLines[index]);
-    utterance.lang = "pt-BR";
-    utterance.rate = speechRate;
-    utterance.onend = () => {
-      if (continuePlayback) trailerTimerRef.current = window.setTimeout(() => index < storyLines.length - 1 ? speakLine(index + 1, true) : stopTrailer(), 380);
-    };
-    window.speechSynthesis.speak(utterance);
+  };
+
+  const playFromLine = (index: number) => {
+    setActiveLine(index);
+    const narration = narrationRef.current;
+    if (!narration) return;
+    narration.currentTime = storyCueSeconds[index];
+    void playNarration();
   };
 
   const openTrailer = () => {
     document.getElementById("trailer")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    stopTrailer();
-    setIsTrailerPlaying(true);
-    window.setTimeout(() => speakLine(activeLine, true), 300);
+    void playNarration();
   };
 
   useEffect(() => () => {
-    if (trailerTimerRef.current) window.clearTimeout(trailerTimerRef.current);
-    window.speechSynthesis?.cancel();
+    narrationRef.current?.pause();
   }, []);
 
   return <main className="min-h-screen overflow-hidden bg-[#0A132E] font-sans text-white selection:bg-[#FFC300] selection:text-[#0F1C3F]">
@@ -145,7 +145,7 @@ export default function Landing() {
 
       <div className="relative z-10 mx-auto grid max-w-[1280px] gap-12 px-5 pb-20 pt-16 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:gap-16 lg:pb-28 lg:pt-24">
         <div className="landing-reveal">
-          <p className="inline-flex rounded-full border border-[#FFC300]/30 bg-[#FFC300]/10 px-3 py-1 text-[10px] font-black tracking-[.16em] text-[#FFC300]">TRAILER OFICIAL 30s • ÁUDIO REAL PT-BR</p>
+          <p className="inline-flex rounded-full border border-[#FFC300]/30 bg-[#FFC300]/10 px-3 py-1 text-[10px] font-black tracking-[.16em] text-[#FFC300]">TRAILER OFICIAL • NARRAÇÃO HUMANA PT-BR</p>
           <h1 className="mt-6 max-w-[720px] font-[Anton,sans-serif] text-5xl uppercase leading-[.88] tracking-tight sm:text-6xl md:text-7xl lg:text-[82px]">
             Toda campanha sente a mesma dor. <span className="text-[#FFC300]">Poucas encontram a solução.</span>
           </h1>
@@ -159,15 +159,15 @@ export default function Landing() {
           </div>
         </div>
 
-        <section id="trailer" className="landing-reveal relative rounded-[28px] border border-white/10 bg-[#12204A]/90 p-3 shadow-[0_40px_120px_rgba(0,0,0,.55)] backdrop-blur" style={{ animationDelay: "100ms" }}>
+          <section id="trailer" className="landing-reveal relative rounded-[28px] border border-white/10 bg-[#12204A]/90 p-3 shadow-[0_40px_120px_rgba(0,0,0,.55)] backdrop-blur" style={{ animationDelay: "100ms" }}>
           <div className="flex items-center justify-between border-b border-white/10 px-3 pb-3"><div className="flex gap-1.5"><i className="size-2.5 rounded-full bg-red-400" /><i className="size-2.5 rounded-full bg-[#FFC300]" /><i className="size-2.5 rounded-full bg-[#00A859]" /></div><p className="text-[9px] font-black tracking-[.18em] text-white/40">W9_PLAYER • LOCUÇÃO PT-BR</p></div>
-          <div className="p-3 sm:p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[.14em] text-[#FFC300]">{isTrailerPlaying ? "REPRODUZINDO LOCUÇÃO" : "PRONTO PARA FALAR"} • {activeLine + 1}/{storyLines.length} FRASES</p><p className="mt-3 font-[Anton,sans-serif] text-2xl uppercase leading-none sm:text-3xl">{storyLines[activeLine]}</p></div><span className="shrink-0 rounded-full bg-[#00A859]/20 px-2 py-1 text-[9px] font-bold text-[#67ecad]">VOZ PT-BR</span></div>
+          <div className="p-3 sm:p-5"><audio ref={narrationRef} preload="none" onTimeUpdate={(event) => { const time = event.currentTarget.currentTime; const cueIndex = storyCueSeconds.reduce((current, cue, index) => time >= cue ? index : current, 0); setActiveLine(cueIndex); }} onEnded={() => setIsTrailerPlaying(false)}><source src="/manus-storage/w9-trailer-narracao-natural_557e1c29.wav" type="audio/wav" />Seu navegador não suporta a reprodução de áudio.</audio><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[.14em] text-[#FFC300]">{isTrailerPlaying ? "REPRODUZINDO NARRAÇÃO" : "PRONTO PARA OUVIR"} • {activeLine + 1}/{storyLines.length} FRASES</p><p className="mt-3 font-[Anton,sans-serif] text-2xl uppercase leading-none sm:text-3xl">{storyLines[activeLine]}</p></div><span className="shrink-0 rounded-full bg-[#00A859]/20 px-2 py-1 text-[9px] font-bold text-[#67ecad]">VOZ NATURAL PT-BR</span></div>
             <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#FFC300] transition-all" style={{ width: `${((activeLine + 1) / storyLines.length) * 100}%` }} /></div>
             <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
               <video className="aspect-video w-full" autoPlay muted loop controls playsInline preload="metadata" aria-label="Vídeo visual de apresentação do W9 Campanhas Eleitorais"><source src="/manus-storage/w9-campanhas-eleitorais-apresentacao_dece88d3.mp4" type="video/mp4" />Seu navegador não suporta a reprodução de vídeo.</video>
             </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-b border-white/10 pb-4"><Button type="button" onClick={isTrailerPlaying ? stopTrailer : openTrailer} size="sm" className="bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white">{isTrailerPlaying ? <Pause className="mr-1.5 size-3.5 fill-current" /> : <Play className="mr-1.5 size-3.5 fill-current" />}{isTrailerPlaying ? "PAUSAR" : "OUVIR"}</Button><Button type="button" variant="outline" size="sm" onClick={() => { const next = !soundEnabled; setSoundEnabled(next); if (!next) stopTrailer(); }} className="border-white/20 text-white hover:bg-white/10 hover:text-white">{soundEnabled ? <Volume2 className="mr-1.5 size-3.5" /> : <VolumeX className="mr-1.5 size-3.5" />}{soundEnabled ? "SOM LIGADO" : "SOM DESLIGADO"}</Button>{[0.9, 1, 1.15].map(rate => <button type="button" key={rate} onClick={() => setSpeechRate(rate)} className={`rounded-md px-2 py-1 text-[10px] font-black transition ${speechRate === rate ? "bg-[#00A859] text-[#071a13]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>{rate}×</button>)}</div>
-            <div className="mt-4 max-h-36 space-y-1 overflow-auto pr-1">{storyLines.map((line, index) => <button type="button" key={line} onClick={() => { stopTrailer(); setIsTrailerPlaying(true); speakLine(index); }} className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-xs transition ${activeLine === index ? "bg-[#FFC300] text-[#0F1C3F]" : "text-white/65 hover:bg-white/10"}`}><span className="grid size-5 shrink-0 place-items-center rounded-full bg-black/20 text-[10px] font-black">{index + 1}</span><span className="line-clamp-2 leading-5">{line}</span></button>)}</div>
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-b border-white/10 pb-4"><Button type="button" onClick={isTrailerPlaying ? stopTrailer : openTrailer} size="sm" className="bg-[#FFC300] font-black text-[#0F1C3F] hover:bg-white">{isTrailerPlaying ? <Pause className="mr-1.5 size-3.5 fill-current" /> : <Play className="mr-1.5 size-3.5 fill-current" />}{isTrailerPlaying ? "PAUSAR" : "OUVIR"}</Button><Button type="button" variant="outline" size="sm" onClick={() => { const next = !soundEnabled; setSoundEnabled(next); if (narrationRef.current) narrationRef.current.muted = !next; }} className="border-white/20 text-white hover:bg-white/10 hover:text-white">{soundEnabled ? <Volume2 className="mr-1.5 size-3.5" /> : <VolumeX className="mr-1.5 size-3.5" />}{soundEnabled ? "SOM LIGADO" : "SOM DESLIGADO"}</Button>{[0.9, 1, 1.15].map(rate => <button type="button" key={rate} onClick={() => { setSpeechRate(rate); if (narrationRef.current) narrationRef.current.playbackRate = rate; }} className={`rounded-md px-2 py-1 text-[10px] font-black transition ${speechRate === rate ? "bg-[#00A859] text-[#071a13]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>{rate}×</button>)}</div>
+            <div className="mt-4 max-h-36 space-y-1 overflow-auto pr-1">{storyLines.map((line, index) => <button type="button" key={line} onClick={() => playFromLine(index)} className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-xs transition ${activeLine === index ? "bg-[#FFC300] text-[#0F1C3F]" : "text-white/65 hover:bg-white/10"}`}><span className="grid size-5 shrink-0 place-items-center rounded-full bg-black/20 text-[10px] font-black">{index + 1}</span><span className="line-clamp-2 leading-5">{line}</span></button>)}</div>
           </div>
         </section>
       </div>
