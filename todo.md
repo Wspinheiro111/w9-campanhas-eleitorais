@@ -353,3 +353,7 @@
 - [x] Corrigir a prévia de desenvolvimento para refletir as novas rotas de metas e coordenação sem retornar 404.
 - [x] Comparar sugestões da Manus e do GPT com os módulos existentes e priorizar as funcionalidades ainda pendentes.
 - [x] Substituir a locução da landing por narração PT-BR mais natural, fluida e agradável, preservando os controles de reprodução.
+- [x] Definir a narração PT-BR natural da landing como padrão de voz para futuros áudios e vídeos da marca W9.
+- [x] Preparar o vídeo da landing em arquivo MP4 para download e postagem no Instagram.
+- [x] Gerar versão vertical 9:16 do trailer com narração natural para Reels do Instagram.
+- [x] Gerar uma versão 9:16 do Reels com voz feminina natural em PT-BR.
