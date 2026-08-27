@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { trackPublicEvent } from "@/lib/publicAnalytics";
 import {
   ArrowDown,
   ArrowRight,
@@ -59,6 +60,14 @@ const allModules = [
   "Planejamento e estratégia", "Equipe e voluntariado", "CRM eleitoral e território", "Campo offline", "Comunicação e conteúdos", "Eventos e mobilização", "Financeiro e jurídico", "PWA e segurança",
 ];
 
+const solutionLinks = [
+  { href: "/gestao-de-campanha-eleitoral", label: "Gestão de campanha" },
+  { href: "/crm-eleitoral", label: "CRM eleitoral" },
+  { href: "/gestao-de-equipe-de-campanha", label: "Gestão de equipe" },
+  { href: "/gestao-de-campo-eleitoral", label: "Gestão de campo" },
+  { href: "/financeiro-e-juridico-de-campanha", label: "Financeiro e jurídico" },
+];
+
 export default function Landing() {
   const [activeLine, setActiveLine] = useState(0);
   const [isTrailerPlaying, setIsTrailerPlaying] = useState(false);
@@ -72,12 +81,14 @@ export default function Landing() {
   const requestDemo = trpc.demoRequests.submit.useMutation({
     onSuccess: () => {
       setDemoSubmitted(true);
+      trackPublicEvent("demo_request_submitted", { source: "landing" });
       setDemoForm({ name: "", email: "", phone: "", organizationName: "", role: "candidate", city: "", state: "", message: "", preferredDemoAt: "", consent: false, website: "" });
     },
   });
   const requestContact = trpc.contactRequests.submit.useMutation({
     onSuccess: () => {
       setContactSubmitted(true);
+      trackPublicEvent("contact_request_submitted", { source: "landing" });
       setContactForm({ name: "", email: "", phone: "", message: "", consent: false, website: "" });
     },
   });
@@ -122,6 +133,7 @@ export default function Landing() {
 
   const openTrailer = () => {
     document.getElementById("trailer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    trackPublicEvent("trailer_opened", { source: "landing" });
     void playNarration();
   };
 
@@ -186,6 +198,7 @@ export default function Landing() {
       <div className="landing-observe mx-auto max-w-[1280px]"><div className="max-w-3xl"><p className="text-[11px] font-black uppercase tracking-[.2em] text-[#00A859]">25–60s • A virada</p><h2 className="mt-3 font-[Anton,sans-serif] text-5xl uppercase leading-[.88] sm:text-6xl">Um só sistema. <span className="text-[#FFC300]">Toda a campanha em movimento.</span></h2><p className="mt-6 max-w-2xl text-base leading-7 text-white/60">O W9 Campanhas Eleitorais conecta o que a coordenação precisa enxergar para agir: pessoas, território, rotina, comunicação e controles operacionais.</p></div>
         <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{solutionCards.map(({ number, icon: Icon, title, detail }, index) => <article key={title} className={`group rounded-2xl border p-6 transition hover:-translate-y-1 ${index === 1 ? "border-[#FFC300] bg-[#FFC300] text-[#0F1C3F]" : index === 3 ? "border-[#00A859]/40 bg-[#00A859]/10" : "border-white/10 bg-white/[.035]"}`}><div className="flex items-center justify-between"><span className="font-[Anton,sans-serif] text-2xl opacity-50">{number}</span><Icon className={`size-5 ${index === 1 ? "" : "text-[#FFC300]"}`} /></div><h3 className="mt-12 font-[Anton,sans-serif] text-3xl uppercase">{title}</h3><p className={`mt-3 text-sm leading-6 ${index === 1 ? "text-[#0F1C3F]/70" : "text-white/55"}`}>{detail}</p></article>)}</div>
         <div className="mt-8 flex flex-wrap gap-2">{allModules.map(module => <span key={module} className="rounded-full border border-white/10 bg-white/[.035] px-3 py-1.5 text-xs font-semibold text-white/65">{module}</span>)}</div>
+        <nav aria-label="Páginas de soluções do W9" className="mt-8 border-t border-white/10 pt-6"><p className="text-[10px] font-black uppercase tracking-[.16em] text-white/45">Conheça cada frente de operação</p><div className="mt-3 flex flex-wrap gap-x-5 gap-y-3">{solutionLinks.map(({ href, label }) => <Link key={href} href={href} onClick={() => trackPublicEvent("solution_page_opened", { solution: label })} className="inline-flex items-center text-sm font-bold text-[#FFC300] transition hover:text-white">{label}<ArrowRight className="ml-1.5 size-3.5" /></Link>)}</div></nav>
       </div>
     </section>
 

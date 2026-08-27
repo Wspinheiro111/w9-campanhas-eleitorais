@@ -40,6 +40,7 @@ const Organizations = lazy(() => import("./pages/Organizations"));
 const Pipeline = lazy(() => import("./pages/Pipeline"));
 const PwaInstallGuide = lazy(() => import("./pages/PwaInstallGuide"));
 const PublicSignup = lazy(() => import("./pages/PublicSignup"));
+const PublicSeoPage = lazy(() => import("./pages/PublicSeoPage"));
 const PublicEventSignup = lazy(() => import("./pages/PublicEventSignup"));
 const EventFeedback = lazy(() => import("./pages/EventFeedback"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -110,6 +111,11 @@ function App() {
     <Route path="/evento/:eventId" component={PublicEventSignup} />
     <Route path="/voluntario/acesso/:token" component={VolunteerPortal} />
     <Route path="/voluntario/:campaignId" component={VolunteerSignup} />
+    <Route path="/gestao-de-campanha-eleitoral"><PublicSeoPage pageKey="campaign" /></Route>
+    <Route path="/crm-eleitoral"><PublicSeoPage pageKey="crm" /></Route>
+    <Route path="/gestao-de-equipe-de-campanha"><PublicSeoPage pageKey="team" /></Route>
+    <Route path="/gestao-de-campo-eleitoral"><PublicSeoPage pageKey="field" /></Route>
+    <Route path="/financeiro-e-juridico-de-campanha"><PublicSeoPage pageKey="finance" /></Route>
     <Route><OrganizationProvider><CampaignProvider><DashboardLayout><Router /></DashboardLayout></CampaignProvider></OrganizationProvider></Route>
   </Switch></Suspense></TooltipProvider></ThemeProvider></ErrorBoundary>;
 }

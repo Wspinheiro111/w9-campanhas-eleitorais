@@ -358,3 +358,8 @@
 - [x] Gerar versão vertical 9:16 do trailer com narração natural para Reels do Instagram.
 - [x] Gerar uma versão 9:16 do Reels com voz feminina natural em PT-BR.
 - [x] Auditar nível atual do site, SEO, estabilidade e experiência pública com evidências técnicas e dados de tráfego disponíveis.
+- [x] Definir grupos de busca e intenções comerciais prioritárias para o W9 Campanhas Eleitorais.
+- [x] Corrigir robots, sitemap, canonical, dados estruturados e metadados sociais sem alterar o domínio raiz oficial.
+- [x] Criar páginas públicas de alta intenção para os módulos e necessidades operacionais mais buscados.
+- [x] Instrumentar eventos de SEO e conversão e preparar a verificação no Google Search Console.
+- [x] Validar a indexação, os metadados e a experiência pública após as melhorias de SEO.

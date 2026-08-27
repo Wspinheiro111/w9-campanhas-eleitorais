@@ -25,6 +25,8 @@ describe("landing comercial", () => {
     expect(screen.getByRole("button", { name: /som ligado/i })).toBeInTheDocument();
     expect(screen.getAllByText(/locução pt-br/i)).toHaveLength(2);
     expect(screen.getByText("VOZ NATURAL PT-BR")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /CRM eleitoral/i })).toHaveAttribute("href", "/crm-eleitoral");
+    expect(screen.getByRole("link", { name: /Financeiro e jurídico/i })).toHaveAttribute("href", "/financeiro-e-juridico-de-campanha");
     const narration = document.querySelector("audio");
     expect(narration).toHaveAttribute("preload", "none");
     expect(narration?.querySelector("source")).toHaveAttribute("src", "/manus-storage/w9-trailer-narracao-natural_557e1c29.wav");

@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /primeiro-acesso
+Disallow: /painel
+Disallow: /paineladmin
+Disallow: /onboarding
+Disallow: /cadastro/
+Disallow: /evento/
+Disallow: /voluntario/
+Disallow: /certificados/
+Disallow: /api/
+
+Sitemap: https://w9campanhaseleitorais.com.br/sitemap.xml
