@@ -1,0 +1,198 @@
+{
+  "source": "Similarweb via Manus Data API",
+  "domain": "w9campanhaseleitorais.com.br",
+  "retrieved_at_utc": "2026-08-27T12:57:08.065Z",
+  "metric_periods": {
+    "six_months": "2026-02 to 2026-07",
+    "recent_three_months": "2026-05 to 2026-07"
+  },
+  "results": {
+    "visits_global_six_months": {
+      "status": "ok",
+      "value": {
+        "meta": {
+          "status": "Error",
+          "error_code": 401,
+          "error_message": "Data not found"
+        }
+      }
+    },
+    "bounce_global_six_months": {
+      "status": "ok",
+      "value": {
+        "meta": {
+          "status": "Error",
+          "error_code": 401,
+          "error_message": "Data not found"
+        }
+      }
+    },
+    "unique_visitors_six_months": {
+      "status": "ok",
+      "value": {
+        "meta": {
+          "status": "Error",
+          "error_code": 401,
+          "error_message": "Data not found"
+        }
+      }
+    },
+    "global_rank_six_months": {
+      "status": "ok",
+      "value": {
+        "meta": {
+          "status": "Error",
+          "error_code": 401,
+          "error_message": "Data not found"
+        }
+      }
+    },
+    "countries_recent": {
+      "status": "ok",
+      "value": {
+        "meta": {
+          "status": "Error",
+          "error_code": 401,
+          "error_message": "Data not found"
+        }
+      }
+    },
+    "desktop_channels_recent": {
+      "status": "ok",
+      "value": {
+        "meta": {
+          "status": "Error",
+          "error_code": 401,
+          "error_message": "Data not found"
+        }
+      }
+    },
+    "mobile_channels_recent": {
+      "status": "ok",
+      "value": {
+        "meta": {
+          "request": {
+            "granularity": "Monthly",
+            "main_domain_only": true,
+            "mtd": false,
+            "show_verified": false,
+            "state": null,
+            "format": "json",
+            "domain": "w9campanhaseleitorais.com.br",
+            "start_date": "2026-05-01",
+            "end_date": "2026-07-31",
+            "country": "world"
+          },
+          "status": "Success",
+          "last_updated": "2026-07-31"
+        },
+        "visits": {
+          "w9campanhaseleitorais.com.br": [
+            {
+              "source_type": "Organic Search",
+              "visits": [
+                {
+                  "date": "2026-05-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-06-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-07-01",
+                  "visits": 0
+                }
+              ]
+            },
+            {
+              "source_type": "Social",
+              "visits": [
+                {
+                  "date": "2026-05-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-06-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-07-01",
+                  "visits": 0
+                }
+              ]
+            },
+            {
+              "source_type": "Mail",
+              "visits": [
+                {
+                  "date": "2026-05-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-06-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-07-01",
+                  "visits": 0
+                }
+              ]
+            },
+            {
+              "source_type": "Display Ads",
+              "visits": [
+                {
+                  "date": "2026-05-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-06-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-07-01",
+                  "visits": 0
+                }
+              ]
+            },
+            {
+              "source_type": "Direct",
+              "visits": [
+                {
+                  "date": "2026-05-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-06-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-07-01",
+                  "visits": 0
+                }
+              ]
+            },
+            {
+              "source_type": "Referrals",
+              "visits": [
+                {
+                  "date": "2026-05-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-06-01",
+                  "visits": 0
+                },
+                {
+                  "date": "2026-07-01",
+                  "visits": 0
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

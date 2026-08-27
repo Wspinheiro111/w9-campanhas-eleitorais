@@ -357,3 +357,4 @@
 - [x] Preparar o vídeo da landing em arquivo MP4 para download e postagem no Instagram.
 - [x] Gerar versão vertical 9:16 do trailer com narração natural para Reels do Instagram.
 - [x] Gerar uma versão 9:16 do Reels com voz feminina natural em PT-BR.
+- [x] Auditar nível atual do site, SEO, estabilidade e experiência pública com evidências técnicas e dados de tráfego disponíveis.
