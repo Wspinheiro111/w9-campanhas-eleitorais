@@ -338,3 +338,4 @@
 - [x] Criar visão geral com métricas agregadas reais de organizações, clientes, usuários, leads, contatos, erros e saúde.
 - [x] Organizar os módulos reais em navegação própria: visão geral, clientes, usuários, comercial, segurança, auditoria e saúde.
 - [x] Exibir estados explícitos para capacidades ainda sem fonte de dados, sem criar planos, cobranças, tickets ou métricas fictícias.
+- [x] Obter e sintetizar dez sugestões do GPT para evolução do W9 com foco em conformidade eleitoral e proteção de dados.

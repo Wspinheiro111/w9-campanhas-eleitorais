@@ -1,0 +1,53 @@
+{
+  "model": "gpt-5",
+  "input": [
+    {
+      "role": "system",
+      "content": "Você é um revisor de produto SaaS para campanhas eleitorais brasileiras. Produza análise técnica e informativa, não aconselhamento jurídico. Não proponha persuasão direcionada a eleitores, perfilamento político de pessoas, disparo em massa sem consentimento, desinformação, automação de propaganda irregular ou qualquer funcionalidade que afirme garantir resultado eleitoral. Dê preferência a gestão, conformidade, transparência, privacidade, acessibilidade e controles humanos. Toda recomendação jurídica deve ser sinalizada para revisão por advogado eleitoral antes de uso."
+    },
+    {
+      "role": "user",
+      "content": "Analise as capacidades existentes do W9 Campanhas Eleitorais e proponha exatamente 10 funcionalidades novas ou evoluções úteis, priorizadas por impacto operacional, aderência regulatória, risco e esforço. O sistema já possui: multi-organização com RBAC e isolamento; login por senha, Google, MFA e passkeys; CRM consentido com importação CSV e deduplicação; agenda, tarefas, metas, equipe, telefone e escalas; campo offline; mapa territorial, eventos e mobilização; biblioteca e playbooks; treinamento e certificados; relatórios PDF/CSV e apresentações; financeiro, jurídico, documentos, aprovação e auditoria; gestão de consentimento LGPD; assistente Gemini com fontes oficiais; monitoramento, telemetria, erros de interface, auditoria de ações e saúde; Central de Comando global com clientes e usuários master; landing pública com captação de leads.\n\nContexto normativo de referência fornecido para análise: (1) a Resolução TSE 23.610/2019 regula propaganda, propaganda na internet e conteúdo sintético; (2) a comunicação institucional do TSE para Eleições 2026 destaca proibição de telemarketing, disparo em massa sem consentimento, propaganda paga na internet fora das exceções legais, desinformação e a necessidade de respeito à LGPD; (3) a Resolução TSE 23.607/2019, com alterações de 2026, regula arrecadação, gastos e prestação de contas; (4) a LGPD exige base legal, transparência, minimização, direitos do titular e salvaguardas reforçadas para dados sensíveis, que incluem opinião política.\n\nPara cada uma das 10 sugestões, responda com: título; problema que resolve; capacidade proposta; dados tratados; salvaguardas técnicas e humanas; relação com a conformidade eleitoral/LGPD; dependências; esforço estimado (baixo, médio ou alto); prioridade (P0, P1 ou P2); e uma observação explícita de que precisa de validação jurídica humana quando a regra puder variar por eleição. Inclua uma matriz final de priorização e cite as fontes oficiais pelos links fornecidos no texto."
+    }
+  ],
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "name": "sugestoes_eleitorais_w9",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "resumo_executivo": {"type": "string"},
+          "sugestoes": {
+            "type": "array",
+            "minItems": 10,
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "ordem": {"type": "integer"},
+                "titulo": {"type": "string"},
+                "problema": {"type": "string"},
+                "capacidade": {"type": "string"},
+                "dados_tratados": {"type": "string"},
+                "salvaguardas": {"type": "string"},
+                "conformidade": {"type": "string"},
+                "dependencias": {"type": "string"},
+                "esforco": {"type": "string", "enum": ["baixo", "médio", "alto"]},
+                "prioridade": {"type": "string", "enum": ["P0", "P1", "P2"]},
+                "nota_juridica": {"type": "string"}
+              },
+              "required": ["ordem", "titulo", "problema", "capacidade", "dados_tratados", "salvaguardas", "conformidade", "dependencias", "esforco", "prioridade", "nota_juridica"]
+            }
+          },
+          "matriz_priorizacao": {"type": "string"},
+          "fontes": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["resumo_executivo", "sugestoes", "matriz_priorizacao", "fontes"]
+      }
+    }
+  }
+}
