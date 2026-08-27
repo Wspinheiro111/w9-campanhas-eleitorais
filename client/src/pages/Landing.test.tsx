@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const submitDemo = vi.fn();
 const submitContact = vi.fn();
 vi.mock("@/lib/trpc", () => ({ trpc: { demoRequests: { submit: { useMutation: () => ({ mutate: submitDemo, isPending: false, error: null }) } }, contactRequests: { submit: { useMutation: () => ({ mutate: submitContact, isPending: false, error: null }) } } } }));
 import Landing from "./Landing";
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("landing comercial", () => {
   it("apresenta o sistema, capta demonstração e mantém o acesso à conta no encerramento", () => {
@@ -34,5 +38,15 @@ describe("landing comercial", () => {
     const trailer = screen.getByLabelText("Vídeo visual de apresentação do W9 Campanhas Eleitorais");
     expect(trailer).toHaveAttribute("poster", "/manus-storage/w9-campanhas-eleitorais-trailer-poster_d8022fb8.jpg");
     expect(trailer.querySelector("source")).toHaveAttribute("src", "/manus-storage/w9-campanhas-eleitorais-trailer-web_ba22df5b.mp4");
+  });
+
+  it("inicia a narração sem deslocar a página até o player", () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
+
+    render(<Landing />);
+    screen.getByRole("button", { name: /ouvir trailer de 30s/i }).click();
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 });

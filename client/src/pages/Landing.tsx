@@ -139,7 +139,6 @@ export default function Landing() {
   };
 
   const openTrailer = () => {
-    document.getElementById("trailer")?.scrollIntoView({ behavior: "smooth", block: "center" });
     trackPublicEvent("trailer_opened", { source: "landing" });
     void playNarration();
   };
