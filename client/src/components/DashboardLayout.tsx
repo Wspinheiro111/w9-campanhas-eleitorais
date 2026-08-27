@@ -15,12 +15,10 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { BrandMark } from "./BrandMark";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 
-const menuItems = [
+export const menuItems = [
   { icon: LayoutDashboard, label: "Visão geral", path: "/painel" },
   { icon: Gauge, label: "Dashboard executivo", path: "/executivo", requiresManage: true },
   { icon: Building2, label: "Organizações", path: "/organizacoes" },
-  { icon: Activity, label: "Auditoria", path: "/auditoria" },
-  { icon: ShieldCheck, label: "Segurança", path: "/seguranca" },
   { icon: Gauge, label: "Painel técnico", path: "/tecnico" },
   { icon: UsersRound, label: "Equipe", path: "/equipe" },
   { icon: CalendarDays, label: "Escalas e disponibilidade", path: "/escalas", requiresManage: true },
@@ -48,6 +46,8 @@ const menuItems = [
   { icon: Download, label: "Instalar aplicativo", path: "/instalar-app" },
   { icon: Bot, label: "W9 Inteligência", path: "/inteligencia" },
   { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
+  { icon: ShieldCheck, label: "Segurança", path: "/seguranca" },
+  { icon: Activity, label: "Auditoria", path: "/auditoria" },
 ];
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 268;
