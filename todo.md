@@ -350,3 +350,4 @@
 - [x] Implementar painel de voluntariado com participação, disponibilidade, formação e histórico operacional.
 - [x] Implementar relatório diário de coordenação com pendências, agenda, cobertura territorial e alertas reais.
 - [x] Corrigir a prévia de desenvolvimento para refletir as novas rotas de metas e coordenação sem retornar 404.
+- [x] Comparar sugestões da Manus e do GPT com os módulos existentes e priorizar as funcionalidades ainda pendentes.
