@@ -373,4 +373,4 @@
 - [x] Corrigir a área segura e o espaçamento superior da landing para evitar corte de logo e conteúdo em telas compactas.
 - [x] Validar áudio de abertura e layout responsivo da landing no domínio oficial.
 - [x] Remover a rolagem automática que desloca a landing ao iniciar a narração pelo botão Ouvir.
-- [ ] Validar em tela móvel que a narração inicia sem esconder o topo e publicar a correção.
+- [x] Validar em tela móvel que a narração inicia sem esconder o topo e publicar a correção.
