@@ -30,5 +30,8 @@ describe("landing comercial", () => {
     const narration = document.querySelector("audio");
     expect(narration).toHaveAttribute("preload", "none");
     expect(narration?.querySelector("source")).toHaveAttribute("src", "/manus-storage/w9-trailer-narracao-natural_557e1c29.wav");
+    const trailer = screen.getByLabelText("Vídeo visual de apresentação do W9 Campanhas Eleitorais");
+    expect(trailer).toHaveAttribute("poster", "/manus-storage/w9-campanhas-eleitorais-trailer-poster_d8022fb8.jpg");
+    expect(trailer.querySelector("source")).toHaveAttribute("src", "/manus-storage/w9-campanhas-eleitorais-trailer-web_ba22df5b.mp4");
   });
 });

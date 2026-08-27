@@ -363,3 +363,9 @@
 - [x] Criar páginas públicas de alta intenção para os módulos e necessidades operacionais mais buscados.
 - [x] Instrumentar eventos de SEO e conversão e preparar a verificação no Google Search Console.
 - [x] Validar a indexação, os metadados e a experiência pública após as melhorias de SEO.
+- [ ] Medir desempenho e acessibilidade das páginas públicas de SEO.
+- [ ] Otimizar carregamento, semântica e interação acessível das páginas públicas de SEO.
+- [ ] Validar regressão de desempenho, acessibilidade, metadados e navegação pública.
+- [x] Diagnosticar a ausência de vídeo e narração na landing publicada do domínio raiz oficial.
+- [x] Restaurar os recursos de mídia publicados sem prejudicar SEO, desempenho ou navegação.
+- [ ] Validar o carregamento de vídeo e áudio no domínio oficial após a correção.
