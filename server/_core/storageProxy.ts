@@ -1,9 +1,16 @@
 import type { Express } from "express";
 import { ENV } from "./env";
 
+export function normalizeStorageKey(value: string | string[] | undefined) {
+  const key = Array.isArray(value) ? value.join("/") : value;
+  return key?.replace(/^\/+/, "") || undefined;
+}
+
 export function registerStorageProxy(app: Express) {
-  app.get("/manus-storage/*", async (req, res) => {
-    const key = (req.params as Record<string, string>)[0];
+  app.get("/manus-storage/*key", async (req, res) => {
+    const key = normalizeStorageKey(
+      (req.params as { key?: string | string[] }).key,
+    );
     if (!key) {
       res.status(400).send("Missing storage key");
       return;

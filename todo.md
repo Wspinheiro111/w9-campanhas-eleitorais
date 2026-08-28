@@ -387,3 +387,8 @@
 - [x] Executar e registrar testes funcionais dos módulos, fluxos públicos, permissões e integrações disponíveis.
 - [x] Classificar achados por gravidade, impacto, complexidade e recomendação de correção.
 - [x] Gerar relatório PDF de homologação com funcionalidades aprovadas, limitações e problemas encontrados.
+- [x] Atualizar dependências de produção vulneráveis e confirmar a redução dos alertas de segurança corrigíveis.
+- [x] Corrigir as rotas quebradas de Indicadores de eventos e Prestação de contas expostas no menu.
+- [x] Publicar e validar a remoção do canal Telefone da comunicação eleitoral.
+- [x] Otimizar o tempo de resposta e o retorno visual do cadastro manual de contatos.
+- [ ] Executar regressão completa e confirmar em produção cada correção da homologação.

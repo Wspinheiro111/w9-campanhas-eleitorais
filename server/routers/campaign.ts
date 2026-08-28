@@ -272,7 +272,7 @@ export const votersRouter = router({
   create: protectedProcedure.input(campaignIdInput.extend({ name: z.string().min(2).max(180), phone: z.string().max(32).optional(), email: z.string().email().optional(), address: z.string().max(1000).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), contactProfile: z.string().max(120).optional(), engagementLevel: z.enum(["low", "medium", "high"]).default("medium"), primaryDemand: z.string().max(3000).optional(), notes: z.string().max(3000).optional(), contactConsent: z.boolean() })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
-    return { id: await db.createVoter({ ...input, phone: input.phone ?? null, email: input.email ?? null, address: input.address ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, contactProfile: input.contactProfile ?? null, primaryDemand: input.primaryDemand ?? null, notes: input.notes ?? null, ownerMemberId }) };
+    return { id: await db.createVoter({ ...input, phone: input.phone ?? null, email: input.email ?? null, address: input.address ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, contactProfile: input.contactProfile ?? null, primaryDemand: input.primaryDemand ?? null, notes: input.notes ?? null, ownerMemberId, organizationId: access.campaign.organizationId }) };
   }),
   movePipeline: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), pipelineStage: z.enum(["identified", "approached", "engaged", "mobilized"]) })).mutation(async ({ ctx, input }) => {
     const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
@@ -588,7 +588,7 @@ export const communicationRouter = router({
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
     return db.listCommunicationCandidates(input);
   }),
-  savePreference: protectedProcedure.input(campaignIdInput.extend({ voterId: z.number().int().positive(), emailAllowed: z.boolean(), whatsappAllowed: z.boolean(), phoneAllowed: z.boolean() })).mutation(async ({ ctx, input }) => {
+  savePreference: protectedProcedure.input(campaignIdInput.extend({ voterId: z.number().int().positive(), emailAllowed: z.boolean(), whatsappAllowed: z.boolean(), phoneAllowed: z.literal(false).default(false) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
     await db.upsertVoterCommunicationPreference({ ...input, updatedByUserId: ctx.user.id }); return { success: true };
   }),

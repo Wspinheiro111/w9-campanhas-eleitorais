@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 vi.mock("./campaignDb", () => ({
   getCampaignAccess: vi.fn(),
   updateCampaignDetails: vi.fn(),
+  createVoter: vi.fn(),
   createMember: vi.fn(),
   getCampaignMember: vi.fn(),
   updateMemberPhone: vi.fn(),
@@ -62,7 +63,7 @@ vi.mock("./campaignDb", () => ({
 import * as db from "./campaignDb";
 import { appRouter } from "./routers";
 
-const campaign = { id: 1, ownerId: 99, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active", createdAt: new Date(), updatedAt: new Date() };
+const campaign = { id: 1, organizationId: 3, ownerId: 99, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active", createdAt: new Date(), updatedAt: new Date() };
 
 function context(): TrpcContext {
   return {
@@ -153,6 +154,32 @@ describe("routers operacionais da campanha", () => {
     const caller = appRouter.createCaller(context());
     await expect(caller.communication.candidates({ campaignId: 1, channel: "email" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(db.listCommunicationCandidates).not.toHaveBeenCalled();
+  });
+
+  it("reutiliza a organização já validada no acesso para cadastrar contato sem nova consulta", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.createVoter).mockResolvedValue(71);
+    const caller = appRouter.createCaller(context());
+
+    await expect(caller.voters.create({ campaignId: 1, name: "Contato de teste", contactConsent: true })).resolves.toEqual({ id: 71 });
+    expect(db.createVoter).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, organizationId: 3, ownerMemberId: 10 }));
+  });
+
+  it("impede que uma requisição legada reative comunicação eleitoral por telefone", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    const caller = appRouter.createCaller(context());
+
+    await expect(caller.communication.savePreference({ campaignId: 1, voterId: 7, emailAllowed: true, whatsappAllowed: true, phoneAllowed: true })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(db.upsertVoterCommunicationPreference).not.toHaveBeenCalled();
+  });
+
+  it("preserva telefone desativado ao salvar preferências de comunicação permitidas", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
+    vi.mocked(db.upsertVoterCommunicationPreference).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(context());
+
+    await expect(caller.communication.savePreference({ campaignId: 1, voterId: 7, emailAllowed: true, whatsappAllowed: false, phoneAllowed: false })).resolves.toEqual({ success: true });
+    expect(db.upsertVoterCommunicationPreference).toHaveBeenCalledWith(expect.objectContaining({ phoneAllowed: false, updatedByUserId: 99 }));
   });
 
   it("permite à coordenação criar modelo para comunicação manual", async () => {

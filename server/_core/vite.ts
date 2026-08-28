@@ -6,6 +6,8 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
+export const SPA_FALLBACK_PATH = "/{*splat}";
+
 export function getViteServerOptions(server: Server) {
   const isHostedPreview = Boolean(process.env.MANUS_WEBDEV_PROJECT_ID);
   const localClientPort = Number(process.env.PORT);
@@ -29,7 +31,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use(SPA_FALLBACK_PATH, async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -69,7 +71,7 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use(SPA_FALLBACK_PATH, (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

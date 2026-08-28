@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { Server } from "http";
-import { getViteServerOptions } from "./vite";
+import { getViteServerOptions, SPA_FALLBACK_PATH } from "./vite";
 
 const originalProjectId = process.env.MANUS_WEBDEV_PROJECT_ID;
 
@@ -21,5 +21,9 @@ describe("configuração de HMR da prévia", () => {
     process.env.PORT = "3000";
     const options = getViteServerOptions({} as Server);
     expect(options.hmr).toMatchObject({ protocol: "ws", clientPort: 3000 });
+  });
+
+  it("usa um fallback SPA compatível com o Express 5", () => {
+    expect(SPA_FALLBACK_PATH).toBe("/{*splat}");
   });
 });

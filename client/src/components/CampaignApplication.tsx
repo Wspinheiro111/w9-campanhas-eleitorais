@@ -18,8 +18,10 @@ const ConsentCenter = lazy(() => import("../pages/ConsentCenter"));
 const CrisisRoom = lazy(() => import("../pages/CrisisRoom"));
 const Dashboard = lazy(() => import("../pages/Dashboard"));
 const DailyCoordination = lazy(() => import("../pages/DailyCoordination"));
+const EventIndicators = lazy(() => import("../pages/EventIndicators"));
 const ExecutiveDashboard = lazy(() => import("../pages/ExecutiveDashboard"));
 const FieldOps = lazy(() => import("../pages/FieldOps"));
+const FinanceLegal = lazy(() => import("../pages/FinanceLegal"));
 const Mobilization = lazy(() => import("../pages/Mobilization"));
 const Monitoring = lazy(() => import("../pages/Monitoring"));
 const Notifications = lazy(() => import("../pages/Notifications"));
@@ -58,6 +60,8 @@ function InternalRouter() {
     <Route path="/voluntarios" component={Volunteers} />
     <Route path="/certificados/validar/:certificateCode" component={CertificateValidation} />
     <Route path="/agenda" component={Agenda} />
+    <Route path="/eventos/indicadores" component={EventIndicators} />
+    <Route path="/prestacao-contas" component={FinanceLegal} />
     <Route path="/comunicacao" component={CommunicationCenter} />
     <Route path="/tarefas" component={Tasks} />
     <Route path="/metas-operacionais" component={OperationalGoals} />

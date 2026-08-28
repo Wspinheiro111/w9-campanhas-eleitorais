@@ -951,9 +951,10 @@ export async function listVoters(input: { campaignId: number; memberId?: number 
   return db.select().from(voters).where(and(...conditions)).orderBy(desc(voters.updatedAt)).limit(100);
 }
 
-export async function createVoter(input: Omit<typeof voters.$inferInsert, "organizationId">) {
+export async function createVoter(input: Omit<typeof voters.$inferInsert, "organizationId"> & { organizationId?: number }) {
   const db = requireDb(await getDb());
-  const result = await db.insert(voters).values({ ...input, organizationId: await organizationIdForCampaign(input.campaignId) });
+  const organizationId = input.organizationId ?? await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(voters).values({ ...input, organizationId });
   return Number(result[0].insertId);
 }
 
