@@ -391,4 +391,4 @@
 - [x] Corrigir as rotas quebradas de Indicadores de eventos e Prestação de contas expostas no menu.
 - [x] Publicar e validar a remoção do canal Telefone da comunicação eleitoral.
 - [x] Otimizar o tempo de resposta e o retorno visual do cadastro manual de contatos.
-- [ ] Executar regressão completa e confirmar em produção cada correção da homologação.
+- [x] Executar regressão completa e confirmar em produção cada correção da homologação.
