@@ -29,6 +29,10 @@ describe("landing comercial", () => {
     expect(screen.getByRole("button", { name: /som ligado/i })).toBeInTheDocument();
     expect(screen.getAllByText(/locução pt-br/i)).toHaveLength(2);
     expect(screen.getByText("VOZ NATURAL PT-BR")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Tecnologia para campanhas alinhadas às regras/i })).toBeInTheDocument();
+    expect(screen.getByText(/pode ser analisada como despesa de campanha/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /consulte a orientação do TSE/i })).toHaveAttribute("href", expect.stringContaining("tse.jus.br"));
+    expect(screen.getByRole("note")).toHaveTextContent(/confirmação do uso de recursos/i);
     expect(screen.getByRole("link", { name: /CRM eleitoral/i })).toHaveAttribute("href", "/crm-eleitoral");
     expect(screen.getByRole("link", { name: /Financeiro e jurídico/i })).toHaveAttribute("href", "/financeiro-e-juridico-de-campanha");
     const narration = document.querySelector("audio");

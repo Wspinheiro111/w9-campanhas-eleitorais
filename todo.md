@@ -392,3 +392,9 @@
 - [x] Publicar e validar a remoção do canal Telefone da comunicação eleitoral.
 - [x] Otimizar o tempo de resposta e o retorno visual do cadastro manual de contatos.
 - [x] Executar regressão completa e confirmar em produção cada correção da homologação.
+- [x] Validar com fontes oficiais a redação sobre compatibilidade eleitoral e contratação com recursos eleitorais.
+- [x] Adicionar destaque comercial acessível na landing sobre conformidade operacional e aquisição sujeita à validação contábil e jurídica.
+- [x] Testar visualmente e em acessibilidade o novo destaque na landing, inclusive em tela móvel.
+- [ ] Coletar e interpretar as métricas disponíveis do Google para priorizar ganhos de posicionamento orgânico.
+- [x] Corrigir a incompatibilidade de runtime de hooks do React introduzida após a atualização de dependências.
+- [x] Corrigir a incompatibilidade de runtime de hooks do React introduzida após a atualização de dependências.

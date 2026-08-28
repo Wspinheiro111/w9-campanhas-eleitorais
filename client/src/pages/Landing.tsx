@@ -194,6 +194,24 @@ export default function Landing() {
       </div>
     </section>
 
+    <section aria-labelledby="contratacao-responsavel-title" className="landing-deferred relative overflow-hidden bg-[#00A859] px-5 py-16 text-[#071a13] sm:px-8 lg:py-20">
+      <div className="pointer-events-none absolute -right-24 -top-24 size-80 rounded-full border-[34px] border-[#FFC300]/70" />
+      <div className="pointer-events-none absolute -bottom-32 -left-20 size-80 rounded-full border-[38px] border-[#0A132E]/10" />
+      <div className="landing-observe relative mx-auto grid max-w-[1280px] gap-8 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:gap-14">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-[#071a13]/20 bg-white/20 px-3 py-1 text-[10px] font-black tracking-[.16em]"><ShieldCheck className="size-3.5" />OPERAÇÃO RESPONSÁVEL</p>
+          <h2 id="contratacao-responsavel-title" className="mt-5 max-w-3xl font-[Anton,sans-serif] text-5xl uppercase leading-[.88] sm:text-6xl">Tecnologia para campanhas <span className="text-white">alinhadas às regras.</span></h2>
+          <p className="mt-6 max-w-2xl text-base leading-7 text-[#071a13]/80 sm:text-lg">O <strong>W9 Campanhas Eleitorais</strong> foi desenvolvido para apoiar organização, execução e registros internos com controles de consentimento, evidências, revisão humana, auditoria e prestação de contas operacional.</p>
+        </div>
+        <aside className="rounded-[26px] border border-[#071a13]/15 bg-[#0A132E] p-6 text-white shadow-[0_20px_60px_rgba(7,26,19,.22)] sm:p-8">
+          <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#FFC300] text-[#0F1C3F]"><Landmark className="size-5" /></span><div><p className="text-[10px] font-black tracking-[.16em] text-[#FFC300]">RECURSOS ELEITORAIS</p><p className="text-sm font-bold text-white/85">Contratação com responsabilidade</p></div></div>
+          <p className="mt-5 text-sm leading-6 text-white/75">A contratação da plataforma <strong className="text-white">pode ser analisada como despesa de campanha</strong>, inclusive com recursos eleitorais repassados pelo partido, como o <strong className="text-[#FFC300]">Fundo Eleitoral (FEFC)</strong>, quando houver enquadramento, documentação, contratação e registro de acordo com as regras vigentes.</p>
+          <a href="https://www.tse.jus.br/comunicacao/noticias/2026/Maio/por-dentro-das-eleicoes-saiba-de-onde-podem-vir-os-recursos-de-campanha" target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center text-xs font-black tracking-wide text-[#FFC300] underline decoration-[#FFC300]/45 underline-offset-4 hover:text-white">CONSULTE A ORIENTAÇÃO DO TSE <ArrowRight className="ml-2 size-3.5" /></a>
+        </aside>
+      </div>
+      <div role="note" className="landing-observe relative mx-auto mt-8 flex max-w-[1280px] items-start gap-3 rounded-2xl border border-[#071a13]/15 bg-white/20 px-5 py-4 text-sm leading-6 text-[#071a13]/85"><ShieldCheck className="mt-0.5 size-5 shrink-0" /><p><strong>Importante:</strong> o W9 organiza e registra a operação. A confirmação do uso de recursos, inclusive do FEFC, deve ser feita pela assessoria jurídica e contábil responsável pela campanha.</p></div>
+    </section>
+
     <section id="roteiro" className="landing-deferred bg-[#0F1C3F] px-5 py-20 sm:px-8 lg:py-28">
       <div className="landing-observe mx-auto grid max-w-[1280px] gap-12 lg:grid-cols-[.98fr_.82fr] lg:items-center">
         <div><p className="text-[11px] font-black uppercase tracking-[.2em] text-[#FFC300]">0–25s • A dor real</p><h2 className="mt-3 max-w-lg font-[Anton,sans-serif] text-5xl uppercase leading-[.88] sm:text-6xl">Você conhece <span className="text-white/35">essa cena?</span></h2>
