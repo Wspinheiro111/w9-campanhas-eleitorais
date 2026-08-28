@@ -383,3 +383,7 @@
 - [x] Bloquear comunicação eleitoral por telefone, lote sem autorização e exportação de contatos sem finalidade e confirmação.
 - [x] Adicionar classificação e bloqueios de compliance a conteúdo, IA, pesquisas/enquetes e prestação de contas preparatória.
 - [x] Criar painel W9 Compliance Eleitoral com pendências, aprovações e trilhas de auditoria por campanha.
+- [x] Criar uma conta temporária isolada e uma campanha de homologação sem alterar dados reais.
+- [x] Executar e registrar testes funcionais dos módulos, fluxos públicos, permissões e integrações disponíveis.
+- [x] Classificar achados por gravidade, impacto, complexidade e recomendação de correção.
+- [x] Gerar relatório PDF de homologação com funcionalidades aprovadas, limitações e problemas encontrados.
