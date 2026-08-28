@@ -7,6 +7,9 @@ vi.mock("./campaignDb", () => ({
   listImportContacts: vi.fn(),
   createVotersBatch: vi.fn(),
   updateVoterFromImport: vi.fn(),
+  appendCampaignConsentLedger: vi.fn(),
+  getCampaignComplianceRules: vi.fn().mockResolvedValue({ ruleVersion: "2026.1", blockBusinessDonation: false, requireExpenseDocument: false, reviewDeadlineHours: 72, blockElectoralPhoneContact: true, requireConsentEvidence: true, requireHumanReviewForSyntheticContent: true, blockSyntheticPublicationWindow: true, requireResearchRegistrationForPublication: true, requireFinancialEvidence: true }),
+  recordCampaignComplianceDecision: vi.fn(),
 }));
 
 import * as db from "./campaignDb";
@@ -42,7 +45,7 @@ describe("resumo diário e importação CSV", () => {
 
   it("atualiza apenas o contato existente aprovado pelo usuário", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
-    vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 8, name: "Ana Antiga", email: "ana@example.com", phone: null, neighborhood: "Centro" }]);
+    vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 8, name: "Ana Antiga", email: "ana@example.com", phone: null, neighborhood: "Centro", contactConsent: true, doNotContact: false }]);
     vi.mocked(db.createVotersBatch).mockResolvedValue(0);
     vi.mocked(db.updateVoterFromImport).mockResolvedValue(undefined);
     const caller = appRouter.createCaller(context());
@@ -53,7 +56,7 @@ describe("resumo diário e importação CSV", () => {
 
   it("só cria possível duplicidade por nome e bairro quando ela é aprovada", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
-    vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 15, name: "Carla", email: null, phone: null, neighborhood: "Norte" }]);
+    vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 15, name: "Carla", email: null, phone: null, neighborhood: "Norte", contactConsent: true, doNotContact: false }]);
     vi.mocked(db.createVotersBatch).mockResolvedValue(0);
     const caller = appRouter.createCaller(context());
     const csv = "nome;bairro;consentimento\nCarla;Norte;Sim";

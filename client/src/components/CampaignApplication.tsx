@@ -12,6 +12,7 @@ const AuditLog = lazy(() => import("../pages/AuditLog"));
 const AudioCRM = lazy(() => import("../pages/AudioCRM"));
 const CertificateValidation = lazy(() => import("../pages/CertificateValidation"));
 const CommunicationCenter = lazy(() => import("../pages/CommunicationCenter"));
+const ComplianceCenter = lazy(() => import("../pages/ComplianceCenter"));
 const Contents = lazy(() => import("../pages/Contents"));
 const ConsentCenter = lazy(() => import("../pages/ConsentCenter"));
 const CrisisRoom = lazy(() => import("../pages/CrisisRoom"));
@@ -64,6 +65,7 @@ function InternalRouter() {
     <Route path="/campo" component={FieldOps} />
     <Route path="/operacoes-rua" component={StreetOperations} />
     <Route path="/consentimentos" component={ConsentCenter} />
+    <Route path="/compliance" component={ComplianceCenter} />
     <Route path="/crise" component={CrisisRoom} />
     <Route path="/pipeline" component={Pipeline} />
     <Route path="/mobilizacao" component={Mobilization} />

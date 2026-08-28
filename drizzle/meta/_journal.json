@@ -428,6 +428,13 @@
       "when": 1787797767533,
       "tag": "0060_late_khan",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1787884264037,
+      "tag": "0061_nifty_makkari",
+      "breakpoints": true
     }
   ]
 }

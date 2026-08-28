@@ -9,7 +9,7 @@ import { sdk } from "./_core/sdk";
 import { ONE_YEAR_MS } from "../shared/const";
 import { createMfaEnrollment, verifyMfaCode } from "./authSecurity";
 import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse, type AuthenticationResponseJSON, type RegistrationResponseJSON } from "@simplewebauthn/server";
-import { aiRouter, campaignRouter, communicationRouter, consentRouter, contentsRouter, crisisRouter, dashboardRouter, fieldRouter, financeLegalRouter, followupsRouter, goalsRouter, insightsRouter, monitoringRouter, operationsRouter, organizationRouter, planningRouter, platformAdminRouter, publicEventsRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, volunteersRouter, votersRouter } from "./routers/index";
+import { aiRouter, campaignRouter, communicationRouter, complianceRouter, consentRouter, contentsRouter, crisisRouter, dashboardRouter, fieldRouter, financeLegalRouter, followupsRouter, goalsRouter, insightsRouter, monitoringRouter, operationsRouter, organizationRouter, planningRouter, platformAdminRouter, publicEventsRouter, publicIntakeRouter, reportsRouter, tasksRouter, teamRouter, territoryRouter, volunteersRouter, votersRouter } from "./routers/index";
 
 async function establishSession(ctx: { res: any; req: any }, user: { openId: string; name: string | null }) {
   const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
@@ -122,6 +122,7 @@ export const appRouter = router({
     }),
   }),
   campaign: campaignRouter,
+  compliance: complianceRouter,
   organization: organizationRouter,
   platformAdmin: platformAdminRouter,
   dashboard: dashboardRouter,

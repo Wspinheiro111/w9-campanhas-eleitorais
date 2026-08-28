@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 vi.mock("./campaignDb", () => ({
-  getCampaignAccess: vi.fn(), getPublicCampaign: vi.fn(), createVoter: vi.fn(), getVoter: vi.fn(), updateVoterPipeline: vi.fn(), createFollowupForPipeline: vi.fn(), createCampaignContent: vi.fn(), getContentById: vi.fn(), saveCampaignContentAsset: vi.fn(), getTerritoryData: vi.fn(), getComparativeReport: vi.fn(),
+  getCampaignAccess: vi.fn(), getPublicCampaign: vi.fn(), createVoter: vi.fn(), getVoter: vi.fn(), updateVoterPipeline: vi.fn(), createFollowupForPipeline: vi.fn(), createCampaignContent: vi.fn(), getContentById: vi.fn(), saveCampaignContentAsset: vi.fn(), getTerritoryData: vi.fn(), getComparativeReport: vi.fn(), appendCampaignConsentLedger: vi.fn(), getCampaignComplianceRules: vi.fn().mockResolvedValue({ ruleVersion: "2026.1", blockBusinessDonation: false, requireExpenseDocument: false, reviewDeadlineHours: 72, blockElectoralPhoneContact: true, requireConsentEvidence: true, requireHumanReviewForSyntheticContent: true, blockSyntheticPublicationWindow: true, requireResearchRegistrationForPublication: true, requireFinancialEvidence: true }), recordCampaignComplianceDecision: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({ storagePut: vi.fn() }));
@@ -41,7 +41,7 @@ describe("módulos de expansão", () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member } as never);
     vi.mocked(db.createCampaignContent).mockResolvedValue(22);
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.contents.create({ campaignId: 1, title: "Roteiro", body: "Conteúdo revisado", channel: "social", status: "draft" })).resolves.toEqual({ id: 22 });
+    await expect(caller.contents.create({ campaignId: 1, title: "Roteiro", body: "Conteúdo revisado", channel: "social", status: "draft" })).resolves.toMatchObject({ id: 22, compliance: { decision: "not_applicable" } });
     expect(db.createCampaignContent).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, createdById: 99 }));
   });
 

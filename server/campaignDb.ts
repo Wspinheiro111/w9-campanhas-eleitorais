@@ -14,6 +14,11 @@ import {
   campaignLegalProcesses,
   campaignCertificateSettings,
   campaignComplianceRules,
+  campaignComplianceDecisions,
+  campaignComplianceRuleSources,
+  campaignConsentLedger,
+  campaignContactSuppressions,
+  campaignDataSubjectRequests,
   campaignCommunicationLogs,
   campaignCommunicationTemplates,
   campaignMaterialMovements,
@@ -761,7 +766,7 @@ export async function listCampaignExportVersions(campaignId: number) {
 
 export async function listFinancialEntries(campaignId: number) { const db = requireDb(await getDb()); return db.select().from(campaignFinancialEntries).where(eq(campaignFinancialEntries.campaignId, campaignId)).orderBy(desc(campaignFinancialEntries.createdAt)); }
 export async function getFinancialSummary(campaignId: number) { const entries = await listFinancialEntries(campaignId); const active = entries.filter(entry => isFinancialEntryIncludedInActiveBalance(entry.status)); const incomeCents = active.filter(entry => entry.entryType === "income").reduce((sum, entry) => sum + entry.amountCents, 0); const expenseCents = active.filter(entry => entry.entryType === "expense").reduce((sum, entry) => sum + entry.amountCents, 0); return { incomeCents, expenseCents, balanceCents: incomeCents - expenseCents, paidIncomeCents: active.filter(entry => entry.entryType === "income" && entry.status === "paid").reduce((sum, entry) => sum + entry.amountCents, 0), paidExpenseCents: active.filter(entry => entry.entryType === "expense" && entry.status === "paid").reduce((sum, entry) => sum + entry.amountCents, 0), pendingCount: entries.filter(entry => ["pending", "under_review"].includes(entry.status)).length }; }
-export async function createFinancialEntry(input: { campaignId: number; createdByUserId: number; entryType: "income" | "expense"; category: string; counterpartyName: string; counterpartyDocument?: string | null; supplierName?: string | null; costCenter?: string | null; eventId?: number | null; amountCents: number; paymentMethod?: string | null; receiptNumber?: string | null; documentNumber?: string | null; dueDate?: Date | null; paidAt?: Date | null; notes?: string | null }) { const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId); const result = await db.insert(campaignFinancialEntries).values({ ...input, organizationId, counterpartyDocument: input.counterpartyDocument ?? null, supplierName: input.supplierName ?? null, costCenter: input.costCenter ?? null, eventId: input.eventId ?? null, paymentMethod: input.paymentMethod ?? null, receiptNumber: input.receiptNumber ?? null, documentNumber: input.documentNumber ?? null, dueDate: input.dueDate ?? null, paidAt: input.paidAt ?? null, notes: input.notes ?? null, status: getInitialFinancialEntryStatus(input.paidAt) }); return Number(result[0].insertId); }
+export async function createFinancialEntry(input: { campaignId: number; createdByUserId: number; entryType: "income" | "expense"; category: string; counterpartyName: string; counterpartyDocument?: string | null; supplierName?: string | null; costCenter?: string | null; eventId?: number | null; amountCents: number; paymentMethod?: string | null; receiptNumber?: string | null; documentNumber?: string | null; dueDate?: Date | null; paidAt?: Date | null; notes?: string | null; sourceType?: string | null; evidenceStatus?: "not_required" | "pending" | "attached" | "reviewed" | "rejected"; complianceReviewStatus?: "not_required" | "pending" | "approved" | "blocked" | "cancelled"; complianceReviewNote?: string | null }) { const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId); const result = await db.insert(campaignFinancialEntries).values({ ...input, organizationId, counterpartyDocument: input.counterpartyDocument ?? null, supplierName: input.supplierName ?? null, costCenter: input.costCenter ?? null, eventId: input.eventId ?? null, paymentMethod: input.paymentMethod ?? null, receiptNumber: input.receiptNumber ?? null, documentNumber: input.documentNumber ?? null, dueDate: input.dueDate ?? null, paidAt: input.paidAt ?? null, notes: input.notes ?? null, sourceType: input.sourceType ?? null, evidenceStatus: input.evidenceStatus ?? "pending", complianceReviewStatus: input.complianceReviewStatus ?? "not_required", complianceReviewNote: input.complianceReviewNote ?? null, status: getInitialFinancialEntryStatus(input.paidAt) }); return Number(result[0].insertId); }
 export async function getFinancialEntry(id: number) { const db = requireDb(await getDb()); const rows = await db.select().from(campaignFinancialEntries).where(eq(campaignFinancialEntries.id, id)).limit(1); return rows[0] ?? null; }
 export async function updateFinancialEntryReview(input: { id: number; status: "pending" | "under_review" | "approved" | "rejected" | "paid" | "reconciled" | "closed" | "cancelled"; expectedVersion: number; reviewedByUserId: number; reviewNotes?: string | null }) { const db = requireDb(await getDb()); const result = await db.update(campaignFinancialEntries).set({ status: input.status, version: sql`${campaignFinancialEntries.version} + 1`, reviewedByUserId: input.reviewedByUserId, reviewedAt: new Date(), reviewNotes: input.reviewNotes ?? null, paidAt: input.status === "paid" ? new Date() : undefined }).where(and(eq(campaignFinancialEntries.id, input.id), eq(campaignFinancialEntries.version, input.expectedVersion))); return Number(result[0].affectedRows) === 1; }
 export async function listLegalDocuments(campaignId: number) { const db = requireDb(await getDb()); return db.select().from(campaignLegalDocuments).where(eq(campaignLegalDocuments.campaignId, campaignId)).orderBy(desc(campaignLegalDocuments.createdAt)); }
@@ -770,7 +775,7 @@ export async function getLegalProcess(id: number) { const db = requireDb(await g
 export async function createLegalProcess(input: { campaignId: number; documentId: number | null; ownerUserId: number | null; title: string; status: "open" | "in_progress" | "waiting" | "closed"; deadlineAt: Date | null; notes: string | null }) { const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId); const result = await db.insert(campaignLegalProcesses).values({ ...input, organizationId }); return Number(result[0].insertId); }
 export async function updateLegalProcess(input: { id: number; status: "open" | "in_progress" | "waiting" | "closed"; deadlineAt: Date | null; notes: string | null }) { const db = requireDb(await getDb()); await db.update(campaignLegalProcesses).set({ status: input.status, deadlineAt: input.deadlineAt, notes: input.notes }).where(eq(campaignLegalProcesses.id, input.id)); }
 export async function getCampaignComplianceRules(campaignId: number) { const db = requireDb(await getDb()); const existing = await db.select().from(campaignComplianceRules).where(eq(campaignComplianceRules.campaignId, campaignId)).limit(1); if (existing[0]) return existing[0]; const organizationId = await organizationIdForCampaign(campaignId); await db.insert(campaignComplianceRules).values({ organizationId, campaignId, blockBusinessDonation: false, requireExpenseDocument: false, reviewDeadlineHours: 72 }); const created = await db.select().from(campaignComplianceRules).where(eq(campaignComplianceRules.campaignId, campaignId)).limit(1); return created[0]!; }
-export async function updateCampaignComplianceRules(input: { campaignId: number; blockBusinessDonation: boolean; requireExpenseDocument: boolean; reviewDeadlineHours: number }) { const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId); await db.insert(campaignComplianceRules).values({ ...input, organizationId }).onDuplicateKeyUpdate({ set: { blockBusinessDonation: input.blockBusinessDonation, requireExpenseDocument: input.requireExpenseDocument, reviewDeadlineHours: input.reviewDeadlineHours } }); return getCampaignComplianceRules(input.campaignId); }
+export async function updateCampaignComplianceRules(input: { campaignId: number; blockBusinessDonation: boolean; requireExpenseDocument: boolean; reviewDeadlineHours: number; blockElectoralPhoneContact?: boolean; requireConsentEvidence?: boolean; requireHumanReviewForSyntheticContent?: boolean; blockSyntheticPublicationWindow?: boolean; requireResearchRegistrationForPublication?: boolean; requireFinancialEvidence?: boolean; ruleVersion?: string; updatedByUserId?: number | null }) { const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId); const current = await getCampaignComplianceRules(input.campaignId); const values = { organizationId, campaignId: input.campaignId, blockBusinessDonation: input.blockBusinessDonation, requireExpenseDocument: input.requireExpenseDocument, reviewDeadlineHours: input.reviewDeadlineHours, blockElectoralPhoneContact: input.blockElectoralPhoneContact ?? current.blockElectoralPhoneContact, requireConsentEvidence: input.requireConsentEvidence ?? current.requireConsentEvidence, requireHumanReviewForSyntheticContent: input.requireHumanReviewForSyntheticContent ?? current.requireHumanReviewForSyntheticContent, blockSyntheticPublicationWindow: input.blockSyntheticPublicationWindow ?? current.blockSyntheticPublicationWindow, requireResearchRegistrationForPublication: input.requireResearchRegistrationForPublication ?? current.requireResearchRegistrationForPublication, requireFinancialEvidence: input.requireFinancialEvidence ?? current.requireFinancialEvidence, ruleVersion: input.ruleVersion ?? current.ruleVersion, updatedByUserId: input.updatedByUserId ?? current.updatedByUserId ?? null }; await db.insert(campaignComplianceRules).values(values).onDuplicateKeyUpdate({ set: values }); return getCampaignComplianceRules(input.campaignId); }
 export async function getFinancialInternalAlerts(campaignId: number) { const [rules, entries, documents] = await Promise.all([getCampaignComplianceRules(campaignId), listFinancialEntries(campaignId), listLegalDocuments(campaignId)]); const reviewCutoff = new Date(Date.now() - rules.reviewDeadlineHours * 60 * 60 * 1000); const alerts: Array<{ key: string; type: "review_overdue" | "document_required"; severity: "warning" | "critical"; entryId: number; title: string; description: string }> = []; for (const entry of entries) { if (["pending", "under_review"].includes(entry.status) && entry.createdAt <= reviewCutoff) alerts.push({ key: `review-${entry.id}`, type: "review_overdue", severity: "warning", entryId: entry.id, title: "Conferência financeira pendente", description: `O lançamento ${entry.category} ultrapassou o prazo interno de ${rules.reviewDeadlineHours} horas para revisão.` }); if (rules.requireExpenseDocument && entry.entryType === "expense" && !["rejected", "cancelled", "closed"].includes(entry.status) && !documents.some(document => document.financialEntryId === entry.id)) alerts.push({ key: `document-${entry.id}`, type: "document_required", severity: "critical", entryId: entry.id, title: "Documento mínimo pendente", description: `A despesa ${entry.category} precisa de documento jurídico ou comprobatório vinculado conforme a regra interna.` }); } return { rules, alerts }; }
 export async function getFinancialComplianceReport(campaignId: number) { const [summary, entries, documents] = await Promise.all([getFinancialSummary(campaignId), listFinancialEntries(campaignId), listLegalDocuments(campaignId)]); return { summary, entries: entries.map(entry => ({ id: entry.id, entryType: entry.entryType, category: entry.category, counterpartyName: entry.counterpartyName, amountCents: entry.amountCents, paymentMethod: entry.paymentMethod, receiptNumber: entry.receiptNumber, documentNumber: entry.documentNumber, dueDate: entry.dueDate, paidAt: entry.paidAt, status: entry.status, createdAt: entry.createdAt })), documents: documents.map(document => ({ id: document.id, documentType: document.documentType, title: document.title, status: document.status, expiresAt: document.expiresAt, fileName: document.fileName, createdAt: document.createdAt })) }; }
 export async function createLegalDocument(input: { campaignId: number; createdByUserId: number; documentType: string; title: string; counterpartyName?: string | null; counterpartyDocument?: string | null; financialEntryId?: number | null; expiresAt?: Date | null }) { const db = requireDb(await getDb()); const organizationId = await organizationIdForCampaign(input.campaignId); const result = await db.insert(campaignLegalDocuments).values({ ...input, organizationId, counterpartyName: input.counterpartyName ?? null, counterpartyDocument: input.counterpartyDocument ?? null, financialEntryId: input.financialEntryId ?? null, expiresAt: input.expiresAt ?? null }); return Number(result[0].insertId); }
@@ -967,7 +972,7 @@ export async function listContactIdentifiers(campaignId: number) {
 
 export async function listImportContacts(campaignId: number) {
   const db = requireDb(await getDb());
-  return db.select({ id: voters.id, name: voters.name, email: voters.email, phone: voters.phone, neighborhood: voters.neighborhood }).from(voters).where(eq(voters.campaignId, campaignId));
+  return db.select({ id: voters.id, name: voters.name, email: voters.email, phone: voters.phone, neighborhood: voters.neighborhood, contactConsent: voters.contactConsent, doNotContact: voters.doNotContact }).from(voters).where(eq(voters.campaignId, campaignId));
 }
 
 export async function updateVoterFromImport(voterId: number, input: Omit<typeof voters.$inferInsert, "id" | "campaignId" | "organizationId" | "ownerMemberId">) {
@@ -1027,8 +1032,8 @@ export async function listCampaignSurveys(campaignId: number) {
   return db.select().from(campaignSurveys).where(eq(campaignSurveys.campaignId, campaignId)).orderBy(desc(campaignSurveys.updatedAt));
 }
 
-export async function createCampaignSurvey(input: { campaignId: number; title: string; question: string; responseType: "single_choice" | "scale" | "text"; options?: string[] | null; status: "draft" | "active" | "closed"; createdByUserId: number }) {
-  const db = requireDb(await getDb()); const result = await db.insert(campaignSurveys).values({ ...input, options: input.options ?? null, organizationId: await organizationIdForCampaign(input.campaignId) }); return Number(result[0].insertId);
+export async function createCampaignSurvey(input: { campaignId: number; title: string; question: string; responseType: "single_choice" | "scale" | "text"; options?: string[] | null; status: "draft" | "active" | "closed"; classification?: "internal" | "public_disclosure"; registrationCode?: string | null; methodologySummary?: string | null; fieldStartAt?: Date | null; fieldEndAt?: Date | null; disclosureText?: string | null; complianceReviewStatus?: "not_required" | "pending" | "approved" | "blocked" | "cancelled"; createdByUserId: number }) {
+  const db = requireDb(await getDb()); const result = await db.insert(campaignSurveys).values({ ...input, options: input.options ?? null, classification: input.classification ?? "internal", registrationCode: input.registrationCode ?? null, methodologySummary: input.methodologySummary ?? null, fieldStartAt: input.fieldStartAt ?? null, fieldEndAt: input.fieldEndAt ?? null, disclosureText: input.disclosureText ?? null, complianceReviewStatus: input.complianceReviewStatus ?? "not_required", organizationId: await organizationIdForCampaign(input.campaignId) }); return Number(result[0].insertId);
 }
 
 export async function submitSurveyResponse(input: { surveyId: number; campaignId: number; voterId?: number | null; response: string; neighborhood?: string | null; region?: string | null; submittedByUserId: number }) {
@@ -1039,6 +1044,12 @@ export async function getSurveySummary(campaignId: number, surveyId: number) {
   const db = requireDb(await getDb()); const [survey] = await db.select().from(campaignSurveys).where(and(eq(campaignSurveys.id, surveyId), eq(campaignSurveys.campaignId, campaignId))).limit(1); if (!survey) return null;
   const [totalRows, answers, territories] = await Promise.all([db.select({ total: sql<number>`count(*)` }).from(surveyResponses).where(and(eq(surveyResponses.surveyId, surveyId), eq(surveyResponses.campaignId, campaignId))), db.select({ response: surveyResponses.response, total: sql<number>`count(*)` }).from(surveyResponses).where(and(eq(surveyResponses.surveyId, surveyId), eq(surveyResponses.campaignId, campaignId))).groupBy(surveyResponses.response), db.select({ neighborhood: surveyResponses.neighborhood, region: surveyResponses.region, total: sql<number>`count(*)` }).from(surveyResponses).where(and(eq(surveyResponses.surveyId, surveyId), eq(surveyResponses.campaignId, campaignId))).groupBy(surveyResponses.neighborhood, surveyResponses.region)]);
   return { survey, total: Number(totalRows[0]?.total ?? 0), answers: answers.map(row => ({ ...row, total: Number(row.total ?? 0) })), territories: territories.map(row => ({ ...row, total: Number(row.total ?? 0) })).sort((a, b) => b.total - a.total) };
+}
+
+export async function getSurveySummaryForAnyCampaign(surveyId: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(campaignSurveys).where(eq(campaignSurveys.id, surveyId)).limit(1);
+  return rows[0] ?? null;
 }
 
 export async function getTeamPerformance(campaignId: number) {
@@ -1083,9 +1094,19 @@ export async function createCampaignContent(input: Omit<typeof campaignContents.
   return Number(result[0].insertId);
 }
 
-export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize" | "version" | "channel" | "objective" | "scheduledAt" | "ownerMemberId" | "status">) {
+export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize" | "version" | "channel" | "objective" | "scheduledAt" | "ownerMemberId" | "status" | "isSynthetic" | "syntheticDisclosure" | "complianceReviewStatus" | "complianceReviewNote" | "complianceReviewedByUserId" | "complianceReviewedAt">) {
   const db = requireDb(await getDb());
   await db.update(campaignContents).set(input).where(eq(campaignContents.id, id));
+}
+
+export async function reviewCampaignContentCompliance(input: { id: number; status: "approved" | "blocked"; reviewedByUserId: number; note?: string | null }) {
+  const db = requireDb(await getDb());
+  await db.update(campaignContents).set({ complianceReviewStatus: input.status, complianceReviewedByUserId: input.reviewedByUserId, complianceReviewedAt: new Date(), complianceReviewNote: input.note ?? null, status: input.status === "approved" ? "approved" : "archived" }).where(eq(campaignContents.id, input.id));
+}
+
+export async function reviewCampaignSurveyCompliance(input: { id: number; status: "approved" | "blocked"; reviewedByUserId: number; note?: string | null }) {
+  const db = requireDb(await getDb());
+  await db.update(campaignSurveys).set({ complianceReviewStatus: input.status, complianceReviewedByUserId: input.reviewedByUserId, complianceReviewedAt: new Date(), complianceReviewNote: input.note ?? null, status: input.status === "approved" ? "active" : "closed" }).where(eq(campaignSurveys.id, input.id));
 }
 
 export async function saveCampaignContentAsset(id: number, asset: Pick<typeof campaignContents.$inferInsert, "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize">) {
@@ -1121,7 +1142,107 @@ export async function upsertVoterCommunicationPreference(input: { campaignId: nu
   const db = requireDb(await getDb());
   const voter = await getVoter(input.voterId); if (!voter || voter.campaignId !== input.campaignId) throw new Error("VOTER_NOT_FOUND");
   const organizationId = await organizationIdForCampaign(input.campaignId);
-  await db.insert(voterCommunicationPreferences).values({ ...input, organizationId }).onDuplicateKeyUpdate({ set: { emailAllowed: input.emailAllowed, whatsappAllowed: input.whatsappAllowed, phoneAllowed: input.phoneAllowed, updatedByUserId: input.updatedByUserId } });
+  await db.insert(voterCommunicationPreferences).values({ ...input, phoneAllowed: false, organizationId }).onDuplicateKeyUpdate({ set: { emailAllowed: input.emailAllowed, whatsappAllowed: input.whatsappAllowed, phoneAllowed: false, updatedByUserId: input.updatedByUserId } });
+}
+
+export async function appendCampaignConsentLedger(input: { campaignId: number; voterId: number; channel: "email" | "whatsapp" | "phone" | "all" | "none"; purpose: string; legalBasis?: string; source: string; evidence?: string | null; noticeVersion?: string | null; status: "granted" | "revoked" | "expired" | "imported_without_authorization"; occurredAt: Date; expiresAt?: Date | null; recordedByUserId?: number | null }) {
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const previous = await db.select({ recordHash: campaignConsentLedger.recordHash }).from(campaignConsentLedger).where(and(eq(campaignConsentLedger.voterId, input.voterId), eq(campaignConsentLedger.channel, input.channel))).orderBy(desc(campaignConsentLedger.createdAt)).limit(1);
+  const previousRecordHash = previous[0]?.recordHash ?? null;
+  const recordHash = createHash("sha256").update(JSON.stringify({ previousRecordHash, ...input, occurredAt: input.occurredAt.toISOString(), expiresAt: input.expiresAt?.toISOString() ?? null, nonce: randomBytes(16).toString("hex") })).digest("hex");
+  const result = await db.insert(campaignConsentLedger).values({ ...input, organizationId, legalBasis: input.legalBasis ?? "consent", evidence: input.evidence ?? null, noticeVersion: input.noticeVersion ?? null, expiresAt: input.expiresAt ?? null, previousRecordHash, recordHash, recordedByUserId: input.recordedByUserId ?? null });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.recordedByUserId ?? null, action: `compliance.consent.${input.status}`, entityType: "voter", entityId: input.voterId, metadata: { channel: input.channel, purpose: input.purpose, source: input.source, recordHash } });
+  return Number(result[0].insertId);
+}
+
+export async function listCampaignConsentLedger(voterId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignConsentLedger).where(eq(campaignConsentLedger.voterId, voterId)).orderBy(desc(campaignConsentLedger.createdAt));
+}
+
+export async function suppressCampaignContact(input: { campaignId: number; voterId: number; channel: "email" | "whatsapp" | "phone" | "all"; reason: string; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  await db.insert(campaignContactSuppressions).values({ ...input, organizationId, active: true }).onDuplicateKeyUpdate({ set: { reason: input.reason, active: true, resolvedAt: null, createdByUserId: input.createdByUserId, requestedAt: new Date() } });
+  await db.update(voters).set({ doNotContact: true }).where(and(eq(voters.id, input.voterId), eq(voters.campaignId, input.campaignId)));
+  await appendCampaignConsentLedger({ campaignId: input.campaignId, voterId: input.voterId, channel: input.channel, purpose: "bloqueio de comunicação", source: "central_de_consentimento", status: "revoked", occurredAt: new Date(), recordedByUserId: input.createdByUserId, evidence: input.reason });
+}
+
+export async function getVoterCommunicationEligibility(input: { campaignId: number; voterId: number; channel: "email" | "whatsapp" | "phone" }) {
+  const db = requireDb(await getDb());
+  const voter = await getVoter(input.voterId);
+  if (!voter || voter.campaignId !== input.campaignId) return null;
+  const [preference] = await db.select().from(voterCommunicationPreferences).where(eq(voterCommunicationPreferences.voterId, input.voterId)).limit(1);
+  const suppression = await db.select({ id: campaignContactSuppressions.id }).from(campaignContactSuppressions).where(and(eq(campaignContactSuppressions.voterId, input.voterId), eq(campaignContactSuppressions.active, true), or(eq(campaignContactSuppressions.channel, "all"), eq(campaignContactSuppressions.channel, input.channel)))).limit(1);
+  const ledger = await db.select().from(campaignConsentLedger).where(and(eq(campaignConsentLedger.voterId, input.voterId), eq(campaignConsentLedger.channel, input.channel), eq(campaignConsentLedger.status, "granted"))).orderBy(desc(campaignConsentLedger.createdAt)).limit(1);
+  const legacyConsent = await db.select({ id: consentRecords.id }).from(consentRecords).where(and(eq(consentRecords.voterId, input.voterId), eq(consentRecords.status, "active"), or(isNull(consentRecords.expiresAt), gte(consentRecords.expiresAt, new Date())))).limit(1);
+  const channelAllowed = input.channel === "email" ? Boolean(preference?.emailAllowed && voter.email) : input.channel === "whatsapp" ? Boolean(preference?.whatsappAllowed && voter.phone) : false;
+  const ledgerActive = Boolean(ledger[0] && (!ledger[0].expiresAt || ledger[0].expiresAt >= new Date()));
+  return { voter, doNotContact: voter.doNotContact, isSuppressed: Boolean(suppression[0]), channelAllowed, hasActiveEvidence: ledgerActive || Boolean(legacyConsent[0]) };
+}
+
+export async function recordCampaignComplianceDecision(input: { campaignId: number; action: string; entityType: string; entityId?: number | null; decision: "approved" | "blocked" | "needs_human_review" | "not_applicable"; reviewStatus: "not_required" | "pending" | "approved" | "blocked" | "cancelled"; reasons: string[]; ruleVersion: string; requestedByUserId?: number | null; reviewedByUserId?: number | null; reviewNote?: string | null; reviewedAt?: Date | null }) {
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignComplianceDecisions).values({ ...input, organizationId, entityId: input.entityId ?? null, requestedByUserId: input.requestedByUserId ?? null, reviewedByUserId: input.reviewedByUserId ?? null, reviewNote: input.reviewNote ?? null, reviewedAt: input.reviewedAt ?? null });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.requestedByUserId ?? null, action: `compliance.decision.${input.decision}`, entityType: input.entityType, entityId: input.entityId ?? null, metadata: { action: input.action, reviewStatus: input.reviewStatus, reasons: input.reasons, ruleVersion: input.ruleVersion } });
+  return Number(result[0].insertId);
+}
+
+export async function listCampaignComplianceDecisions(campaignId: number, limit = 100) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignComplianceDecisions).where(eq(campaignComplianceDecisions.campaignId, campaignId)).orderBy(desc(campaignComplianceDecisions.createdAt)).limit(Math.min(limit, 200));
+}
+
+export async function getCampaignComplianceDecision(id: number) {
+  const db = requireDb(await getDb());
+  const rows = await db.select().from(campaignComplianceDecisions).where(eq(campaignComplianceDecisions.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function reviewCampaignComplianceDecision(input: { id: number; status: "approved" | "blocked"; reviewedByUserId: number; note?: string | null }) {
+  const db = requireDb(await getDb());
+  await db.update(campaignComplianceDecisions).set({ decision: input.status === "approved" ? "approved" : "blocked", reviewStatus: input.status, reviewedByUserId: input.reviewedByUserId, reviewedAt: new Date(), reviewNote: input.note ?? null }).where(eq(campaignComplianceDecisions.id, input.id));
+}
+
+export async function listCampaignComplianceSources(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignComplianceRuleSources).where(eq(campaignComplianceRuleSources.campaignId, campaignId)).orderBy(desc(campaignComplianceRuleSources.updatedAt));
+}
+
+export async function createCampaignComplianceSource(input: { campaignId: number; code: string; title: string; category: string; sourceUrl: string; sourceReference?: string | null; summary?: string | null; version?: string; effectiveFrom?: Date | null; effectiveTo?: Date | null; createdByUserId: number }) {
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignComplianceRuleSources).values({ ...input, organizationId, sourceReference: input.sourceReference ?? null, summary: input.summary ?? null, version: input.version ?? "2026.1", effectiveFrom: input.effectiveFrom ?? null, effectiveTo: input.effectiveTo ?? null });
+  return Number(result[0].insertId);
+}
+
+export async function createCampaignDataSubjectRequest(input: { campaignId: number; voterId?: number | null; requestType: string; requesterReferenceHash: string; dueAt?: Date | null; createdByUserId?: number | null }) {
+  const db = requireDb(await getDb());
+  const organizationId = await organizationIdForCampaign(input.campaignId);
+  const result = await db.insert(campaignDataSubjectRequests).values({ ...input, organizationId, voterId: input.voterId ?? null, dueAt: input.dueAt ?? null, createdByUserId: input.createdByUserId ?? null });
+  return Number(result[0].insertId);
+}
+
+export async function listCampaignDataSubjectRequests(campaignId: number) {
+  const db = requireDb(await getDb());
+  return db.select().from(campaignDataSubjectRequests).where(eq(campaignDataSubjectRequests.campaignId, campaignId)).orderBy(desc(campaignDataSubjectRequests.updatedAt));
+}
+
+export async function getCampaignComplianceOverview(campaignId: number) {
+  const db = requireDb(await getDb());
+  const [rules, decisions, suppressions, requests, ledger, contents, surveys, financialEntries] = await Promise.all([
+    getCampaignComplianceRules(campaignId),
+    db.select().from(campaignComplianceDecisions).where(eq(campaignComplianceDecisions.campaignId, campaignId)).orderBy(desc(campaignComplianceDecisions.createdAt)).limit(200),
+    db.select().from(campaignContactSuppressions).where(and(eq(campaignContactSuppressions.campaignId, campaignId), eq(campaignContactSuppressions.active, true))).limit(500),
+    db.select().from(campaignDataSubjectRequests).where(eq(campaignDataSubjectRequests.campaignId, campaignId)).orderBy(desc(campaignDataSubjectRequests.updatedAt)).limit(200),
+    db.select().from(campaignConsentLedger).where(eq(campaignConsentLedger.campaignId, campaignId)).orderBy(desc(campaignConsentLedger.occurredAt)).limit(50),
+    db.select().from(campaignContents).where(eq(campaignContents.campaignId, campaignId)).limit(500),
+    db.select().from(campaignSurveys).where(eq(campaignSurveys.campaignId, campaignId)).limit(500),
+    db.select().from(campaignFinancialEntries).where(eq(campaignFinancialEntries.campaignId, campaignId)).limit(500),
+  ]);
+  return { rules, decisions, suppressions, requests, recentConsentLedger: ledger, pendingReviews: decisions.filter(item => item.reviewStatus === "pending"), syntheticContentsPending: contents.filter(item => item.isSynthetic && item.complianceReviewStatus !== "approved"), publicSurveysPending: surveys.filter(item => item.classification === "public_disclosure" && item.complianceReviewStatus !== "approved"), financialEvidencePending: financialEntries.filter(item => item.evidenceStatus === "pending" || item.complianceReviewStatus === "pending") };
 }
 
 export async function listCommunicationTemplates(campaignId: number) {

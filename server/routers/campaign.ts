@@ -9,6 +9,7 @@ import { deduplicateWithFlask } from "../flaskDeduplication";
 import { storagePut } from "../storage";
 import { isFinancialStatusTransitionAllowed } from "../financialStatus";
 import { assertUploadRateLimit } from "../uploadRateLimit";
+import { evaluateCompliance } from "../complianceEngine";
 
 const campaignIdInput = z.object({ campaignId: z.number().int().positive() });
 const memberRoles = ["admin", "coordinator", "partner"] as const;
@@ -289,7 +290,7 @@ export const votersRouter = router({
     const deduplicated = await deduplicateWithFlask({ existing, incoming: parsed.rows.map((row, index) => ({ ...row, row: index + 2 })) });
     return { errors: [], ...deduplicated };
   }),
-  commitCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000), approvedUpdateRows: z.array(z.number().int().min(2)).max(1000), approvedCandidateRows: z.array(z.number().int().min(2)).max(1000) })).mutation(async ({ ctx, input }) => {
+  commitCsv: protectedProcedure.input(campaignIdInput.extend({ csv: z.string().min(12).max(2_000_000), approvedUpdateRows: z.array(z.number().int().min(2)).max(1000), approvedCandidateRows: z.array(z.number().int().min(2)).max(1000), importPurpose: z.string().min(3).max(240).default("organização operacional de contatos"), importSource: z.string().min(2).max(120).default("importação CSV"), importEvidence: z.string().max(3000).optional() })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId);
     const parsed = parseContactsCsv(input.csv);
     if (parsed.errors.length) return { imported: 0, updated: 0, skippedCandidates: 0, errors: parsed.errors, importedContacts: [], updatedContacts: [] };
@@ -300,10 +301,15 @@ export const votersRouter = router({
     const ownerMemberId = access.member?.role === "partner" ? access.member.id : access.member?.id ?? null;
     const candidateRows = review.candidates.filter(item => input.approvedCandidateRows.includes(item.row)).map(item => sourceRows.get(item.row)).filter((row): row is NonNullable<typeof row> => Boolean(row));
     const rowsToCreate = [...Array.from(byRow.values()), ...candidateRows];
-    const recordsToCreate = rowsToCreate.map(({ row: _row, ...row }) => ({ ...row, campaignId: input.campaignId, ownerMemberId }));
+    const recordsToCreate = rowsToCreate.map(({ row: _row, ...row }) => ({ ...row, campaignId: input.campaignId, ownerMemberId, contactConsent: false, doNotContact: false }));
     const imported = await db.createVotersBatch(recordsToCreate);
     const updates = review.updates.filter(item => input.approvedUpdateRows.includes(item.row) && item.existing).map(item => ({ item, row: sourceRows.get(item.row) })).filter((value): value is { item: typeof review.updates[number]; row: NonNullable<typeof value.row> } => Boolean(value.row));
-    await Promise.all(updates.map(({ item, row }) => db.updateVoterFromImport(item.existing!.id, { name: row.name, phone: row.phone, email: row.email, address: row.address, neighborhood: row.neighborhood, region: row.region, contactProfile: row.contactProfile, engagementLevel: row.engagementLevel, primaryDemand: row.primaryDemand, notes: row.notes, contactConsent: true, doNotContact: false })));
+    await Promise.all(updates.map(({ item, row }) => db.updateVoterFromImport(item.existing!.id, { name: row.name, phone: row.phone, email: row.email, address: row.address, neighborhood: row.neighborhood, region: row.region, contactProfile: row.contactProfile, engagementLevel: row.engagementLevel, primaryDemand: row.primaryDemand, notes: row.notes, contactConsent: item.existing!.contactConsent, doNotContact: item.existing!.doNotContact })));
+    const importedRows = await db.listImportContacts(input.campaignId);
+    await Promise.all(importedRows.filter(contact => recordsToCreate.some(record => record.name === contact.name && record.phone === contact.phone && record.email === contact.email)).map(contact => db.appendCampaignConsentLedger({ campaignId: input.campaignId, voterId: contact.id, channel: "none", purpose: input.importPurpose, source: input.importSource, evidence: input.importEvidence ?? null, status: "imported_without_authorization", occurredAt: new Date(), recordedByUserId: ctx.user.id })));
+    const rules = await db.getCampaignComplianceRules(input.campaignId);
+    const decision = evaluateCompliance({ action: "contact.import", rules });
+    await db.recordCampaignComplianceDecision({ campaignId: input.campaignId, action: "contact.import", entityType: "voter_import", decision: decision.decision, reviewStatus: decision.reviewStatus, reasons: decision.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id });
     return { imported, updated: updates.length, skippedCandidates: review.candidates.length - candidateRows.length, errors: [], importedContacts: recordsToCreate.map((contact, index) => ({ row: rowsToCreate[index].row, name: contact.name, email: contact.email, phone: contact.phone })), updatedContacts: updates.map(({ item, row }) => ({ row: row.row, name: row.name, existingId: item.existing!.id })) };
   }),
   addInteraction: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), type: z.enum(["visit", "phone", "whatsapp", "event", "audio", "other"]), notes: z.string().min(2).max(3000), happenedAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
@@ -345,10 +351,16 @@ export const territoryRouter = router({
 
 export const contentsRouter = router({
   list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listCampaignContents(input.campaignId); }),
-  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999).default(1), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999).default(1), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), isSynthetic: z.boolean().default(false), syntheticDisclosure: z.string().max(1500).optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
     if (input.ownerMemberId && !await db.getCampaignMember(input.campaignId, input.ownerMemberId)) throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável editorial precisa pertencer a esta campanha." });
-    return { id: await db.createCampaignContent({ ...input, assetUrl: input.assetUrl ?? null, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, ownerMemberId: input.ownerMemberId ?? null, createdById: ctx.user.id }) };
+    const rules = await db.getCampaignComplianceRules(input.campaignId);
+    const decision = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: input.isSynthetic, disclosureProvided: Boolean(input.syntheticDisclosure?.trim()), reviewStatus: input.isSynthetic ? "pending" : "not_required", withinRestrictedSyntheticWindow: false } });
+    if (decision.decision === "blocked" && input.status === "approved") throw new TRPCError({ code: "BAD_REQUEST", message: decision.reasons.join(" ") });
+    const status = input.isSynthetic && input.status === "approved" ? "review" : input.status;
+    const id = await db.createCampaignContent({ ...input, assetUrl: input.assetUrl ?? null, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, ownerMemberId: input.ownerMemberId ?? null, status, complianceReviewStatus: input.isSynthetic ? decision.reviewStatus : "not_required", complianceReviewNote: input.isSynthetic ? decision.reasons.join(" ") : null, createdById: ctx.user.id });
+    if (input.isSynthetic) await db.recordCampaignComplianceDecision({ campaignId: input.campaignId, action: "content.publish", entityType: "campaign_content", entityId: id, decision: decision.decision, reviewStatus: decision.reviewStatus, reasons: decision.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id });
+    return { id, compliance: decision };
   }),
   update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
     const content = await db.getContentById(input.id); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
@@ -385,7 +397,9 @@ export const publicIntakeRouter = router({
   submit: publicProcedure.input(z.object({ campaignId: z.number().int().positive(), name: z.string().min(2).max(180), phone: z.string().max(32).optional(), email: z.string().email().optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), contactProfile: z.string().max(120).optional(), consent: z.literal(true) })).mutation(async ({ input }) => {
     const campaign = await db.getPublicCampaign(input.campaignId);
     if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Este formulário não está disponível." });
-    return { id: await db.createVoter({ campaignId: input.campaignId, name: input.name, phone: input.phone ?? null, email: input.email ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, contactProfile: input.contactProfile ?? null, address: null, engagementLevel: "medium", pipelineStage: "identified", primaryDemand: null, notes: "Cadastro público consentido", contactConsent: true, doNotContact: false, ownerMemberId: null }) };
+    const id = await db.createVoter({ campaignId: input.campaignId, name: input.name, phone: input.phone ?? null, email: input.email ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, contactProfile: input.contactProfile ?? null, address: null, engagementLevel: "medium", pipelineStage: "identified", primaryDemand: null, notes: "Cadastro público consentido", contactConsent: true, doNotContact: false, ownerMemberId: null });
+    await db.appendCampaignConsentLedger({ campaignId: input.campaignId, voterId: id, channel: "all", purpose: "cadastro público consentido", source: "formulário público", evidence: "Confirmação expressa registrada no formulário público.", noticeVersion: "formulário-público-2026.1", status: "granted", occurredAt: new Date() });
+    return { id };
   }),
 });
 
@@ -481,7 +495,7 @@ export const financeLegalRouter = router({
   internalAlerts: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getFinancialInternalAlerts(input.campaignId); }),
   rules: router({
     get: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getCampaignComplianceRules(input.campaignId); }),
-    update: protectedProcedure.input(campaignIdInput.extend({ blockBusinessDonation: z.boolean(), requireExpenseDocument: z.boolean(), reviewDeadlineHours: z.number().int().min(1).max(720) })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team"); return db.updateCampaignComplianceRules(input); }),
+    update: protectedProcedure.input(campaignIdInput.extend({ blockBusinessDonation: z.boolean(), requireExpenseDocument: z.boolean(), reviewDeadlineHours: z.number().int().min(1).max(720), blockElectoralPhoneContact: z.boolean().default(true), requireConsentEvidence: z.boolean().default(true), requireHumanReviewForSyntheticContent: z.boolean().default(true), blockSyntheticPublicationWindow: z.boolean().default(true), requireResearchRegistrationForPublication: z.boolean().default(true), requireFinancialEvidence: z.boolean().default(true), ruleVersion: z.string().min(3).max(32).default("2026.1") })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team"); return db.updateCampaignComplianceRules({ ...input, updatedByUserId: ctx.user.id }); }),
   }),
   legalProcesses: router({
     list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listLegalProcesses(input.campaignId); }),
@@ -491,7 +505,7 @@ export const financeLegalRouter = router({
   }),
   entries: router({
     list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listFinancialEntries(input.campaignId); }),
-    create: protectedProcedure.input(campaignIdInput.extend({ entryType: z.enum(["income", "expense"]), category: z.string().min(2).max(120), counterpartyName: z.string().min(2).max(220), counterpartyDocument: z.string().max(24).optional(), supplierName: z.string().max(220).optional(), costCenter: z.string().max(120).optional(), eventId: z.number().int().positive().optional(), amountCents: z.number().int().positive().max(2_000_000_000), paymentMethod: z.string().max(80).optional(), receiptNumber: z.string().max(100).optional(), documentNumber: z.string().max(100).optional(), dueDate: z.date().optional(), paidAt: z.date().optional(), notes: z.string().max(3000).optional() })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); const rules = await db.getCampaignComplianceRules(input.campaignId); const documentDigits = input.counterpartyDocument?.replace(/\D/g, "") ?? ""; if (rules?.blockBusinessDonation && input.entryType === "income" && documentDigits.length === 14) throw new TRPCError({ code: "BAD_REQUEST", message: "A regra interna desta campanha não permite receita identificada por CNPJ." }); if (rules?.requireExpenseDocument && input.entryType === "expense" && !input.documentNumber && !input.receiptNumber) throw new TRPCError({ code: "BAD_REQUEST", message: "A regra interna exige número de documento ou recibo para despesas." }); if (input.eventId) { const event = await db.getEvent(input.eventId); if (!event || event.campaignId !== input.campaignId) throw new TRPCError({ code: "BAD_REQUEST", message: "Evento inválido." }); } return { id: await db.createFinancialEntry({ ...input, createdByUserId: ctx.user.id, counterpartyDocument: input.counterpartyDocument ?? null, supplierName: input.supplierName ?? null, costCenter: input.costCenter ?? null, eventId: input.eventId ?? null, paymentMethod: input.paymentMethod ?? null, receiptNumber: input.receiptNumber ?? null, documentNumber: input.documentNumber ?? null, dueDate: input.dueDate ?? null, paidAt: input.paidAt ?? null, notes: input.notes ?? null }) }; }),
+    create: protectedProcedure.input(campaignIdInput.extend({ entryType: z.enum(["income", "expense"]), category: z.string().min(2).max(120), counterpartyName: z.string().min(2).max(220), counterpartyDocument: z.string().max(24).optional(), supplierName: z.string().max(220).optional(), costCenter: z.string().max(120).optional(), eventId: z.number().int().positive().optional(), amountCents: z.number().int().positive().max(2_000_000_000), paymentMethod: z.string().max(80).optional(), receiptNumber: z.string().max(100).optional(), documentNumber: z.string().max(100).optional(), sourceType: z.string().max(80).optional(), dueDate: z.date().optional(), paidAt: z.date().optional(), notes: z.string().max(3000).optional() })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); const rules = await db.getCampaignComplianceRules(input.campaignId); const documentDigits = input.counterpartyDocument?.replace(/\D/g, "") ?? ""; const decision = evaluateCompliance({ action: "financial.register", rules, financial: { entryType: input.entryType, counterpartyDocumentDigits: documentDigits.length, evidenceProvided: Boolean(input.documentNumber || input.receiptNumber) } }); if (decision.decision === "blocked") throw new TRPCError({ code: "BAD_REQUEST", message: decision.reasons.join(" ") }); if (input.eventId) { const event = await db.getEvent(input.eventId); if (!event || event.campaignId !== input.campaignId) throw new TRPCError({ code: "BAD_REQUEST", message: "Evento inválido." }); } const id = await db.createFinancialEntry({ ...input, createdByUserId: ctx.user.id, counterpartyDocument: input.counterpartyDocument ?? null, supplierName: input.supplierName ?? null, costCenter: input.costCenter ?? null, eventId: input.eventId ?? null, paymentMethod: input.paymentMethod ?? null, receiptNumber: input.receiptNumber ?? null, documentNumber: input.documentNumber ?? null, sourceType: input.sourceType ?? null, evidenceStatus: input.documentNumber || input.receiptNumber ? "attached" : "pending", complianceReviewStatus: decision.reviewStatus, complianceReviewNote: decision.reasons.join(" "), dueDate: input.dueDate ?? null, paidAt: input.paidAt ?? null, notes: input.notes ?? null }); await db.recordCampaignComplianceDecision({ campaignId: input.campaignId, action: "financial.register", entityType: "financial_entry", entityId: id, decision: decision.decision, reviewStatus: decision.reviewStatus, reasons: decision.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id }); return { id, compliance: decision }; }),
     review: protectedProcedure.input(z.object({ entryId: z.number().int().positive(), status: z.enum(["pending", "under_review", "approved", "rejected", "paid", "reconciled", "closed", "cancelled"]), reviewNotes: z.string().max(3000).optional(), expectedVersion: z.number().int().positive().optional() })).mutation(async ({ ctx, input }) => { const entry = await db.getFinancialEntry(input.entryId); if (!entry) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, entry.campaignId); requireCapability(access, "manage"); if (!isFinancialStatusTransitionAllowed(entry.status, input.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "A transição de status solicitada não é permitida para este lançamento." }); const expectedVersion = input.expectedVersion ?? entry.version; const updated = await db.updateFinancialEntryReview({ ...input, id: input.entryId, expectedVersion, reviewedByUserId: ctx.user.id, reviewNotes: input.reviewNotes ?? null }); if (!updated) { await db.createOrganizationAuditLog({ organizationId: access.campaign.organizationId, actorUserId: ctx.user.id, action: "finance.entry.review_conflict", entityType: "financial_entry", entityId: entry.id, metadata: { expectedVersion, observedVersion: entry.version, requestedStatus: input.status } }); throw new TRPCError({ code: "CONFLICT", message: "O lançamento foi atualizado por outra pessoa. Atualize a página antes de tentar novamente." }); } return { success: true }; }),
   }),
   documents: router({
@@ -539,22 +553,38 @@ export const consentRouter = router({
     if (access.member?.role === "partner" && !canAccessOwnedRecord("partner", voter.ownerMemberId, access.member.id)) throw new TRPCError({ code: "FORBIDDEN" });
     return db.listConsentRecords(input.voterId);
   }),
-  create: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), purpose: z.string().min(3).max(240), source: z.string().min(2).max(120), evidence: z.string().max(3000).optional(), consentedAt: z.date(), expiresAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), purpose: z.string().min(3).max(240), source: z.string().min(2).max(120), evidence: z.string().max(3000).optional(), channel: z.enum(["email", "whatsapp", "all"]).default("all"), legalBasis: z.string().min(2).max(80).default("consent"), noticeVersion: z.string().max(80).optional(), consentedAt: z.date(), expiresAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
     const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
     const access = await requireAccess(ctx.user.id, voter.campaignId);
     if (access.member?.role === "partner" && !canAccessOwnedRecord("partner", voter.ownerMemberId, access.member.id)) throw new TRPCError({ code: "FORBIDDEN" });
-    return { id: await db.createConsentRecord({ campaignId: voter.campaignId, voterId: input.voterId, purpose: input.purpose, source: input.source, evidence: input.evidence ?? null, consentedAt: input.consentedAt, expiresAt: input.expiresAt ?? null, createdByUserId: ctx.user.id }) };
+    const id = await db.createConsentRecord({ campaignId: voter.campaignId, voterId: input.voterId, purpose: input.purpose, source: input.source, evidence: input.evidence ?? null, consentedAt: input.consentedAt, expiresAt: input.expiresAt ?? null, createdByUserId: ctx.user.id });
+    await db.appendCampaignConsentLedger({ campaignId: voter.campaignId, voterId: input.voterId, channel: input.channel, purpose: input.purpose, legalBasis: input.legalBasis, source: input.source, evidence: input.evidence ?? null, noticeVersion: input.noticeVersion ?? null, status: "granted", occurredAt: input.consentedAt, expiresAt: input.expiresAt ?? null, recordedByUserId: ctx.user.id });
+    return { id };
   }),
   revoke: protectedProcedure.input(z.object({ consentId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     const record = await db.getConsentRecord(input.consentId); if (!record) throw new TRPCError({ code: "NOT_FOUND" });
     const voter = await db.getVoter(record.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
     const access = await requireAccess(ctx.user.id, voter.campaignId); requireCapability(access, "manage");
-    await db.revokeConsentRecord({ consentId: input.consentId, revokedAt: new Date() }); return { success: true };
+    await db.revokeConsentRecord({ consentId: input.consentId, revokedAt: new Date() });
+    await db.appendCampaignConsentLedger({ campaignId: voter.campaignId, voterId: voter.id, channel: "all", purpose: record.purpose, source: "central_de_consentimento", evidence: "Revogação registrada pela coordenação.", status: "revoked", occurredAt: new Date(), recordedByUserId: ctx.user.id });
+    await db.suppressCampaignContact({ campaignId: voter.campaignId, voterId: voter.id, channel: "all", reason: "Revogação de consentimento", createdByUserId: ctx.user.id });
+    return { success: true };
+  }),
+  ledger: protectedProcedure.input(z.object({ voterId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, voter.campaignId); requireCapability(access, "manage");
+    return db.listCampaignConsentLedger(input.voterId);
+  }),
+  suppress: protectedProcedure.input(z.object({ voterId: z.number().int().positive(), channel: z.enum(["email", "whatsapp", "all"]).default("all"), reason: z.string().min(3).max(240) })).mutation(async ({ ctx, input }) => {
+    const voter = await db.getVoter(input.voterId); if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
+    const access = await requireAccess(ctx.user.id, voter.campaignId); requireCapability(access, "manage");
+    await db.suppressCampaignContact({ campaignId: voter.campaignId, voterId: voter.id, channel: input.channel, reason: input.reason, createdByUserId: ctx.user.id });
+    return { success: true };
   }),
 });
 
 export const communicationRouter = router({
-  candidates: protectedProcedure.input(campaignIdInput.extend({ channel: z.enum(["email", "whatsapp", "phone"]).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional() })).query(async ({ ctx, input }) => {
+  candidates: protectedProcedure.input(campaignIdInput.extend({ channel: z.enum(["email", "whatsapp"]).optional(), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional() })).query(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
     return db.listCommunicationCandidates(input);
   }),
@@ -564,18 +594,23 @@ export const communicationRouter = router({
   }),
   templates: router({
     list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listCommunicationTemplates(input.campaignId); }),
-    create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(180), channel: z.enum(["email", "whatsapp", "phone"]), subject: z.string().max(220).optional(), body: z.string().min(3).max(5000) })).mutation(async ({ ctx, input }) => {
+    create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(180), channel: z.enum(["email", "whatsapp"]), subject: z.string().max(220).optional(), body: z.string().min(3).max(5000) })).mutation(async ({ ctx, input }) => {
       const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
       return { id: await db.createCommunicationTemplate({ ...input, subject: input.subject ?? null, createdByUserId: ctx.user.id }) };
     }),
-    update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(180), channel: z.enum(["email", "whatsapp", "phone"]), subject: z.string().max(220).optional(), body: z.string().min(3).max(5000), active: z.boolean() })).mutation(async ({ ctx, input }) => {
+    update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(180), channel: z.enum(["email", "whatsapp"]), subject: z.string().max(220).optional(), body: z.string().min(3).max(5000), active: z.boolean() })).mutation(async ({ ctx, input }) => {
       const template = await db.getCommunicationTemplate(input.id); if (!template) throw new TRPCError({ code: "NOT_FOUND" }); const access = await requireAccess(ctx.user.id, template.campaignId); requireCapability(access, "manage");
       await db.updateCommunicationTemplate({ ...input, subject: input.subject ?? null }); return { success: true };
     }),
   }),
-  logManual: protectedProcedure.input(campaignIdInput.extend({ voterId: z.number().int().positive(), templateId: z.number().int().positive().optional(), channel: z.enum(["email", "whatsapp", "phone"]), notes: z.string().max(1500).optional() })).mutation(async ({ ctx, input }) => {
+  logManual: protectedProcedure.input(campaignIdInput.extend({ voterId: z.number().int().positive(), templateId: z.number().int().positive().optional(), channel: z.enum(["email", "whatsapp"]), notes: z.string().max(1500).optional() })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
     if (input.templateId) { const template = await db.getCommunicationTemplate(input.templateId); if (!template || template.campaignId !== input.campaignId || template.channel !== input.channel) throw new TRPCError({ code: "BAD_REQUEST", message: "Modelo de mensagem inválido para este canal." }); }
+    const rules = await db.getCampaignComplianceRules(input.campaignId);
+    const eligibility = await db.getVoterCommunicationEligibility({ campaignId: input.campaignId, voterId: input.voterId, channel: input.channel });
+    const decision = evaluateCompliance({ action: "communication.log_electoral", rules, channel: input.channel, voter: eligibility ? { doNotContact: eligibility.doNotContact, isSuppressed: eligibility.isSuppressed, channelAllowed: eligibility.channelAllowed, hasActiveEvidence: eligibility.hasActiveEvidence } : undefined });
+    await db.recordCampaignComplianceDecision({ campaignId: input.campaignId, action: "communication.log_electoral", entityType: "voter", entityId: input.voterId, decision: decision.decision, reviewStatus: decision.reviewStatus, reasons: decision.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id });
+    if (decision.decision !== "approved") throw new TRPCError({ code: "BAD_REQUEST", message: decision.reasons.join(" ") });
     try { return { id: await db.logManualCommunication({ ...input, templateId: input.templateId ?? null, notes: input.notes ?? null, createdByUserId: ctx.user.id }) }; }
     catch (error) { const code = error instanceof Error ? error.message : ""; throw new TRPCError({ code: "BAD_REQUEST", message: code === "CHANNEL_NOT_ALLOWED" ? "Este canal não possui preferência consentida para o contato." : "Este contato não está elegível para comunicação." }); }
   }),
@@ -602,8 +637,90 @@ export const insightsRouter = router({
   mobilization: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getMobilizationScores(input.campaignId); }),
   surveys: router({
     list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listCampaignSurveys(input.campaignId); }),
-    create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(220), question: z.string().min(3).max(3000), responseType: z.enum(["single_choice", "scale", "text"]), options: z.array(z.string().min(1).max(160)).max(12).optional(), status: z.enum(["draft", "active", "closed"]) })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return { id: await db.createCampaignSurvey({ ...input, options: input.options ?? null, createdByUserId: ctx.user.id }) }; }),
+    create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(220), question: z.string().min(3).max(3000), responseType: z.enum(["single_choice", "scale", "text"]), options: z.array(z.string().min(1).max(160)).max(12).optional(), status: z.enum(["draft", "active", "closed"]), classification: z.enum(["internal", "public_disclosure"]).default("internal"), registrationCode: z.string().min(3).max(120).optional(), methodologySummary: z.string().min(10).max(5000).optional(), disclosureText: z.string().min(10).max(1200).optional() })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); const publicDisclosure = input.classification === "public_disclosure"; return { id: await db.createCampaignSurvey({ ...input, status: publicDisclosure ? "draft" : input.status, options: input.options ?? null, registrationCode: input.registrationCode ?? null, methodologySummary: input.methodologySummary ?? null, disclosureText: input.disclosureText ?? null, complianceReviewStatus: publicDisclosure ? "pending" : "not_required", createdByUserId: ctx.user.id }) }; }),
     respond: protectedProcedure.input(z.object({ surveyId: z.number().int().positive(), campaignId: z.number().int().positive(), voterId: z.number().int().positive().optional(), response: z.string().min(1).max(3000), neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional() })).mutation(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); if (!await db.getSurveySummary(input.campaignId, input.surveyId)) throw new TRPCError({ code: "NOT_FOUND", message: "Pesquisa não encontrada nesta campanha." }); return { id: await db.submitSurveyResponse({ ...input, voterId: input.voterId ?? null, neighborhood: input.neighborhood ?? null, region: input.region ?? null, submittedByUserId: ctx.user.id }) }; }),
     summary: protectedProcedure.input(z.object({ surveyId: z.number().int().positive(), campaignId: z.number().int().positive() })).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getSurveySummary(input.campaignId, input.surveyId); }),
+  }),
+});
+
+export const complianceRouter = router({
+  overview: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+    return db.getCampaignComplianceOverview(input.campaignId);
+  }),
+  rules: router({
+    get: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {
+      const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+      return db.getCampaignComplianceRules(input.campaignId);
+    }),
+    update: protectedProcedure.input(campaignIdInput.extend({ blockBusinessDonation: z.boolean(), requireExpenseDocument: z.boolean(), reviewDeadlineHours: z.number().int().min(1).max(720), blockElectoralPhoneContact: z.boolean(), requireConsentEvidence: z.boolean(), requireHumanReviewForSyntheticContent: z.boolean(), blockSyntheticPublicationWindow: z.boolean(), requireResearchRegistrationForPublication: z.boolean(), requireFinancialEvidence: z.boolean(), ruleVersion: z.string().min(3).max(32) })).mutation(async ({ ctx, input }) => {
+      const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team");
+      return db.updateCampaignComplianceRules({ ...input, updatedByUserId: ctx.user.id });
+    }),
+    sources: router({
+      list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {
+        const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+        return db.listCampaignComplianceSources(input.campaignId);
+      }),
+      create: protectedProcedure.input(campaignIdInput.extend({ code: z.string().min(3).max(80), title: z.string().min(3).max(220), category: z.string().min(2).max(80), sourceUrl: z.string().url().max(1200), sourceReference: z.string().max(255).optional(), summary: z.string().max(3000).optional(), version: z.string().min(3).max(32).default("2026.1"), effectiveFrom: z.date().optional(), effectiveTo: z.date().optional() })).mutation(async ({ ctx, input }) => {
+        const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team");
+        return { id: await db.createCampaignComplianceSource({ ...input, sourceReference: input.sourceReference ?? null, summary: input.summary ?? null, effectiveFrom: input.effectiveFrom ?? null, effectiveTo: input.effectiveTo ?? null, createdByUserId: ctx.user.id }) };
+      }),
+    }),
+  }),
+  decisions: router({
+    list: protectedProcedure.input(campaignIdInput.extend({ limit: z.number().int().min(1).max(200).default(100) })).query(async ({ ctx, input }) => {
+      const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+      return db.listCampaignComplianceDecisions(input.campaignId, input.limit);
+    }),
+    review: protectedProcedure.input(z.object({ decisionId: z.number().int().positive(), status: z.enum(["approved", "blocked"]), note: z.string().min(3).max(3000).optional() })).mutation(async ({ ctx, input }) => {
+      const decision = await db.getCampaignComplianceDecision(input.decisionId); if (!decision) throw new TRPCError({ code: "NOT_FOUND" });
+      const access = await requireAccess(ctx.user.id, decision.campaignId); requireCapability(access, "team");
+      await db.reviewCampaignComplianceDecision({ id: decision.id, status: input.status, reviewedByUserId: ctx.user.id, note: input.note ?? null });
+      return { success: true };
+    }),
+  }),
+  dataSubjects: router({
+    list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {
+      const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+      return db.listCampaignDataSubjectRequests(input.campaignId);
+    }),
+    create: protectedProcedure.input(campaignIdInput.extend({ voterId: z.number().int().positive().optional(), requestType: z.enum(["access", "correction", "revocation", "anonymization", "deletion", "portability", "other"]), requesterReference: z.string().min(3).max(320), dueAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+      const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
+      if (input.voterId) { const voter = await db.getVoter(input.voterId); if (!voter || voter.campaignId !== input.campaignId) throw new TRPCError({ code: "BAD_REQUEST", message: "Contato inválido para esta campanha." }); }
+      const requesterReferenceHash = createHash("sha256").update(`${input.campaignId}:${input.requesterReference.trim().toLowerCase()}`).digest("hex");
+      return { id: await db.createCampaignDataSubjectRequest({ campaignId: input.campaignId, voterId: input.voterId ?? null, requestType: input.requestType, requesterReferenceHash, dueAt: input.dueAt ?? null, createdByUserId: ctx.user.id }) };
+    }),
+  }),
+  content: router({
+    review: protectedProcedure.input(z.object({ contentId: z.number().int().positive(), status: z.enum(["approved", "blocked"]), note: z.string().min(3).max(3000).optional() })).mutation(async ({ ctx, input }) => {
+      const content = await db.getContentById(input.contentId); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
+      const access = await requireAccess(ctx.user.id, content.campaignId); requireCapability(access, "team");
+      const rules = await db.getCampaignComplianceRules(content.campaignId);
+      const evaluation = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: content.isSynthetic, disclosureProvided: Boolean(content.syntheticDisclosure?.trim()), reviewStatus: input.status, withinRestrictedSyntheticWindow: false } });
+      if (input.status === "approved" && evaluation.decision !== "approved" && evaluation.decision !== "not_applicable") throw new TRPCError({ code: "BAD_REQUEST", message: evaluation.reasons.join(" ") });
+      await db.reviewCampaignContentCompliance({ id: content.id, status: input.status, reviewedByUserId: ctx.user.id, note: input.note ?? null });
+      await db.recordCampaignComplianceDecision({ campaignId: content.campaignId, action: "content.publish", entityType: "campaign_content", entityId: content.id, decision: input.status === "approved" ? "approved" : "blocked", reviewStatus: input.status, reasons: evaluation.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id, reviewedByUserId: ctx.user.id, reviewNote: input.note ?? null, reviewedAt: new Date() });
+      return { success: true };
+    }),
+  }),
+  surveys: router({
+    review: protectedProcedure.input(z.object({ surveyId: z.number().int().positive(), status: z.enum(["approved", "blocked"]), note: z.string().min(3).max(3000).optional() })).mutation(async ({ ctx, input }) => {
+      const surveyResult = await db.getSurveySummaryForAnyCampaign(input.surveyId); if (!surveyResult) throw new TRPCError({ code: "NOT_FOUND" });
+      const access = await requireAccess(ctx.user.id, surveyResult.campaignId); requireCapability(access, "team");
+      const rules = await db.getCampaignComplianceRules(surveyResult.campaignId);
+      const evaluation = evaluateCompliance({ action: "survey.publish", rules, survey: { classification: surveyResult.classification, registrationCode: surveyResult.registrationCode, methodologyProvided: Boolean(surveyResult.methodologySummary?.trim()), reviewStatus: input.status } });
+      if (input.status === "approved" && evaluation.decision !== "approved" && evaluation.decision !== "not_applicable") throw new TRPCError({ code: "BAD_REQUEST", message: evaluation.reasons.join(" ") });
+      await db.reviewCampaignSurveyCompliance({ id: surveyResult.id, status: input.status, reviewedByUserId: ctx.user.id, note: input.note ?? null });
+      await db.recordCampaignComplianceDecision({ campaignId: surveyResult.campaignId, action: "survey.publish", entityType: "campaign_survey", entityId: surveyResult.id, decision: input.status === "approved" ? "approved" : "blocked", reviewStatus: input.status, reasons: evaluation.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id, reviewedByUserId: ctx.user.id, reviewNote: input.note ?? null, reviewedAt: new Date() });
+      return { success: true };
+    }),
+  }),
+  exportContacts: protectedProcedure.input(campaignIdInput.extend({ purpose: z.string().min(3).max(240), reviewStatus: z.enum(["pending", "approved"]).default("pending") })).mutation(async ({ ctx, input }) => {
+    const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team");
+    const rules = await db.getCampaignComplianceRules(input.campaignId);
+    const evaluation = evaluateCompliance({ action: "communication.export_contacts", rules, export: { purposeConfirmed: Boolean(input.purpose.trim()), reviewStatus: input.reviewStatus } });
+    const decisionId = await db.recordCampaignComplianceDecision({ campaignId: input.campaignId, action: "communication.export_contacts", entityType: "contact_export", decision: evaluation.decision, reviewStatus: evaluation.reviewStatus, reasons: evaluation.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id, reviewNote: input.purpose });
+    return { decisionId, compliance: evaluation };
   }),
 });

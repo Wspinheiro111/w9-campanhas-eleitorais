@@ -44,6 +44,12 @@ export const streetActionStatusEnum = mysqlEnum("street_action_status", ["planne
 export const streetAttendanceStatusEnum = mysqlEnum("street_attendance_status", ["present", "absent"]);
 export const communityDemandStatusEnum = mysqlEnum("community_demand_status", ["received", "triaged", "in_progress", "waiting_response", "returned", "closed"]);
 export const materialMovementTypeEnum = mysqlEnum("material_movement_type", ["stock_in", "distribution", "return", "adjustment_in", "adjustment_out"]);
+export const consentLedgerStatusEnum = mysqlEnum("consent_ledger_status", ["granted", "revoked", "expired", "imported_without_authorization"]);
+export const complianceDecisionStatusEnum = mysqlEnum("compliance_decision_status", ["approved", "blocked", "needs_human_review", "not_applicable"]);
+export const complianceReviewStatusEnum = mysqlEnum("compliance_review_status", ["not_required", "pending", "approved", "blocked", "cancelled"]);
+export const dataSubjectRequestStatusEnum = mysqlEnum("data_subject_request_status", ["received", "identity_pending", "in_progress", "completed", "rejected", "cancelled"]);
+export const surveyClassificationEnum = mysqlEnum("survey_classification", ["internal", "public_disclosure"]);
+export const evidenceStatusEnum = mysqlEnum("evidence_status", ["not_required", "pending", "attached", "reviewed", "rejected"]);
 
 /** Core identity record supplied by Manus OAuth. */
 export const users = mysqlTable("users", {
@@ -360,6 +366,12 @@ export const campaignFinancialEntries = mysqlTable("campaign_financial_entries",
   notes: text("notes"),
   reviewNotes: text("reviewNotes"),
   reviewedAt: timestamp("reviewedAt"),
+  sourceType: varchar("sourceType", { length: 80 }),
+  evidenceStatus: evidenceStatusEnum.notNull().default("pending"),
+  complianceReviewStatus: complianceReviewStatusEnum.notNull().default("not_required"),
+  complianceReviewNote: text("complianceReviewNote"),
+  complianceReviewedByUserId: int("complianceReviewedByUserId").references(() => users.id),
+  complianceReviewedAt: timestamp("complianceReviewedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("financial_entry_campaign_status_idx").on(table.campaignId, table.status), index("financial_entry_campaign_type_idx").on(table.campaignId, table.entryType), index("financial_entry_org_idx").on(table.organizationId)]);
@@ -387,8 +399,103 @@ export const campaignLegalDocuments = mysqlTable("campaign_legal_documents", {
 }, (table) => [index("legal_document_campaign_status_idx").on(table.campaignId, table.status), index("legal_document_entry_idx").on(table.financialEntryId), index("legal_document_org_idx").on(table.organizationId)]);
 
 export const campaignComplianceRules = mysqlTable("campaign_compliance_rules", {
-  id: int("id").autoincrement().primaryKey(), organizationId: int("organizationId").notNull().references(() => organizations.id), campaignId: int("campaignId").notNull().references(() => campaigns.id), blockBusinessDonation: boolean("blockBusinessDonation").notNull().default(false), requireExpenseDocument: boolean("requireExpenseDocument").notNull().default(false), reviewDeadlineHours: int("reviewDeadlineHours").notNull().default(72), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  id: int("id").autoincrement().primaryKey(), organizationId: int("organizationId").notNull().references(() => organizations.id), campaignId: int("campaignId").notNull().references(() => campaigns.id), blockBusinessDonation: boolean("blockBusinessDonation").notNull().default(false), requireExpenseDocument: boolean("requireExpenseDocument").notNull().default(false), reviewDeadlineHours: int("reviewDeadlineHours").notNull().default(72), ruleVersion: varchar("ruleVersion", { length: 32 }).notNull().default("2026.1"), blockElectoralPhoneContact: boolean("blockElectoralPhoneContact").notNull().default(true), requireConsentEvidence: boolean("requireConsentEvidence").notNull().default(true), requireHumanReviewForSyntheticContent: boolean("requireHumanReviewForSyntheticContent").notNull().default(true), blockSyntheticPublicationWindow: boolean("blockSyntheticPublicationWindow").notNull().default(true), requireResearchRegistrationForPublication: boolean("requireResearchRegistrationForPublication").notNull().default(true), requireFinancialEvidence: boolean("requireFinancialEvidence").notNull().default(true), updatedByUserId: int("updatedByUserId").references(() => users.id), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [uniqueIndex("compliance_rule_campaign_unique").on(table.campaignId)]);
+
+/** Fonte normativa, orientação interna ou regra oficial vinculada a uma campanha. */
+export const campaignComplianceRuleSources = mysqlTable("campaign_compliance_rule_sources", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  code: varchar("code", { length: 80 }).notNull(),
+  title: varchar("title", { length: 220 }).notNull(),
+  category: varchar("category", { length: 80 }).notNull(),
+  sourceUrl: varchar("sourceUrl", { length: 1200 }).notNull(),
+  sourceReference: varchar("sourceReference", { length: 255 }),
+  summary: text("summary"),
+  version: varchar("version", { length: 32 }).notNull().default("2026.1"),
+  effectiveFrom: timestamp("effectiveFrom"),
+  effectiveTo: timestamp("effectiveTo"),
+  active: boolean("active").notNull().default(true),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("compliance_source_campaign_code_version_idx").on(table.campaignId, table.code, table.version), index("compliance_source_campaign_active_idx").on(table.campaignId, table.active), index("compliance_source_organization_idx").on(table.organizationId)]);
+
+/** Ledger append-only de autorizações, revogações e importações sem autorização de contato. */
+export const campaignConsentLedger = mysqlTable("campaign_consent_ledger", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  voterId: int("voterId").notNull().references(() => voters.id),
+  channel: varchar("channel", { length: 40 }).notNull().default("none"),
+  purpose: varchar("purpose", { length: 240 }).notNull(),
+  legalBasis: varchar("legalBasis", { length: 80 }).notNull().default("consent"),
+  source: varchar("source", { length: 120 }).notNull(),
+  evidence: text("evidence"),
+  noticeVersion: varchar("noticeVersion", { length: 80 }),
+  status: consentLedgerStatusEnum.notNull(),
+  occurredAt: timestamp("occurredAt").notNull(),
+  expiresAt: timestamp("expiresAt"),
+  previousRecordHash: varchar("previousRecordHash", { length: 128 }),
+  recordHash: varchar("recordHash", { length: 128 }).notNull(),
+  recordedByUserId: int("recordedByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("consent_ledger_record_hash_unique").on(table.recordHash), index("consent_ledger_voter_channel_idx").on(table.voterId, table.channel, table.createdAt), index("consent_ledger_campaign_status_idx").on(table.campaignId, table.status, table.createdAt), index("consent_ledger_organization_idx").on(table.organizationId)]);
+
+/** Lista de supressão que prevalece sobre qualquer autorização ou reimportação. */
+export const campaignContactSuppressions = mysqlTable("campaign_contact_suppressions", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  voterId: int("voterId").notNull().references(() => voters.id),
+  channel: varchar("channel", { length: 40 }).notNull().default("all"),
+  reason: varchar("reason", { length: 240 }).notNull(),
+  requestedAt: timestamp("requestedAt").notNull().defaultNow(),
+  active: boolean("active").notNull().default(true),
+  resolvedAt: timestamp("resolvedAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("contact_suppression_voter_channel_idx").on(table.voterId, table.channel), index("contact_suppression_campaign_active_idx").on(table.campaignId, table.active), index("contact_suppression_organization_idx").on(table.organizationId)]);
+
+/** Pedidos do titular: acesso, revogação, correção, anonimização ou exclusão. */
+export const campaignDataSubjectRequests = mysqlTable("campaign_data_subject_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  voterId: int("voterId").references(() => voters.id),
+  requestType: varchar("requestType", { length: 60 }).notNull(),
+  requesterReferenceHash: varchar("requesterReferenceHash", { length: 128 }).notNull(),
+  status: dataSubjectRequestStatusEnum.notNull().default("received"),
+  identityVerifiedAt: timestamp("identityVerifiedAt"),
+  dueAt: timestamp("dueAt"),
+  outcomeNote: text("outcomeNote"),
+  assignedToUserId: int("assignedToUserId").references(() => users.id),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("data_subject_request_campaign_status_idx").on(table.campaignId, table.status, table.dueAt), index("data_subject_request_voter_idx").on(table.voterId), index("data_subject_request_organization_idx").on(table.organizationId)]);
+
+/** Decisões auditáveis do motor de compliance e das revisões humanas. */
+export const campaignComplianceDecisions = mysqlTable("campaign_compliance_decisions", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  action: varchar("action", { length: 100 }).notNull(),
+  entityType: varchar("entityType", { length: 80 }).notNull(),
+  entityId: int("entityId"),
+  decision: complianceDecisionStatusEnum.notNull(),
+  reviewStatus: complianceReviewStatusEnum.notNull().default("not_required"),
+  reasons: json("reasons").$type<string[]>().notNull(),
+  ruleVersion: varchar("ruleVersion", { length: 32 }).notNull(),
+  requestedByUserId: int("requestedByUserId").references(() => users.id),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id),
+  reviewNote: text("reviewNote"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("compliance_decision_campaign_created_idx").on(table.campaignId, table.createdAt), index("compliance_decision_campaign_review_idx").on(table.campaignId, table.reviewStatus), index("compliance_decision_entity_idx").on(table.entityType, table.entityId), index("compliance_decision_organization_idx").on(table.organizationId)]);
 
 export const campaignLegalProcesses = mysqlTable("campaign_legal_processes", {
   id: int("id").autoincrement().primaryKey(), organizationId: int("organizationId").notNull().references(() => organizations.id), campaignId: int("campaignId").notNull().references(() => campaigns.id), documentId: int("documentId").references(() => campaignLegalDocuments.id), ownerUserId: int("ownerUserId").references(() => users.id), title: varchar("title", { length: 255 }).notNull(), status: varchar("status", { length: 40 }).notNull().default("open"), deadlineAt: timestamp("deadlineAt"), notes: text("notes"), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -896,6 +1003,8 @@ export const voters = mysqlTable("voters", {
   notes: text("notes"),
   contactConsent: boolean("contactConsent").default(false).notNull(),
   doNotContact: boolean("doNotContact").default(false).notNull(),
+  sensitiveDataFlag: boolean("sensitiveDataFlag").default(false).notNull(),
+  retentionReviewAt: timestamp("retentionReviewAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [
@@ -1017,6 +1126,12 @@ export const campaignContents = mysqlTable("campaign_contents", {
   scheduledAt: timestamp("scheduledAt"),
   ownerMemberId: int("ownerMemberId").references(() => campaignMembers.id),
   status: contentStatusEnum.notNull().default("draft"),
+  isSynthetic: boolean("isSynthetic").notNull().default(false),
+  syntheticDisclosure: text("syntheticDisclosure"),
+  complianceReviewStatus: complianceReviewStatusEnum.notNull().default("not_required"),
+  complianceReviewedByUserId: int("complianceReviewedByUserId").references(() => users.id),
+  complianceReviewedAt: timestamp("complianceReviewedAt"),
+  complianceReviewNote: text("complianceReviewNote"),
   createdById: int("createdById").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -1061,6 +1176,16 @@ export const campaignSurveys = mysqlTable("campaign_surveys", {
   question: text("question").notNull(),
   responseType: mysqlEnum("survey_response_type", ["single_choice", "scale", "text"]).notNull().default("single_choice"),
   options: json("options"),
+  classification: surveyClassificationEnum.notNull().default("internal"),
+  registrationCode: varchar("registrationCode", { length: 160 }),
+  methodologySummary: text("methodologySummary"),
+  fieldStartAt: timestamp("fieldStartAt"),
+  fieldEndAt: timestamp("fieldEndAt"),
+  disclosureText: text("disclosureText"),
+  complianceReviewStatus: complianceReviewStatusEnum.notNull().default("not_required"),
+  complianceReviewedByUserId: int("complianceReviewedByUserId").references(() => users.id),
+  complianceReviewedAt: timestamp("complianceReviewedAt"),
+  complianceReviewNote: text("complianceReviewNote"),
   status: mysqlEnum("survey_status", ["draft", "active", "closed"]).notNull().default("draft"),
   createdByUserId: int("createdByUserId").notNull().references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -20,6 +20,7 @@ vi.mock("./campaignDb", () => ({
   createLegalProcess: vi.fn(),
   updateLegalProcess: vi.fn(),
   listMembers: vi.fn(),
+  recordCampaignComplianceDecision: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({ storagePut: vi.fn() }));
@@ -125,7 +126,7 @@ describe("financeLegal.entries", () => {
 
     const result = await appRouter.createCaller(context()).financeLegal.entries.create({ ...createPayload, entryType });
 
-    expect(result).toEqual({ id: entryType === "income" ? 101 : 102 });
+    expect(result).toMatchObject({ id: entryType === "income" ? 101 : 102, compliance: { decision: "approved" } });
     expect(db.createFinancialEntry).toHaveBeenCalledWith(expect.objectContaining({ ...createPayload, entryType, createdByUserId: 99, paidAt: null }));
   });
 
@@ -134,7 +135,7 @@ describe("financeLegal.entries", () => {
     vi.mocked(db.getEvent).mockResolvedValue({ id: 45, campaignId: 1, title: "Encontro territorial" } as never);
     vi.mocked(db.createFinancialEntry).mockResolvedValue(103);
 
-    await expect(appRouter.createCaller(context()).financeLegal.entries.create({ ...createPayload, entryType: "expense", eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" })).resolves.toEqual({ id: 103 });
+    await expect(appRouter.createCaller(context()).financeLegal.entries.create({ ...createPayload, entryType: "expense", eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" })).resolves.toMatchObject({ id: 103, compliance: { decision: "approved" } });
     expect(db.getEvent).toHaveBeenCalledWith(45);
     expect(db.createFinancialEntry).toHaveBeenCalledWith(expect.objectContaining({ eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" }));
   });
@@ -228,7 +229,7 @@ describe("financeLegal.entries", () => {
     vi.mocked(db.updateCampaignComplianceRules).mockResolvedValue(rules as never);
 
     await expect(appRouter.createCaller(context()).financeLegal.rules.update({ campaignId: 1, ...rules })).resolves.toEqual(rules);
-    expect(db.updateCampaignComplianceRules).toHaveBeenCalledWith({ campaignId: 1, ...rules });
+    expect(db.updateCampaignComplianceRules).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, ...rules, updatedByUserId: 99 }));
   });
 
   it("cria processo jurídico com documento e responsável da mesma campanha", async () => {

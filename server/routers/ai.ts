@@ -58,7 +58,8 @@ export const aiRouter = router({
     try { extracted = JSON.parse(extractedText); } catch { throw new TRPCError({ code: "BAD_GATEWAY", message: "A extração de dados não retornou uma estrutura válida." }); }
     let voterId: number | null = null;
     if (extracted.name.trim().length >= 2) {
-      voterId = await campaignDb.createVoter({ campaignId: input.campaignId, ownerMemberId: member.id, name: extracted.name.trim(), phone: extracted.phone || null, neighborhood: extracted.neighborhood || null, region: extracted.region || null, address: extracted.address || null, primaryDemand: extracted.primaryDemand || null, engagementLevel: extracted.engagementLevel, contactConsent: true });
+      voterId = await campaignDb.createVoter({ campaignId: input.campaignId, ownerMemberId: member.id, name: extracted.name.trim(), phone: extracted.phone || null, neighborhood: extracted.neighborhood || null, region: extracted.region || null, address: extracted.address || null, primaryDemand: extracted.primaryDemand || null, engagementLevel: extracted.engagementLevel, contactConsent: false, doNotContact: false });
+      await campaignDb.appendCampaignConsentLedger({ campaignId: input.campaignId, voterId, channel: "none", purpose: "registro e processamento de relato de campo", source: "CRM por áudio", evidence: "Confirmação de processamento registrada pelo operador; não equivale a autorização de comunicação eleitoral.", status: "imported_without_authorization", occurredAt: new Date(), recordedByUserId: ctx.user.id });
     }
     const logId = await campaignDb.saveAudioCrmLog({ campaignId: input.campaignId, memberId: member.id, audioUrl: savedFile.url, transcription: transcription.text, extractedData: extracted, voterId, processed: true });
     return { logId, voterId, transcription: transcription.text, extracted };

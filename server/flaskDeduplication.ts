@@ -3,7 +3,7 @@ import path from "node:path";
 import type { ContactImportRow } from "./csvContacts";
 
 export type ImportContact = ContactImportRow & { row: number };
-export type ExistingContact = { id: number; name: string; email: string | null; phone: string | null; neighborhood: string | null };
+export type ExistingContact = { id: number; name: string; email: string | null; phone: string | null; neighborhood: string | null; contactConsent: boolean; doNotContact: boolean };
 export type ImportReviewItem = { row: number; name: string; existing: ExistingContact | null; reasons: string[] };
 export type DeduplicationResult = { newContacts: ImportContact[]; updates: ImportReviewItem[]; candidates: ImportReviewItem[] };
 

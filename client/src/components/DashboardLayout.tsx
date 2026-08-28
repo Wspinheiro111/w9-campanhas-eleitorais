@@ -35,6 +35,7 @@ export const menuItems = [
   { icon: ClipboardCheck, label: "Campo offline", path: "/campo" },
   { icon: MapPinned, label: "Rua, demandas e materiais", path: "/operacoes-rua" },
   { icon: ShieldCheck, label: "Consentimentos", path: "/consentimentos" },
+  { icon: ShieldCheck, label: "W9 Compliance Eleitoral", path: "/compliance", requiresManage: true },
   { icon: Siren, label: "Sala de crise", path: "/crise" },
   { icon: UsersRound, label: "Pipeline", path: "/pipeline" },
   { icon: Flame, label: "Mobilização", path: "/mobilizacao" },

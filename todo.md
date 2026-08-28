@@ -374,3 +374,12 @@
 - [x] Validar áudio de abertura e layout responsivo da landing no domínio oficial.
 - [x] Remover a rolagem automática que desloca a landing ao iniciar a narração pelo botão Ouvir.
 - [x] Validar em tela móvel que a narração inicia sem esconder o topo e publicar a correção.
+- [x] Analisar o conteúdo enviado pelo usuário e mapear melhorias aplicáveis ao W9 Campanhas Eleitorais.
+- [x] Implementar as melhorias tecnicamente viáveis identificadas no material enviado.
+- [x] Validar as melhorias aplicadas com checagem de tipos e testes automatizados.
+- [x] Criar ledger de consentimento por canal, finalidade, evidência, revogação e lista de supressão com isolamento por organização e campanha.
+- [x] Criar motor central e versionado de regras e decisões de compliance com revisão humana e auditoria imutável.
+- [x] Corrigir importação CSV e CRM por áudio para não conceder ou restaurar consentimento automaticamente.
+- [x] Bloquear comunicação eleitoral por telefone, lote sem autorização e exportação de contatos sem finalidade e confirmação.
+- [x] Adicionar classificação e bloqueios de compliance a conteúdo, IA, pesquisas/enquetes e prestação de contas preparatória.
+- [x] Criar painel W9 Compliance Eleitoral com pendências, aprovações e trilhas de auditoria por campanha.
