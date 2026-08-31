@@ -395,6 +395,7 @@
 - [x] Validar com fontes oficiais a redação sobre compatibilidade eleitoral e contratação com recursos eleitorais.
 - [x] Adicionar destaque comercial acessível na landing sobre conformidade operacional e aquisição sujeita à validação contábil e jurídica.
 - [x] Testar visualmente e em acessibilidade o novo destaque na landing, inclusive em tela móvel.
-- [ ] Coletar e interpretar as métricas disponíveis do Google para priorizar ganhos de posicionamento orgânico.
+- [x] Coletar e interpretar as métricas disponíveis do Google para priorizar ganhos de posicionamento orgânico.
+- [ ] Acompanhar o processamento do sitemap e solicitar indexação das páginas públicas prioritárias após a publicação da landing atualizada.
 - [x] Corrigir a incompatibilidade de runtime de hooks do React introduzida após a atualização de dependências.
 - [x] Corrigir a incompatibilidade de runtime de hooks do React introduzida após a atualização de dependências.
