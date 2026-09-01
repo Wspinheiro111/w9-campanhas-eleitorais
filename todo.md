@@ -399,3 +399,6 @@
 - [x] Acompanhar o processamento do sitemap e solicitar indexação das páginas públicas prioritárias após a publicação da landing atualizada — sitemap processado com 6 URLs e solicitações de inspeção/indexação acionadas; a indexação efetiva permanece sob processamento do Google.
 - [x] Corrigir a incompatibilidade de runtime de hooks do React introduzida após a atualização de dependências.
 - [x] Corrigir a incompatibilidade de runtime de hooks do React introduzida após a atualização de dependências.
+
+- [x] Integrar Google Analytics 4 com identificador configurável, consentimento de medição, eventos essenciais da landing e validação em produção.
+- [x] Ajustar a extensão do teste frontend de GA4 para ser incluído pelo padrão atual do Vitest.

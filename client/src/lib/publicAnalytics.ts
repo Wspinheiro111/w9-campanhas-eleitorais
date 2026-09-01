@@ -1,3 +1,5 @@
+import { trackGoogleEvent } from "./ga4";
+
 type PublicEventProperties = Record<string, string | number | boolean>;
 
 declare global {
@@ -12,4 +14,5 @@ declare global {
 export function trackPublicEvent(eventName: string, properties?: PublicEventProperties) {
   if (typeof window === "undefined") return;
   window.umami?.track(eventName, properties);
+  trackGoogleEvent(eventName, properties);
 }

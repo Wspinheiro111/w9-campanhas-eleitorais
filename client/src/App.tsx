@@ -1,9 +1,11 @@
 import { Toaster } from "@/components/ui/sonner";
+import { AnalyticsConsentBanner } from "./components/AnalyticsConsentBanner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch } from "wouter";
-import { lazy, Suspense } from "react";
+import { Route, Switch, useLocation } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { trackGooglePageView } from "./lib/ga4";
 
 const AdminPortal = lazy(() => import("./pages/AdminPortal"));
 const CampaignApplication = lazy(() => import("./components/CampaignApplication"));
@@ -25,8 +27,15 @@ function PageLoading() {
 }
 
 function App() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    trackGooglePageView(location);
+  }, [location]);
+
   return <ErrorBoundary><ThemeProvider defaultTheme="w9"><TooltipProvider><Toaster />
     <Suspense fallback={null}><PwaUpdateBanner /><W9GlobalReportGenerationFeedback /></Suspense>
+    <AnalyticsConsentBanner />
     <Suspense fallback={<PageLoading />}><Switch>
       <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
