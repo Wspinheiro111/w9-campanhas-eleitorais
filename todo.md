@@ -402,3 +402,7 @@
 
 - [x] Integrar Google Analytics 4 com identificador configurável, consentimento de medição, eventos essenciais da landing e validação em produção.
 - [x] Ajustar a extensão do teste frontend de GA4 para ser incluído pelo padrão atual do Vitest.
+
+- [x] Integrar a API do OpenRouter no servidor com cadeia ordenada de modelos gratuitos e fallback automático por limite, cota, indisponibilidade ou erro transitório.
+- [x] Cobrir com testes o avanço sequencial, a não repetição de modelos e o comportamento quando toda a cadeia falhar.
+- [x] Adicionar timeout e cancelamento por modelo no cliente OpenRouter para que provedores que não respondem liberem o fallback automaticamente.
