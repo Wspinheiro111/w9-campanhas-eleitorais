@@ -7,13 +7,20 @@ export type TotpKeyRing = {
   byId: Map<string, Buffer>;
 };
 
-function decodeDedicatedKey(encoded: string) {
+function decodeBase64UrlStrict(encoded: string, errorCode: string) {
+  if (!encoded || !/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error(errorCode);
   let decoded: Buffer;
   try {
-    decoded = Buffer.from(encoded.trim(), "base64url");
+    decoded = Buffer.from(encoded, "base64url");
   } catch {
-    throw new Error("TOTP_ENCRYPTION_KEY_INVALID");
+    throw new Error(errorCode);
   }
+  if (!decoded.length || decoded.toString("base64url") !== encoded) throw new Error(errorCode);
+  return decoded;
+}
+
+function decodeDedicatedKey(encoded: string) {
+  const decoded = decodeBase64UrlStrict(encoded.trim(), "TOTP_ENCRYPTION_KEY_INVALID");
   if (decoded.length !== 32) throw new Error("TOTP_ENCRYPTION_KEY_INVALID");
   return decoded;
 }
@@ -80,12 +87,13 @@ function encryptAesGcm(value: string, key: Buffer) {
 
 function decryptAesGcm(ivEncoded: string, tagEncoded: string, encryptedEncoded: string, key: Buffer) {
   try {
-    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivEncoded, "base64url"));
-    decipher.setAuthTag(Buffer.from(tagEncoded, "base64url"));
-    return Buffer.concat([
-      decipher.update(Buffer.from(encryptedEncoded, "base64url")),
-      decipher.final(),
-    ]).toString("utf8");
+    const iv = decodeBase64UrlStrict(ivEncoded, "MFA_SECRET_INVALID");
+    const tag = decodeBase64UrlStrict(tagEncoded, "MFA_SECRET_INVALID");
+    const encrypted = decodeBase64UrlStrict(encryptedEncoded, "MFA_SECRET_INVALID");
+    if (iv.length !== 12 || tag.length !== 16) throw new Error("MFA_SECRET_INVALID");
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
   } catch {
     throw new Error("MFA_SECRET_INVALID");
   }
