@@ -5,6 +5,7 @@ import * as campaignDb from "../campaignDb";
 import { OpenRouterApiError, generateWithOpenRouter } from "../openrouter";
 import { protectedProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
+import { getSignedTranscriptionAudioUrl } from "../transcriptionStorage";
 
 async function ensureAiAccess(userId: number, campaignId: number) {
   const access = await campaignDb.getCampaignAccess(campaignId, userId);
@@ -48,8 +49,7 @@ export const aiRouter = router({
     if (!audioBuffer.length || audioBuffer.byteLength > 16 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "O áudio deve ter no máximo 16 MB." });
     const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, "-");
     const savedFile = await storagePut(`campaigns/${input.campaignId}/audio-crm/${Date.now()}-${safeName}`, audioBuffer, input.mimeType);
-    const origin = `${ctx.req.protocol}://${ctx.req.get("host")}`;
-    const audioUrl = new URL(savedFile.url, origin).toString();
+    const audioUrl = await getSignedTranscriptionAudioUrl(savedFile.key);
     const transcription = await transcribeAudio({ audioUrl, language: "pt", prompt: "Transcreva fielmente este relato de campo em português brasileiro." });
     if ("error" in transcription) throw new TRPCError({ code: "BAD_REQUEST", message: transcription.error });
     let extractedText: string;
