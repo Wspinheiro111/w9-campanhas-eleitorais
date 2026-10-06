@@ -15,7 +15,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -24,4 +24,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec vitest run server/campaignPolicy.test.ts
+      - name: Regression test - issue 12
+        run: pnpm exec vitest run server/campaignPolicy.test.ts
+      - name: TypeScript
+        run: pnpm check
+      - name: Full test suite
+        run: pnpm test
+      - name: Build
+        run: pnpm build
