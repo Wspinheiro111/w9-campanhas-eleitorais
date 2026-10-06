@@ -29,6 +29,24 @@ jobs:
       - name: TypeScript
         run: pnpm check
       - name: Full test suite
-        run: pnpm test
+        id: full_tests
+        continue-on-error: true
+        run: pnpm exec vitest run --reporter=json --outputFile=vitest-results.json
       - name: Build
+        id: build
+        continue-on-error: true
         run: pnpm build
+      - name: Upload Vitest report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-12-vitest-report
+          path: vitest-results.json
+          if-no-files-found: warn
+          retention-days: 1
+      - name: Verification gate
+        if: steps.full_tests.outcome != 'success' || steps.build.outcome != 'success'
+        run: |
+          echo "Full tests: ${{ steps.full_tests.outcome }}"
+          echo "Build: ${{ steps.build.outcome }}"
+          exit 1
