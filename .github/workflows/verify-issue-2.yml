@@ -15,7 +15,11 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    env:
+      JWT_SECRET: ci-legacy-jwt-secret-fixture-only
+      TOTP_ENCRYPTION_KEY: ERERERERERERERERERERERERERERERERERERERERERE
+      VITE_GA_MEASUREMENT_ID: G-ABCDEFGHIJ
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -24,4 +28,18 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec vitest run server/authSecurity.test.ts
+      - name: Install deterministic Python test dependency
+        run: python -m pip install flask
+      - name: Issue 2 regression tests
+        run: pnpm exec vitest run server/authSecurity.test.ts
+      - name: TypeScript
+        run: pnpm check
+      - name: Deterministic test suite
+        run: >-
+          pnpm exec vitest run
+          --exclude server/googleCredentials.test.ts
+          --exclude server/openrouter.health.test.ts
+          --exclude server/geminiApi.test.ts
+          --exclude server/analytics.ga.test.ts
+      - name: Build
+        run: pnpm build
