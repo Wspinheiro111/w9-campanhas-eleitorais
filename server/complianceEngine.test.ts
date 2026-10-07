@@ -26,10 +26,32 @@ describe("motor de compliance eleitoral", () => {
   });
 
   it("requer identificação e revisão humana para conteúdo sintético", () => {
-    const withoutDisclosure = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: false, reviewStatus: "pending" } });
-    const awaitingReview = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: true, reviewStatus: "pending" } });
+    const withoutDisclosure = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: false, reviewStatus: "pending", restrictedWindowStatus: "outside" } });
+    const awaitingReview = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: true, reviewStatus: "pending", restrictedWindowStatus: "outside" } });
     expect(withoutDisclosure.decision).toBe("blocked");
     expect(awaitingReview.decision).toBe("needs_human_review");
+  });
+
+  it("não aprova conteúdo sintético quando a janela aplicável não pode ser calculada", () => {
+    const result = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: true, reviewStatus: "approved", restrictedWindowStatus: "unknown" } });
+    expect(result.decision).toBe("needs_human_review");
+    expect(result.reasons.join(" ")).toContain("término do pleito");
+  });
+
+  it("bloqueia conteúdo sintético dentro da janela restrita", () => {
+    const result = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: true, reviewStatus: "approved", restrictedWindowStatus: "restricted" } });
+    expect(result.decision).toBe("blocked");
+    expect(result.reasons.join(" ")).toContain("janela temporal");
+  });
+
+  it("não aplica a janela quando o conteúdo sintético não usa candidatura ou pessoa pública", () => {
+    const result = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: true, reviewStatus: "approved", restrictedWindowStatus: "not_applicable" } });
+    expect(result.decision).toBe("approved");
+  });
+
+  it("aprova após identificação e revisão quando o conteúdo está fora da janela", () => {
+    const result = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: true, reviewStatus: "approved", restrictedWindowStatus: "outside" } });
+    expect(result.decision).toBe("approved");
   });
 
   it("bloqueia pesquisa pública sem referência de registro", () => {
