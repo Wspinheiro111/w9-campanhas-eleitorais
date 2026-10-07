@@ -12,6 +12,14 @@ describe("janela temporal de conteúdo sintético", () => {
     })).toEqual({ status: "not_applicable" });
   });
 
+  it("mantém registro legado sem classificação em estado desconhecido", () => {
+    expect(assessSyntheticContentWindow({
+      usesCandidateOrPublicPerson: null,
+      electionEndsAt,
+      now: new Date("2026-10-04T16:00:00.000Z"),
+    })).toEqual({ status: "unknown", reason: "applicability_missing" });
+  });
+
   it("não inventa janela quando a data de término do pleito não está configurada", () => {
     expect(assessSyntheticContentWindow({
       usesCandidateOrPublicPerson: true,
