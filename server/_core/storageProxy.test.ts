@@ -154,4 +154,28 @@ describe("storage proxy authorization", () => {
     expect(accessMocks.getCampaignAccess).not.toHaveBeenCalled();
     expect(response.redirect).toHaveBeenCalledWith(307, "https://storage.example/signed");
   });
+
+  it("mantém assets de certificado explicitamente públicos para o portal de validação", async () => {
+    authMocks.authenticateRequest.mockRejectedValue(new Error("no session"));
+    const handler = captureStorageHandler();
+    const response = createResponse();
+
+    await handler(requestFor("campaign-certificates/7/42/logo-abc.png"), response);
+
+    expect(authMocks.authenticateRequest).not.toHaveBeenCalled();
+    expect(accessMocks.getCampaignAccess).not.toHaveBeenCalled();
+    expect(response.redirect).toHaveBeenCalledWith(307, "https://storage.example/signed");
+  });
+
+  it("nega por padrão prefixo de armazenamento não classificado", async () => {
+    const handler = captureStorageHandler();
+    const response = createResponse();
+
+    await handler(requestFor("misc/private-object.bin"), response);
+
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(authMocks.authenticateRequest).not.toHaveBeenCalled();
+    expect(accessMocks.getCampaignAccess).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
