@@ -3,15 +3,19 @@ const POST_ELECTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export type SyntheticContentWindowAssessment =
   | { status: "not_applicable" }
-  | { status: "unknown"; reason: "election_end_missing" }
+  | { status: "unknown"; reason: "election_end_missing" | "applicability_missing" }
   | { status: "restricted"; startsAt: Date; endsAt: Date }
   | { status: "outside"; startsAt: Date; endsAt: Date };
 
 export function assessSyntheticContentWindow(input: {
-  usesCandidateOrPublicPerson: boolean;
+  usesCandidateOrPublicPerson: boolean | null;
   electionEndsAt: Date | null;
   now?: Date;
 }): SyntheticContentWindowAssessment {
+  if (input.usesCandidateOrPublicPerson === null) {
+    return { status: "unknown", reason: "applicability_missing" };
+  }
+
   if (!input.usesCandidateOrPublicPerson) {
     return { status: "not_applicable" };
   }
