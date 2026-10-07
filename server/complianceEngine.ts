@@ -8,6 +8,7 @@ export type ComplianceAction =
 
 export type ComplianceDecision = "approved" | "blocked" | "needs_human_review" | "not_applicable";
 export type ComplianceReviewStatus = "not_required" | "pending" | "approved" | "blocked" | "cancelled";
+export type RestrictedSyntheticWindowStatus = "not_applicable" | "unknown" | "restricted" | "outside";
 
 export type ComplianceRules = {
   ruleVersion: string;
@@ -36,7 +37,7 @@ export type ComplianceEvaluationInput = {
     isSynthetic: boolean;
     disclosureProvided: boolean;
     reviewStatus: ComplianceReviewStatus;
-    withinRestrictedSyntheticWindow?: boolean;
+    restrictedWindowStatus?: RestrictedSyntheticWindowStatus;
   };
   survey?: {
     classification: "internal" | "public_disclosure";
@@ -114,13 +115,19 @@ export function evaluateCompliance(input: ComplianceEvaluationInput): Compliance
     const content = input.content;
     if (!content?.isSynthetic) return { decision: "not_applicable", reviewStatus: "not_required", reasons: ["O conteúdo não foi marcado como sintético."] };
     if (!content.disclosureProvided) return blocked(["Conteúdo sintético exige identificação explícita e acessível antes de publicação."]);
-    if (input.rules.blockSyntheticPublicationWindow && content.withinRestrictedSyntheticWindow === true) {
-      return blocked(["A regra temporal da campanha bloqueia publicação ou impulsionamento de conteúdo sintético neste período."]);
+
+    if (content.restrictedWindowStatus === "restricted") {
+      return blocked(["A janela temporal aplicável bloqueia publicação, republicação ou impulsionamento deste novo conteúdo sintético neste período."]);
     }
+
+    if (!content.restrictedWindowStatus || content.restrictedWindowStatus === "unknown") {
+      return needsReview(["Não foi possível determinar a janela temporal do conteúdo sintético porque o término do pleito não está configurado."]);
+    }
+
     if (input.rules.requireHumanReviewForSyntheticContent && content.reviewStatus !== "approved") {
       return needsReview(["Conteúdo sintético exige revisão humana identificada antes de publicação."]);
     }
-    return { decision: "approved", reviewStatus: "approved", reasons: ["Identificação e revisão humana de conteúdo sintético verificadas."] };
+    return { decision: "approved", reviewStatus: "approved", reasons: ["Identificação, janela temporal e revisão humana de conteúdo sintético verificadas."] };
   }
 
   if (input.action === "survey.publish") {
