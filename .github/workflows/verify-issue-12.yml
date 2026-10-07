@@ -32,7 +32,7 @@ jobs:
         run: |
           git fetch origin main
           git checkout origin/main -- server/campaignDb.ts
-          rm -f server/campaignDbCore.ts server/campaignAccessFacade.test.ts
+          rm -f server/campaignDbCore.ts server/campaignAccessFacade.test.ts .issue12-trigger
           python - <<'PY'
           from pathlib import Path
 
@@ -71,7 +71,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add server/campaignDb.ts server/campaignPolicy.ts server/campaignPolicy.test.ts
-          git add -A server/campaignDbCore.ts server/campaignAccessFacade.test.ts
+          git add -A server/campaignDbCore.ts server/campaignAccessFacade.test.ts .issue12-trigger
           if git diff --cached --quiet; then
             echo "No cleanup changes to commit"
             exit 0
