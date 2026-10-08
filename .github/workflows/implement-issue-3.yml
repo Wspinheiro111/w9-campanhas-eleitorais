@@ -1,0 +1,74 @@
+name: implement-issue-3
+on:
+  push:
+    branches: [fix/issue-3-offline-visit-retention]
+permissions:
+  contents: write
+jobs:
+  implement:
+    if: ${{ !contains(github.event.head_commit.message, '[issue-3-implemented]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_GA_MEASUREMENT_ID: G-ABCDEFGHIJ
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wire retention into field UI and logout
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          def rep(path, old, new, count=1):
+              p=Path(path); t=p.read_text(); n=t.count(old)
+              if n != count: raise SystemExit(f"{path}: expected {count}, got {n}: {old[:100]!r}")
+              p.write_text(t.replace(old,new,count))
+
+          rep('client/src/pages/FieldOps.tsx',
+              'import { getQueuedVisits, queueOfflineVisit, removeQueuedVisits, type OfflineVisit } from "@/lib/offlineVisits";\n',
+              'import { getOfflineVisitSummary, getQueuedVisits, queueOfflineVisit, removeQueuedVisits, OFFLINE_VISIT_NOTES_MAX, type OfflineVisit } from "@/lib/offlineVisits";\nimport { useAuth } from "@/_core/hooks/useAuth";\n')
+          rep('client/src/pages/FieldOps.tsx',
+              '  const { activeCampaign } = useCampaign();\n  const utils = trpc.useUtils();',
+              '  const { activeCampaign } = useCampaign();\n  const { user } = useAuth();\n  const utils = trpc.useUtils();')
+          rep('client/src/pages/FieldOps.tsx',
+              'const [notes, setNotes] = useState(""); const [pending, setPending] = useState(0);',
+              'const [notes, setNotes] = useState(""); const [pending, setPending] = useState(0); const [pendingOldestAt, setPendingOldestAt] = useState<string | null>(null);')
+          rep('client/src/pages/FieldOps.tsx',
+              '  const refreshQueue = async () => setPending((await getQueuedVisits()).length);\n  useEffect(() => { void refreshQueue(); void flushQueue(); const onOnline = () => { void flushQueue(); }; window.addEventListener("online", onOnline); return () => window.removeEventListener("online", onOnline); }, [activeCampaign?.id]);\n  const flushQueue = async () => { if (!activeCampaign || !navigator.onLine) return; const queued = (await getQueuedVisits()).filter(visit => visit.campaignId === activeCampaign.id); if (!queued.length) return; try { await sync.mutateAsync({ campaignId: activeCampaign.id, visits: queued.map(visit => ({ voterId: visit.voterId, playbookId: visit.playbookId, clientReference: visit.clientReference, outcome: visit.outcome, notes: visit.notes, occurredAt: new Date(visit.occurredAt) })) }); await removeQueuedVisits(queued.map(visit => visit.clientReference)); await refreshQueue(); } catch { toast.error("As visitas permanecem armazenadas neste dispositivo até a próxima tentativa."); } };\n  const submit = async (event: FormEvent) => { event.preventDefault(); if (!activeCampaign) return; const visit: OfflineVisit = { campaignId: activeCampaign.id, voterId: voterId ? Number(voterId) : undefined, playbookId: playbookId ? Number(playbookId) : undefined, clientReference: crypto.randomUUID(), outcome, notes: notes || undefined, occurredAt: new Date().toISOString() }; if (!navigator.onLine) { await queueOfflineVisit(visit); await refreshQueue(); setNotes(""); toast.success("Visita salva offline. Ela será sincronizada quando houver internet."); return; } try { await sync.mutateAsync({ campaignId: activeCampaign.id, visits: [{ voterId: visit.voterId, playbookId: visit.playbookId, clientReference: visit.clientReference, outcome: visit.outcome, notes: visit.notes, occurredAt: new Date(visit.occurredAt) }] }); setNotes(""); } catch { await queueOfflineVisit(visit); await refreshQueue(); toast.message("Sem conexão estável: a visita foi mantida offline."); } };',
+              '  const refreshQueue = async () => { if (!user?.id) { setPending(0); setPendingOldestAt(null); return; } const summary = await getOfflineVisitSummary(user.id); setPending(summary.count); setPendingOldestAt(summary.oldestCreatedAt); };\n  useEffect(() => { void refreshQueue(); void flushQueue(); const onOnline = () => { void flushQueue(); }; window.addEventListener("online", onOnline); return () => window.removeEventListener("online", onOnline); }, [activeCampaign?.id, user?.id]);\n  const flushQueue = async () => { if (!activeCampaign || !user?.id || !navigator.onLine) return; const queued = (await getQueuedVisits(user.id)).filter(visit => visit.campaignId === activeCampaign.id); if (!queued.length) { await refreshQueue(); return; } try { await sync.mutateAsync({ campaignId: activeCampaign.id, visits: queued.map(visit => ({ voterId: visit.voterId, playbookId: visit.playbookId, clientReference: visit.clientReference, outcome: visit.outcome, notes: visit.notes, occurredAt: new Date(visit.occurredAt) })) }); await removeQueuedVisits(user.id, queued.map(visit => visit.clientReference)); await refreshQueue(); } catch { toast.error("As visitas permanecem armazenadas neste dispositivo até a próxima tentativa."); } };\n  const submit = async (event: FormEvent) => { event.preventDefault(); if (!activeCampaign || !user?.id) return; const visit: OfflineVisit = { campaignId: activeCampaign.id, voterId: voterId ? Number(voterId) : undefined, playbookId: playbookId ? Number(playbookId) : undefined, clientReference: crypto.randomUUID(), outcome, notes: notes || undefined, occurredAt: new Date().toISOString() }; if (!navigator.onLine) { await queueOfflineVisit(user.id, visit); await refreshQueue(); setNotes(""); toast.success("Visita salva offline. Ela será sincronizada quando houver internet."); return; } try { await sync.mutateAsync({ campaignId: activeCampaign.id, visits: [{ voterId: visit.voterId, playbookId: visit.playbookId, clientReference: visit.clientReference, outcome: visit.outcome, notes: visit.notes, occurredAt: new Date(visit.occurredAt) }] }); setNotes(""); } catch { await queueOfflineVisit(user.id, visit); await refreshQueue(); toast.message("Sem conexão estável: a visita foi mantida offline."); } };')
+          rep('client/src/pages/FieldOps.tsx','maxLength={3000}','maxLength={OFFLINE_VISIT_NOTES_MAX}',1)
+          rep('client/src/pages/FieldOps.tsx',
+              '<p className="mt-1 text-sm text-amber-800">A fila offline é local a este dispositivo e preserva o playbook selecionado.</p>',
+              '<p className="mt-1 text-sm text-amber-800">A fila offline é isolada por usuário, expira em 7 dias e preserva o playbook selecionado.{pendingOldestAt ? ` Mais antigo: ${new Date(pendingOldestAt).toLocaleString("pt-BR")}.` : ""}</p>')
+
+          rep('client/src/components/DashboardLayout.tsx',
+              'import { startLogin } from "@/const";\n',
+              'import { startLogin } from "@/const";\nimport { clearOfflineVisits, getOfflineVisitSummary } from "@/lib/offlineVisits";\n')
+          anchor='  useEffect(() => { if (isCollapsed) setIsResizing(false); }, [isCollapsed]);\n'
+          handler=anchor+'  const handleLogout = async () => {\n    if (!user?.id) { await logout(); return; }\n    const summary = await getOfflineVisitSummary(user.id);\n    if (summary.count > 0) {\n      const discard = window.confirm(`Há ${summary.count} visita(s) offline ainda não sincronizada(s). Clique em Cancelar para permanecer no sistema e sincronizar. Clique em OK somente se deseja descartar essa fila e sair.`);\n      if (!discard) return;\n    }\n    await clearOfflineVisits(user.id);\n    await logout();\n  };\n'
+          rep('client/src/components/DashboardLayout.tsx',anchor,handler)
+          rep('client/src/components/DashboardLayout.tsx','<DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">','<DropdownMenuItem onClick={() => { void handleLogout(); }} className="cursor-pointer text-destructive focus:text-destructive">')
+          PY
+      - name: Focused tests
+        run: pnpm exec vitest run client/src/lib/offlineVisits.test.ts server/campaignRoutes.test.ts
+      - name: TypeScript
+        run: pnpm check
+      - name: Full deterministic suite
+        run: pnpm exec vitest run --exclude server/googleCredentials.test.ts --exclude server/openrouter.health.test.ts --exclude server/geminiApi.test.ts --exclude server/analytics.ga.test.ts
+      - name: Build
+        run: pnpm build
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add client
+          git diff --cached --check
+          git commit -m "fix(privacy): expire and isolate offline visit queue [issue-3-implemented]"
+          git push
