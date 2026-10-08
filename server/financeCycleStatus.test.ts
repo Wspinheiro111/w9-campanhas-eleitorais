@@ -266,7 +266,7 @@ describe("financeLegal.entries", () => {
     const pdfBase64 = Buffer.from("%PDF-1.4\nconteudo de teste").toString("base64");
 
     await expect(appRouter.createCaller(context()).financeLegal.documents.upload({ documentId: 14, fileName: "contrato.pdf", base64: pdfBase64 })).resolves.toEqual({ url: "/manus-storage/campaigns/1/legal/14/contrato.pdf" });
-    expect(storagePut).toHaveBeenCalledWith(expect.stringContaining("campaigns/1/legal/14/"), expect.any(Buffer), "application/pdf");
+    expect(storagePut).toHaveBeenCalledWith(expect.stringContaining("campaigns/1/legal/14/"), expect.any(Buffer), "application/pdf", expect.objectContaining({ organizationId: 3, campaignId: 1, visibility: "private", resourceType: "legal_document", createdByUserId: 99 }));
     expect(db.updateLegalDocumentAttachment).toHaveBeenCalledWith(expect.objectContaining({ id: 14, fileName: "contrato.pdf", storageKey: "campaigns/1/legal/14/contrato.pdf" }));
   });
 
