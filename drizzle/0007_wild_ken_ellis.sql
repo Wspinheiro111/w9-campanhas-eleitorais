@@ -53,7 +53,7 @@ ALTER TABLE `campaign_indicators` ADD `organizationId` int;--> statement-breakpo
 ALTER TABLE `campaign_contents` ADD `organizationId` int;--> statement-breakpoint
 ALTER TABLE `pipeline_followups` ADD `organizationId` int;--> statement-breakpoint
 ALTER TABLE `ai_messages` ADD `organizationId` int;--> statement-breakpoint
-INSERT INTO `organizations` (`name`, `createdById`, `status`) SELECT 'Organização migrada', (SELECT MIN(`id`) FROM `users`), 'active' WHERE NOT EXISTS (SELECT 1 FROM `organizations`);--> statement-breakpoint
+INSERT INTO `organizations` (`name`, `createdById`, `organization_status`) SELECT 'Organização migrada', (SELECT MIN(`id`) FROM `users`), 'active' WHERE NOT EXISTS (SELECT 1 FROM `organizations`);--> statement-breakpoint
 UPDATE `campaigns` SET `organizationId` = (SELECT MIN(`id`) FROM `organizations`) WHERE `organizationId` IS NULL;--> statement-breakpoint
 UPDATE `campaign_members` m INNER JOIN `campaigns` c ON c.`id` = m.`campaignId` SET m.`organizationId` = c.`organizationId` WHERE m.`organizationId` IS NULL;--> statement-breakpoint
 UPDATE `events` e INNER JOIN `campaigns` c ON c.`id` = e.`campaignId` SET e.`organizationId` = c.`organizationId` WHERE e.`organizationId` IS NULL;--> statement-breakpoint

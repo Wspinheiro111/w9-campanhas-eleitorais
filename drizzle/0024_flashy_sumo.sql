@@ -28,7 +28,7 @@ ALTER TABLE `event_registrations` ADD CONSTRAINT `evreg_org_fk` FOREIGN KEY (`or
 ALTER TABLE `event_registrations` ADD CONSTRAINT `evreg_campaign_fk` FOREIGN KEY (`campaignId`) REFERENCES `campaigns`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `event_registrations` ADD CONSTRAINT `evreg_event_fk` FOREIGN KEY (`eventId`) REFERENCES `events`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `event_registrations` ADD CONSTRAINT `evreg_voter_fk` FOREIGN KEY (`voterId`) REFERENCES `voters`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `event_registrations` ADD CONSTRAINT `evreg_volunteer_fk` FOREIGN KEY (`volunteerId`) REFERENCES `volunteers`(`id`) ON DELETE no action ON UPDATE no action; jajajaj tool_artifact webdev_apply_patch
+ALTER TABLE `event_registrations` ADD CONSTRAINT `evreg_volunteer_fk` FOREIGN KEY (`volunteerId`) REFERENCES `volunteers`(`id`) ON DELETE no action ON UPDATE no action;
 --> statement-breakpoint
 CREATE INDEX `event_registration_event_status_idx` ON `event_registrations` (`eventId`,`event_registration_status`);--> statement-breakpoint
 CREATE INDEX `event_registration_campaign_idx` ON `event_registrations` (`campaignId`,`registeredAt`);--> statement-breakpoint

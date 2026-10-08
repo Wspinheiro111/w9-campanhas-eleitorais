@@ -21,7 +21,7 @@ Também deve bloquear force-push e exigir que a branch esteja atualizada com a b
 - `typecheck`: `pnpm check` com TypeScript sem emissão.
 - `tests`: `pnpm test:ci`, que executa a suíte determinística. Health checks que exigem credenciais/serviços externos (`googleCredentials`, `openrouter.health`, `geminiApi`, `analytics.ga`) ficam fora deste gate; Flask é instalado no runner porque testes locais de deduplicação dependem dele.
 - `build`: `pnpm build`.
-- `dependencies`: `pnpm audit --audit-level high`; vulnerabilidade `high` ou `critical` torna o check vermelho.
+- `dependencies`: `pnpm audit --prod --audit-level high`; vulnerabilidade `high` ou `critical` em dependência de produção torna o check vermelho. O audit completo, incluindo toolchain/dev, também roda como relatório não bloqueante para orientar upgrades separados.
 - `migrations`: sobe MySQL 8.4 descartável, aplica todas as migrations versionadas e roda o migrator novamente para garantir que o histórico aplicado não seja reaplicado. Nunca usa banco de produção.
 - `secrets`: recusa arquivos `.env*` de runtime rastreados e usa TruffleHog 3.99.0 para segredos verificados no intervalo de commits do push/PR.
 - `codeql`: executa CodeQL para JavaScript/TypeScript. Somente este job recebe `security-events: write`.
