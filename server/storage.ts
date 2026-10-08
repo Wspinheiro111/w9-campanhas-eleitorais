@@ -1,8 +1,19 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uploads via Forge Server presigned URL to S3 (PUT direct).
-// Downloads return /manus-storage/{key} paths served via 307 redirect.
+// Preconfigured storage helpers for Manus WebDev templates.
+// Uploads use Forge presigned URLs; every stored object must also receive
+// persisted ownership/visibility metadata before its application URL is returned.
 
+import { eq } from "drizzle-orm";
+import { campaigns, storageObjects } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { getDb } from "./db";
+
+export type StorageObjectMetadataInput = {
+  organizationId: number | null;
+  campaignId: number | null;
+  visibility: "private" | "public";
+  resourceType: string;
+  createdByUserId: number | null;
+};
 
 function getForgeConfig() {
   const forgeUrl = ENV.forgeApiUrl;
@@ -28,15 +39,53 @@ function appendHashSuffix(relKey: string): string {
   return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
 }
 
+export async function getStorageObjectMetadata(storageKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Storage metadata database unavailable");
+  return (await db.select().from(storageObjects).where(eq(storageObjects.storageKey, normalizeKey(storageKey))).limit(1))[0] ?? null;
+}
+
+export async function registerStorageObjectMetadata(
+  storageKey: string,
+  metadata: StorageObjectMetadataInput,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Storage metadata database unavailable");
+
+  if (metadata.visibility === "private" && !metadata.organizationId) {
+    throw new Error("Private storage objects require organization ownership");
+  }
+
+  if (metadata.campaignId !== null) {
+    const campaign = (await db
+      .select({ organizationId: campaigns.organizationId })
+      .from(campaigns)
+      .where(eq(campaigns.id, metadata.campaignId))
+      .limit(1))[0];
+    if (!campaign || campaign.organizationId !== metadata.organizationId) {
+      throw new Error("Storage campaign ownership mismatch");
+    }
+  }
+
+  await db.insert(storageObjects).values({
+    storageKey: normalizeKey(storageKey),
+    organizationId: metadata.organizationId,
+    campaignId: metadata.campaignId,
+    visibility: metadata.visibility,
+    resourceType: metadata.resourceType,
+    createdByUserId: metadata.createdByUserId,
+  });
+}
+
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType = "application/octet-stream",
+  contentType: string,
+  metadata: StorageObjectMetadataInput,
 ): Promise<{ key: string; url: string }> {
   const { forgeUrl, forgeKey } = getForgeConfig();
   const key = appendHashSuffix(normalizeKey(relKey));
 
-  // 1. Get presigned PUT URL from Forge
   const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
   presignUrl.searchParams.set("path", key);
 
@@ -45,14 +94,12 @@ export async function storagePut(
   });
 
   if (!presignResp.ok) {
-    const msg = await presignResp.text().catch(() => presignResp.statusText);
-    throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
+    throw new Error(`Storage presign failed (${presignResp.status})`);
   }
 
   const { url: s3Url } = (await presignResp.json()) as { url: string };
   if (!s3Url) throw new Error("Forge returned empty presign URL");
 
-  // 2. PUT file directly to S3
   const blob =
     typeof data === "string"
       ? new Blob([data], { type: contentType })
@@ -68,6 +115,10 @@ export async function storagePut(
     throw new Error(`Storage upload to S3 failed (${uploadResp.status})`);
   }
 
+  // Fail closed: an uploaded object without ownership metadata is intentionally
+  // not returned as an application-accessible URL.
+  await registerStorageObjectMetadata(key, metadata);
+
   return { key, url: `/manus-storage/${key}` };
 }
 
@@ -76,9 +127,15 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   return { key, url: `/manus-storage/${key}` };
 }
 
+/**
+ * Server-only signed URL helper. It refuses unknown/unregistered keys, but does
+ * not replace user authorization at HTTP boundaries.
+ */
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
   const { forgeUrl, forgeKey } = getForgeConfig();
   const key = normalizeKey(relKey);
+  const metadata = await getStorageObjectMetadata(key);
+  if (!metadata) throw new Error("Storage object metadata missing");
 
   const getUrl = new URL("v1/storage/presign/get", forgeUrl + "/");
   getUrl.searchParams.set("path", key);
@@ -88,10 +145,10 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
   });
 
   if (!resp.ok) {
-    const msg = await resp.text().catch(() => resp.statusText);
-    throw new Error(`Storage signed URL failed (${resp.status}): ${msg}`);
+    throw new Error(`Storage signed URL failed (${resp.status})`);
   }
 
   const { url } = (await resp.json()) as { url: string };
+  if (!url) throw new Error("Forge returned empty signed URL");
   return url;
 }
