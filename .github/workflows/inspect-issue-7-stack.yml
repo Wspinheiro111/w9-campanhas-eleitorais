@@ -1,0 +1,43 @@
+name: inspect-issue-7-stack
+
+on:
+  push:
+    branches:
+      - fix/issue-7-synthetic-content-compliance-v2
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Show relevant schema and router context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '--- campaigns schema ---'
+          grep -n -A20 -B2 'export const campaigns = mysqlTable' drizzle/schema.ts
+          echo '--- contents schema ---'
+          grep -n -A40 -B2 'export const campaignContents = mysqlTable' drizzle/schema.ts
+          echo '--- compliance decisions schema ---'
+          grep -n -A30 -B2 'export const campaignComplianceDecisions = mysqlTable' drizzle/schema.ts
+          echo '--- campaign create/update db ---'
+          grep -n -A45 -B5 'createCampaignWithOwner' server/campaignDb.ts
+          grep -n -A20 -B5 'updateCampaignDetails' server/campaignDb.ts
+          echo '--- content db ---'
+          grep -n -A70 -B5 'createCampaignContent' server/campaignDb.ts
+          echo '--- campaign router create/update details ---'
+          grep -n -A18 -B5 'create: protectedProcedure.input(z.object({ organizationId' server/routers/campaign.ts
+          echo '--- contents router ---'
+          grep -n -A100 -B5 'export const contentsRouter' server/routers/campaign.ts
+          echo '--- compliance review ---'
+          grep -n -A40 -B5 'content: router({' server/routers/campaign.ts | head -n 90
+          echo '--- compliance engine content type/rule ---'
+          grep -n -A20 -B5 'content?: {' server/complianceEngine.ts
+          grep -n -A25 -B5 'if (input.action === "content.publish")' server/complianceEngine.ts
+          echo '--- journal tail ---'
+          tail -n 45 drizzle/meta/_journal.json
+          echo '--- migration files tail ---'
+          ls -1 drizzle/*.sql | tail -n 8
