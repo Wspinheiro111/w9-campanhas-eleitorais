@@ -1,0 +1,23 @@
+name: inspect-issue-7-tests
+on:
+  push:
+    branches: [fix/issue-7-synthetic-content-compliance-v2]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - shell: bash
+        run: |
+          set -euo pipefail
+          echo '--- campaign route tests mentioning contents ---'
+          grep -n -A35 -B15 -E 'contents|content\.review|campaignContents|synthetic' server/*test.ts | head -n 260 || true
+          echo '--- client files mentioning synthetic content ---'
+          grep -R -n -E 'syntheticDisclosure|isSynthetic|Conteúdo sintético|conteúdo sintético' client/src | head -n 120 || true
+          echo '--- content form context ---'
+          matches=$(grep -R -l -E 'syntheticDisclosure|isSynthetic' client/src || true)
+          for f in $matches; do echo "### $f"; grep -n -A45 -B30 -E 'syntheticDisclosure|isSynthetic' "$f" | head -n 180; done
+          echo '--- drizzle config ---'
+          cat drizzle.config.ts 2>/dev/null || cat drizzle.config.js 2>/dev/null || true
