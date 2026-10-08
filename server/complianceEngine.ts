@@ -36,6 +36,9 @@ export type ComplianceEvaluationInput = {
     isSynthetic: boolean;
     disclosureProvided: boolean;
     reviewStatus: ComplianceReviewStatus;
+    syntheticUseDeclared?: boolean;
+    usesCandidateOrPublicPerson?: boolean;
+    restrictedWindowConfigured?: boolean;
     withinRestrictedSyntheticWindow?: boolean;
   };
   survey?: {
@@ -114,8 +117,10 @@ export function evaluateCompliance(input: ComplianceEvaluationInput): Compliance
     const content = input.content;
     if (!content?.isSynthetic) return { decision: "not_applicable", reviewStatus: "not_required", reasons: ["O conteúdo não foi marcado como sintético."] };
     if (!content.disclosureProvided) return blocked(["Conteúdo sintético exige identificação explícita e acessível antes de publicação."]);
-    if (input.rules.blockSyntheticPublicationWindow && content.withinRestrictedSyntheticWindow === true) {
-      return blocked(["A regra temporal da campanha bloqueia publicação ou impulsionamento de conteúdo sintético neste período."]);
+    if (content.syntheticUseDeclared !== true) return blocked(["Conteúdo sintético exige declaração explícita sobre uso de imagem, voz ou manifestação de candidata(o) ou pessoa pública."]);
+    if (content.usesCandidateOrPublicPerson === true && content.restrictedWindowConfigured !== true) return blocked(["Configure no servidor o término do pleito e o timezone da campanha antes de aprovar esta peça sintética."]);
+    if (content.usesCandidateOrPublicPerson === true && content.withinRestrictedSyntheticWindow === true) {
+      return blocked(["Publicação, republicação ou impulsionamento desta peça sintética está bloqueado na janela temporal objetiva configurada para o pleito."]);
     }
     if (input.rules.requireHumanReviewForSyntheticContent && content.reviewStatus !== "approved") {
       return needsReview(["Conteúdo sintético exige revisão humana identificada antes de publicação."]);

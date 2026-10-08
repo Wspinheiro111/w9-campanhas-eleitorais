@@ -508,6 +508,8 @@ export async function createCampaignWithOwner(input: {
   name: string;
   candidateName: string;
   electionLabel: string;
+  electionEndsAt?: Date | null;
+  electionTimeZone?: string | null;
   region: string;
 }) {
   const db = requireDb(await getDb());
@@ -516,6 +518,8 @@ export async function createCampaignWithOwner(input: {
     name: input.name,
     candidateName: input.candidateName,
     electionLabel: input.electionLabel,
+    electionEndsAt: input.electionEndsAt ?? null,
+    electionTimeZone: input.electionTimeZone ?? null,
     region: input.region,
     ownerId: input.ownerId,
     status: "planning",
@@ -536,7 +540,7 @@ export async function createCampaignWithOwner(input: {
   return campaignId;
 }
 
-export async function updateCampaignDetails(campaignId: number, input: { name: string; candidateName: string; electionLabel: string; region: string; status: "planning" | "active" | "paused" | "closed"; actorUserId: number }) {
+export async function updateCampaignDetails(campaignId: number, input: { name: string; candidateName: string; electionLabel: string; electionEndsAt?: Date | null; electionTimeZone?: string | null; region: string; status: "planning" | "active" | "paused" | "closed"; actorUserId: number }) {
   const db = requireDb(await getDb());
   const { actorUserId, ...details } = input;
   await db.update(campaigns).set(details).where(eq(campaigns.id, campaignId));
@@ -1098,14 +1102,14 @@ export async function createCampaignContent(input: Omit<typeof campaignContents.
   return Number(result[0].insertId);
 }
 
-export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize" | "version" | "channel" | "objective" | "scheduledAt" | "ownerMemberId" | "status" | "isSynthetic" | "syntheticDisclosure" | "complianceReviewStatus" | "complianceReviewNote" | "complianceReviewedByUserId" | "complianceReviewedAt">) {
+export async function updateCampaignContent(id: number, input: Pick<typeof campaignContents.$inferInsert, "title" | "body" | "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize" | "version" | "channel" | "objective" | "scheduledAt" | "ownerMemberId" | "status" | "isSynthetic" | "syntheticDisclosure" | "syntheticUsesCandidateOrPublicPerson" | "complianceReviewStatus" | "complianceReviewNote" | "complianceReviewedByUserId" | "complianceReviewedAt" | "complianceReviewedContentVersion" | "complianceReviewedContentHash" | "complianceReviewedRuleVersion">) {
   const db = requireDb(await getDb());
   await db.update(campaignContents).set(input).where(eq(campaignContents.id, id));
 }
 
-export async function reviewCampaignContentCompliance(input: { id: number; status: "approved" | "blocked"; reviewedByUserId: number; note?: string | null }) {
+export async function reviewCampaignContentCompliance(input: { id: number; status: "approved" | "blocked"; reviewedByUserId: number; note?: string | null; contentVersion: number; contentHash: string; ruleVersion: string }) {
   const db = requireDb(await getDb());
-  await db.update(campaignContents).set({ complianceReviewStatus: input.status, complianceReviewedByUserId: input.reviewedByUserId, complianceReviewedAt: new Date(), complianceReviewNote: input.note ?? null, status: input.status === "approved" ? "approved" : "archived" }).where(eq(campaignContents.id, input.id));
+  await db.update(campaignContents).set({ complianceReviewStatus: input.status, complianceReviewedByUserId: input.reviewedByUserId, complianceReviewedAt: new Date(), complianceReviewNote: input.note ?? null, complianceReviewedContentVersion: input.contentVersion, complianceReviewedContentHash: input.contentHash, complianceReviewedRuleVersion: input.ruleVersion, status: input.status === "approved" ? "approved" : "archived" }).where(eq(campaignContents.id, input.id));
 }
 
 export async function reviewCampaignSurveyCompliance(input: { id: number; status: "approved" | "blocked"; reviewedByUserId: number; note?: string | null }) {
@@ -1115,7 +1119,13 @@ export async function reviewCampaignSurveyCompliance(input: { id: number; status
 
 export async function saveCampaignContentAsset(id: number, asset: Pick<typeof campaignContents.$inferInsert, "assetUrl" | "assetKey" | "assetName" | "assetMime" | "assetSize">) {
   const db = requireDb(await getDb());
-  await db.update(campaignContents).set(asset).where(eq(campaignContents.id, id));
+  const rows = await db.select().from(campaignContents).where(eq(campaignContents.id, id)).limit(1);
+  const content = rows[0];
+  if (!content) throw new Error("CONTENT_NOT_FOUND");
+  const invalidatedReview = content.isSynthetic || content.complianceReviewStatus === "approved";
+  const version = content.version + 1;
+  await db.update(campaignContents).set({ ...asset, version, ...(invalidatedReview ? { status: content.status === "archived" ? "archived" : "review", complianceReviewStatus: "pending" as const, complianceReviewedByUserId: null, complianceReviewedAt: null, complianceReviewNote: "Revisão reaberta após alteração do ativo vinculado.", complianceReviewedContentVersion: null, complianceReviewedContentHash: null, complianceReviewedRuleVersion: null } : {}) }).where(eq(campaignContents.id, id));
+  return { version, invalidatedReview };
 }
 
 export async function getContentById(id: number) {
@@ -1186,11 +1196,11 @@ export async function getVoterCommunicationEligibility(input: { campaignId: numb
   return { voter, doNotContact: voter.doNotContact, isSuppressed: Boolean(suppression[0]), channelAllowed, hasActiveEvidence: ledgerActive || Boolean(legacyConsent[0]) };
 }
 
-export async function recordCampaignComplianceDecision(input: { campaignId: number; action: string; entityType: string; entityId?: number | null; decision: "approved" | "blocked" | "needs_human_review" | "not_applicable"; reviewStatus: "not_required" | "pending" | "approved" | "blocked" | "cancelled"; reasons: string[]; ruleVersion: string; requestedByUserId?: number | null; reviewedByUserId?: number | null; reviewNote?: string | null; reviewedAt?: Date | null }) {
+export async function recordCampaignComplianceDecision(input: { campaignId: number; action: string; entityType: string; entityId?: number | null; decision: "approved" | "blocked" | "needs_human_review" | "not_applicable"; reviewStatus: "not_required" | "pending" | "approved" | "blocked" | "cancelled"; reasons: string[]; ruleVersion: string; entityVersion?: number | null; entityHash?: string | null; requestedByUserId?: number | null; reviewedByUserId?: number | null; reviewNote?: string | null; reviewedAt?: Date | null }) {
   const db = requireDb(await getDb());
   const organizationId = await organizationIdForCampaign(input.campaignId);
-  const result = await db.insert(campaignComplianceDecisions).values({ ...input, organizationId, entityId: input.entityId ?? null, requestedByUserId: input.requestedByUserId ?? null, reviewedByUserId: input.reviewedByUserId ?? null, reviewNote: input.reviewNote ?? null, reviewedAt: input.reviewedAt ?? null });
-  await createOrganizationAuditLog({ organizationId, actorUserId: input.requestedByUserId ?? null, action: `compliance.decision.${input.decision}`, entityType: input.entityType, entityId: input.entityId ?? null, metadata: { action: input.action, reviewStatus: input.reviewStatus, reasons: input.reasons, ruleVersion: input.ruleVersion } });
+  const result = await db.insert(campaignComplianceDecisions).values({ ...input, organizationId, entityId: input.entityId ?? null, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null, requestedByUserId: input.requestedByUserId ?? null, reviewedByUserId: input.reviewedByUserId ?? null, reviewNote: input.reviewNote ?? null, reviewedAt: input.reviewedAt ?? null });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.requestedByUserId ?? null, action: `compliance.decision.${input.decision}`, entityType: input.entityType, entityId: input.entityId ?? null, metadata: { action: input.action, reviewStatus: input.reviewStatus, reasons: input.reasons, ruleVersion: input.ruleVersion, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null } });
   return Number(result[0].insertId);
 }
 
