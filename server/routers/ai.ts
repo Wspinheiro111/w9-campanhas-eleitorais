@@ -4,7 +4,7 @@ import { transcribeAudio } from "../_core/voiceTranscription";
 import * as campaignDb from "../campaignDb";
 import { OpenRouterApiError, generateWithOpenRouter } from "../openrouter";
 import { protectedProcedure, router } from "../_core/trpc";
-import { storagePut } from "../storage";
+import { storageGetSignedUrl, storagePut } from "../storage";
 
 async function ensureAiAccess(userId: number, campaignId: number) {
   const access = await campaignDb.getCampaignAccess(campaignId, userId);
@@ -47,10 +47,9 @@ export const aiRouter = router({
     const audioBuffer = Buffer.from(rawBase64, "base64");
     if (!audioBuffer.length || audioBuffer.byteLength > 16 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "O áudio deve ter no máximo 16 MB." });
     const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, "-");
-    const savedFile = await storagePut(`campaigns/${input.campaignId}/audio-crm/${Date.now()}-${safeName}`, audioBuffer, input.mimeType);
-    const origin = `${ctx.req.protocol}://${ctx.req.get("host")}`;
-    const audioUrl = new URL(savedFile.url, origin).toString();
-    const transcription = await transcribeAudio({ audioUrl, language: "pt", prompt: "Transcreva fielmente este relato de campo em português brasileiro." });
+    const savedFile = await storagePut(`campaigns/${input.campaignId}/audio-crm/${Date.now()}-${safeName}`, audioBuffer, input.mimeType, { organizationId: access.campaign.organizationId, campaignId: input.campaignId, visibility: "private", resourceType: "audio_crm", createdByUserId: ctx.user.id });
+    const transcriptionUrl = await storageGetSignedUrl(savedFile.key);
+    const transcription = await transcribeAudio({ audioUrl: transcriptionUrl, language: "pt", prompt: "Transcreva fielmente este relato de campo em português brasileiro." });
     if ("error" in transcription) throw new TRPCError({ code: "BAD_REQUEST", message: transcription.error });
     let extractedText: string;
     try { extractedText = await generateWithOpenRouter({ systemInstruction: "Extraia somente dados explicitamente mencionados em um relato de campo. Não deduza informações. Retorne apenas JSON válido com as chaves name, phone, neighborhood, region, address, primaryDemand e engagementLevel. engagementLevel deve ser low, medium ou high; use low se não estiver explicitamente claro.", messages: [{ role: "user", content: transcription.text }], maxOutputTokens: 800, responseMimeType: "application/json" }); } catch (error) { throw aiFailure(error); }
