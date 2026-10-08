@@ -1,5 +1,6 @@
 import type { Express } from "express";
-import * as db from "../campaignDb";
+import * as campaignDb from "../campaignDb";
+import { getStorageObjectMetadata } from "../storage";
 import { ENV } from "./env";
 import { sdk } from "./sdk";
 
@@ -8,43 +9,11 @@ export function normalizeStorageKey(value: string | string[] | undefined) {
   return key?.replace(/^\/+/, "") || undefined;
 }
 
-type StorageScope =
-  | { kind: "public" }
-  | { kind: "campaign"; campaignId: number }
-  | { kind: "denied" };
-
-export function classifyStorageKey(key: string): StorageScope {
-  const segments = key.split("/");
-  if (segments.some(segment => segment === "" || segment === "." || segment === "..")) {
-    return { kind: "denied" };
-  }
-
-  if (segments[0] === "assets" && segments.length >= 2) {
-    return { kind: "public" };
-  }
-
-  if (
-    segments[0] === "campaign-certificates" &&
-    /^\d+$/.test(segments[1] ?? "") &&
-    /^\d+$/.test(segments[2] ?? "") &&
-    segments.length >= 4
-  ) {
-    return { kind: "public" };
-  }
-
-  if (
-    segments[0] === "campaigns" &&
-    /^[1-9]\d*$/.test(segments[1] ?? "") &&
-    segments.length >= 3
-  ) {
-    return { kind: "campaign", campaignId: Number(segments[1]) };
-  }
-
-  return { kind: "denied" };
-}
-
 export function registerStorageProxy(app: Express) {
   app.get("/manus-storage/*key", async (req, res) => {
+    // Storage responses must never be cached, including denials and backend errors.
+    res.set("Cache-Control", "no-store");
+
     const key = normalizeStorageKey(
       (req.params as { key?: string | string[] }).key,
     );
@@ -53,13 +22,21 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
-    const scope = classifyStorageKey(key);
-    if (scope.kind === "denied") {
+    let metadata;
+    try {
+      metadata = await getStorageObjectMetadata(key);
+    } catch {
+      res.status(503).send("Storage metadata unavailable");
+      return;
+    }
+
+    // Exact metadata lookup is the authority. A plausible path/prefix alone is never enough.
+    if (!metadata) {
       res.status(404).send("Storage object not found");
       return;
     }
 
-    if (scope.kind === "campaign") {
+    if (metadata.visibility !== "public") {
       let user;
       try {
         user = await sdk.authenticateRequest(req);
@@ -68,8 +45,20 @@ export function registerStorageProxy(app: Express) {
         return;
       }
 
-      const access = await db.getCampaignAccess(scope.campaignId, user.id);
-      if (!access) {
+      if (metadata.campaignId !== null) {
+        const access = await campaignDb.getCampaignAccess(metadata.campaignId, user.id);
+        if (!access || access.campaign.organizationId !== metadata.organizationId) {
+          res.status(403).send("Storage object not available");
+          return;
+        }
+      } else if (metadata.organizationId !== null) {
+        const membership = await campaignDb.getOrganizationMembership(user.id, metadata.organizationId);
+        if (!membership || membership.active === false) {
+          res.status(403).send("Storage object not available");
+          return;
+        }
+      } else {
+        // Private objects without an owning tenant are invalid metadata and fail closed.
         res.status(403).send("Storage object not available");
         return;
       }
@@ -92,22 +81,22 @@ export function registerStorageProxy(app: Express) {
       });
 
       if (!forgeResp.ok) {
-        const body = await forgeResp.text().catch(() => "");
-        console.error(`[StorageProxy] forge error: ${forgeResp.status} ${body}`);
+        // Do not log Forge response bodies: they may contain sensitive backend details.
+        console.error(`[StorageProxy] forge request failed with status ${forgeResp.status}`);
         res.status(502).send("Storage backend error");
         return;
       }
 
       const { url } = (await forgeResp.json()) as { url: string };
       if (!url) {
-        res.status(502).send("Empty signed URL from backend");
+        res.status(502).send("Storage backend returned no URL");
         return;
       }
 
-      res.set("Cache-Control", "no-store");
       res.redirect(307, url);
-    } catch (err) {
-      console.error("[StorageProxy] failed:", err);
+    } catch {
+      // Keep logs free of API keys, object PII and signed URLs.
+      console.error("[StorageProxy] backend request failed");
       res.status(502).send("Storage proxy error");
     }
   });
