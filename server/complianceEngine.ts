@@ -1,3 +1,5 @@
+import { MANDATORY_COMPLIANCE_BASELINE } from "./mandatoryComplianceBaseline";
+
 export type ComplianceAction =
   | "contact.import"
   | "communication.log_electoral"
@@ -144,8 +146,8 @@ export function evaluateCompliance(input: ComplianceEvaluationInput): Compliance
   if (input.action === "financial.register") {
     const financial = input.financial;
     if (!financial) return blocked(["Dados financeiros insuficientes para validação preparatória."]);
-    if (input.rules.blockBusinessDonation && financial.entryType === "income" && financial.counterpartyDocumentDigits === 14) {
-      return blocked(["A política da campanha bloqueia receita identificada por CNPJ."]);
+    if (MANDATORY_COMPLIANCE_BASELINE.blocksBusinessDonations && financial.entryType === "income" && financial.counterpartyDocumentDigits === 14) {
+      return blocked(["O baseline obrigatório bloqueia receita identificada por CNPJ."]);
     }
     if (input.rules.requireExpenseDocument && financial.entryType === "expense" && !financial.evidenceProvided) {
       return blocked(["Despesa exige documento ou recibo anexado pela política da campanha."]);

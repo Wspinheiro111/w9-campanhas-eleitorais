@@ -1,0 +1,2 @@
+ALTER TABLE `campaign_compliance_decisions` ADD `baselineVersion` varchar(32) DEFAULT 'legacy' NOT NULL;--> statement-breakpoint
+ALTER TABLE `campaign_compliance_decisions` ADD `localPolicyVersion` varchar(32) DEFAULT 'legacy' NOT NULL;

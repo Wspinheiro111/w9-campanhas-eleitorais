@@ -79,6 +79,7 @@ import {
 import { getDb, getUserByEmail, registerLocalUser } from "./db";
 import { summarizePerformanceEvents } from "./routeMetrics";
 import { getInitialFinancialEntryStatus, isFinancialEntryIncludedInActiveBalance } from "./financialStatus";
+import { MANDATORY_COMPLIANCE_BASELINE } from "./mandatoryComplianceBaseline";
 
 export type CampaignAccess = {
   campaign: typeof campaigns.$inferSelect;
@@ -1199,8 +1200,8 @@ export async function getVoterCommunicationEligibility(input: { campaignId: numb
 export async function recordCampaignComplianceDecision(input: { campaignId: number; action: string; entityType: string; entityId?: number | null; decision: "approved" | "blocked" | "needs_human_review" | "not_applicable"; reviewStatus: "not_required" | "pending" | "approved" | "blocked" | "cancelled"; reasons: string[]; ruleVersion: string; entityVersion?: number | null; entityHash?: string | null; requestedByUserId?: number | null; reviewedByUserId?: number | null; reviewNote?: string | null; reviewedAt?: Date | null }) {
   const db = requireDb(await getDb());
   const organizationId = await organizationIdForCampaign(input.campaignId);
-  const result = await db.insert(campaignComplianceDecisions).values({ ...input, organizationId, entityId: input.entityId ?? null, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null, requestedByUserId: input.requestedByUserId ?? null, reviewedByUserId: input.reviewedByUserId ?? null, reviewNote: input.reviewNote ?? null, reviewedAt: input.reviewedAt ?? null });
-  await createOrganizationAuditLog({ organizationId, actorUserId: input.requestedByUserId ?? null, action: `compliance.decision.${input.decision}`, entityType: input.entityType, entityId: input.entityId ?? null, metadata: { action: input.action, reviewStatus: input.reviewStatus, reasons: input.reasons, ruleVersion: input.ruleVersion, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null } });
+  const result = await db.insert(campaignComplianceDecisions).values({ ...input, organizationId, entityId: input.entityId ?? null, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null, baselineVersion: MANDATORY_COMPLIANCE_BASELINE.version, localPolicyVersion: input.ruleVersion, requestedByUserId: input.requestedByUserId ?? null, reviewedByUserId: input.reviewedByUserId ?? null, reviewNote: input.reviewNote ?? null, reviewedAt: input.reviewedAt ?? null });
+  await createOrganizationAuditLog({ organizationId, actorUserId: input.requestedByUserId ?? null, action: `compliance.decision.${input.decision}`, entityType: input.entityType, entityId: input.entityId ?? null, metadata: { action: input.action, reviewStatus: input.reviewStatus, reasons: input.reasons, ruleVersion: input.ruleVersion, baselineVersion: MANDATORY_COMPLIANCE_BASELINE.version, localPolicyVersion: input.ruleVersion, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null } });
   return Number(result[0].insertId);
 }
 

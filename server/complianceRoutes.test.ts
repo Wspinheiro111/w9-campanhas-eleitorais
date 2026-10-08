@@ -82,6 +82,13 @@ describe("W9 Compliance Eleitoral", () => {
     expect(db.recordCampaignComplianceDecision).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, action: "communication.export_contacts", requestedByUserId: 99 }));
   });
 
+  it("não permite desativar baseline obrigatório pela API de regras", async () => {
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);
+    const caller = appRouter.createCaller(context());
+    await expect(caller.compliance.rules.update({ campaignId: 1, blockBusinessDonation: false, requireExpenseDocument: true, reviewDeadlineHours: 72, blockElectoralPhoneContact: true, requireConsentEvidence: true, requireHumanReviewForSyntheticContent: true, blockSyntheticPublicationWindow: true, requireResearchRegistrationForPublication: true, requireFinancialEvidence: true, ruleVersion: "2026.1" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("baseline obrigatório") });
+    expect(db.updateCampaignComplianceRules).not.toHaveBeenCalled();
+  });
+
   it("impede revisão que tente aprovar conteúdo sintético sem identificação", async () => {
     vi.mocked(db.getContentById).mockResolvedValue(syntheticContent({ syntheticDisclosure: null, syntheticUsesCandidateOrPublicPerson: true }) as never);
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);
