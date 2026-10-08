@@ -58,19 +58,33 @@ jobs:
 
           python - <<'PY'
           from pathlib import Path
+          import re
 
           migration = Path('drizzle/0007_wild_ken_ellis.sql')
           text = migration.read_text()
           old = "INSERT INTO `organizations` (`name`, `createdById`, `status`) SELECT 'Organização migrada', (SELECT MIN(`id`) FROM `users`), 'active' WHERE NOT EXISTS (SELECT 1 FROM `organizations`);"
           new = "INSERT INTO `organizations` (`name`, `createdById`, `organization_status`) SELECT 'Organização migrada', (SELECT MIN(`id`) FROM `users`), 'active' WHERE NOT EXISTS (SELECT 1 FROM `organizations`);"
-          assert text.count(old) == 1
+          assert text.count(old) == 1, 'organization seed migration anchor changed'
           migration.write_text(text.replace(old, new, 1))
+
+          corrupted = []
+          pattern = re.compile(r'(ALTER TABLE `event_registrations` ADD CONSTRAINT `evreg_volunteer_fk`[^;]*;)[^\n]*webdev_apply_patch[^\n]*(\n)')
+          for path in Path('drizzle').glob('*.sql'):
+            candidate = path.read_text()
+            if 'evreg_volunteer_fk' not in candidate or 'webdev_apply_patch' not in candidate:
+              continue
+            repaired, count = pattern.subn(r'\1\2', candidate)
+            assert count == 1, f'unexpected corrupted SQL shape in {path}'
+            path.write_text(repaired)
+            corrupted.append(path)
+          assert len(corrupted) == 1, f'expected exactly one corrupted migration, found {corrupted}'
+          print(f'repaired corrupted migration: {corrupted[0]}')
 
           ci = Path('.github/workflows/ci.yml')
           text = ci.read_text()
           old = '      - name: Audit dependencies (high and critical)\n        run: pnpm audit --audit-level high\n'
           new = '      - name: Audit production dependencies (high and critical)\n        run: pnpm audit --prod --audit-level high\n      - name: Report full dependency audit\n        continue-on-error: true\n        run: pnpm audit --audit-level high\n'
-          assert text.count(old) == 1
+          assert text.count(old) == 1, 'CI dependency gate anchor changed'
           ci.write_text(text.replace(old, new, 1))
 
           docs = Path('docs/CI.md')
@@ -104,7 +118,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json pnpm-lock.yaml drizzle/0007_wild_ken_ellis.sql .github/workflows/ci.yml docs/CI.md
+          git add package.json pnpm-lock.yaml drizzle/*.sql .github/workflows/ci.yml docs/CI.md
           git diff --cached --check
           git commit -m "ci: remediate runtime audit and migration baseline [ci-debt-remediated]"
           git push origin HEAD:ci/issue-5-quality-pipeline
