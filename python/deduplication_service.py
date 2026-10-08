@@ -2,9 +2,6 @@ import json
 import re
 import unicodedata
 import sys
-from flask import Flask, jsonify, request
-
-app = Flask(__name__)
 
 
 def normalize_text(value):
@@ -33,9 +30,7 @@ def display_contact(item):
     }
 
 
-@app.post("/deduplicate")
-def deduplicate():
-    payload = request.get_json(silent=True) or {}
+def deduplicate_payload(payload):
     existing = payload.get("existing", [])
     incoming = payload.get("incoming", [])
     by_email, by_phone, by_name_neighborhood = {}, {}, {}
@@ -88,15 +83,13 @@ def deduplicate():
         if phone:
             seen_phones.add(phone)
 
-    return jsonify({"newContacts": new_contacts, "updates": updates, "candidates": candidates})
+    return {"newContacts": new_contacts, "updates": updates, "candidates": candidates}
 
 
 if __name__ == "__main__":
     try:
         payload = json.loads(sys.stdin.read() or "{}")
-        with app.test_client() as client:
-            response = client.post("/deduplicate", json=payload)
-            sys.stdout.write(json.dumps(response.get_json()))
+        sys.stdout.write(json.dumps(deduplicate_payload(payload)))
     except Exception as error:
         sys.stderr.write(str(error))
         sys.exit(1)
