@@ -1,0 +1,101 @@
+name: implement-issue-8
+on:
+  push:
+    branches: [fix/issue-8-mandatory-compliance-baseline]
+permissions:
+  contents: write
+jobs:
+  implement:
+    if: ${{ !contains(github.event.head_commit.message, '[issue-8-implemented]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_GA_MEASUREMENT_ID: G-ABCDEFGHIJ
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply mandatory baseline
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          def rep(path, old, new, count=1):
+              p=Path(path); t=p.read_text(); n=t.count(old)
+              if n != count: raise SystemExit(f"{path}: expected {count}, got {n}: {old[:100]!r}")
+              p.write_text(t.replace(old,new,count))
+
+          rep('drizzle/schema.ts',
+              '  entityHash: varchar("entityHash", { length: 64 }),\n  requestedByUserId:',
+              '  entityHash: varchar("entityHash", { length: 64 }),\n  baselineVersion: varchar("baselineVersion", { length: 32 }).notNull().default("legacy"),\n  localPolicyVersion: varchar("localPolicyVersion", { length: 32 }).notNull().default("legacy"),\n  requestedByUserId:')
+
+          rep('server/complianceEngine.ts',
+              'export type ComplianceAction =',
+              'import { MANDATORY_COMPLIANCE_BASELINE } from "./mandatoryComplianceBaseline";\n\nexport type ComplianceAction =')
+          rep('server/complianceEngine.ts',
+              '    if (input.rules.blockBusinessDonation && financial.entryType === "income" && financial.counterpartyDocumentDigits === 14) {\n      return blocked(["A política da campanha bloqueia receita identificada por CNPJ."]);\n    }',
+              '    if (MANDATORY_COMPLIANCE_BASELINE.blocksBusinessDonations && financial.entryType === "income" && financial.counterpartyDocumentDigits === 14) {\n      return blocked(["O baseline obrigatório bloqueia receita identificada por CNPJ."]);\n    }')
+
+          rep('server/campaignDb.ts',
+              'import { getInitialFinancialEntryStatus, isFinancialEntryIncludedInActiveBalance } from "./financialStatus";\n',
+              'import { getInitialFinancialEntryStatus, isFinancialEntryIncludedInActiveBalance } from "./financialStatus";\nimport { MANDATORY_COMPLIANCE_BASELINE } from "./mandatoryComplianceBaseline";\n')
+          rep('server/campaignDb.ts',
+              'const result = await db.insert(campaignComplianceDecisions).values({ ...input, organizationId, entityId: input.entityId ?? null, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null, requestedByUserId:',
+              'const result = await db.insert(campaignComplianceDecisions).values({ ...input, organizationId, entityId: input.entityId ?? null, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null, baselineVersion: MANDATORY_COMPLIANCE_BASELINE.version, localPolicyVersion: input.ruleVersion, requestedByUserId:')
+          rep('server/campaignDb.ts',
+              'ruleVersion: input.ruleVersion, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null } });',
+              'ruleVersion: input.ruleVersion, baselineVersion: MANDATORY_COMPLIANCE_BASELINE.version, localPolicyVersion: input.ruleVersion, entityVersion: input.entityVersion ?? null, entityHash: input.entityHash ?? null } });')
+
+          rep('server/routers/campaign.ts',
+              'import { isValidIanaTimeZone } from "../syntheticContentPolicy";\n',
+              'import { isValidIanaTimeZone } from "../syntheticContentPolicy";\nimport { assertMandatoryComplianceSettings } from "../mandatoryComplianceBaseline";\n')
+          anchor='function validateElectionConfiguration(electionEndsAt: Date | null | undefined, electionTimeZone: string | null | undefined) {\n'
+          helper='function validateMandatoryComplianceSettings(input: { blockBusinessDonation: boolean; blockSyntheticPublicationWindow: boolean }) {\n  try { assertMandatoryComplianceSettings(input); } catch (error) {\n    const code = error instanceof Error ? error.message : "MANDATORY_COMPLIANCE_RULE";\n    const message = code === "MANDATORY_BUSINESS_DONATION_RULE" ? "O bloqueio de receita identificada por CNPJ pertence ao baseline obrigatório e não pode ser desativado." : code === "MANDATORY_SYNTHETIC_WINDOW_RULE" ? "A janela objetiva de conteúdo sintético pertence ao baseline obrigatório e não pode ser desativada." : "Regra obrigatória de compliance inválida.";\n    throw new TRPCError({ code: "BAD_REQUEST", message });\n  }\n}\n\n'+anchor
+          rep('server/routers/campaign.ts',anchor,helper)
+          old='return db.updateCampaignComplianceRules({ ...input, updatedByUserId: ctx.user.id });'
+          new='validateMandatoryComplianceSettings(input); return db.updateCampaignComplianceRules({ ...input, updatedByUserId: ctx.user.id });'
+          rep('server/routers/campaign.ts',old,new,2)
+
+          # Engine regression: local flag false cannot weaken CNPJ block.
+          p=Path('server/complianceEngine.test.ts'); t=p.read_text(); marker='  it("bloqueia pesquisa pública sem referência de registro", () => {'
+          if marker not in t: raise SystemExit('engine test marker missing')
+          test='''  it("mantém bloqueio obrigatório de receita por CNPJ mesmo com política local falsa", () => {\n    const result = evaluateCompliance({ action: "financial.register", rules: { ...rules, blockBusinessDonation: false }, financial: { entryType: "income", counterpartyDocumentDigits: 14, evidenceProvided: true } });\n    expect(result.decision).toBe("blocked");\n  });\n\n'''
+          p.write_text(t.replace(marker,test+marker,1))
+
+          # Route regression: API cannot disable mandatory baseline.
+          p=Path('server/complianceRoutes.test.ts'); t=p.read_text(); marker='  it("impede revisão que tente aprovar conteúdo sintético sem identificação", async () => {'
+          if marker not in t: raise SystemExit('routes test marker missing')
+          test='''  it("não permite desativar baseline obrigatório pela API de regras", async () => {\n    vi.mocked(db.getCampaignAccess).mockResolvedValue(access("admin") as never);\n    const caller = appRouter.createCaller(context());\n    await expect(caller.compliance.rules.update({ campaignId: 1, blockBusinessDonation: false, requireExpenseDocument: true, reviewDeadlineHours: 72, blockElectoralPhoneContact: true, requireConsentEvidence: true, requireHumanReviewForSyntheticContent: true, blockSyntheticPublicationWindow: true, requireResearchRegistrationForPublication: true, requireFinancialEvidence: true, ruleVersion: "2026.1" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("baseline obrigatório") });\n    expect(db.updateCampaignComplianceRules).not.toHaveBeenCalled();\n  });\n\n'''
+          p.write_text(t.replace(marker,test+marker,1))
+          PY
+      - name: Generate migration 0064
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/w9
+        run: pnpm exec drizzle-kit generate --name mandatory_compliance_baseline
+      - name: Assert migration scope
+        run: |
+          test -f drizzle/0064_mandatory_compliance_baseline.sql
+          grep -q baselineVersion drizzle/0064_mandatory_compliance_baseline.sql
+          grep -q localPolicyVersion drizzle/0064_mandatory_compliance_baseline.sql
+      - name: Focused tests
+        run: pnpm exec vitest run server/mandatoryComplianceBaseline.test.ts server/complianceEngine.test.ts server/complianceRoutes.test.ts server/contentCompliancePolicy.test.ts server/syntheticContentPolicy.test.ts
+      - name: TypeScript
+        run: pnpm check
+      - name: Full deterministic suite
+        run: pnpm exec vitest run --exclude server/googleCredentials.test.ts --exclude server/openrouter.health.test.ts --exclude server/geminiApi.test.ts --exclude server/analytics.ga.test.ts
+      - name: Build
+        run: pnpm build
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add drizzle server
+          git diff --cached --check
+          git commit -m "fix(compliance): enforce mandatory legal baseline [issue-8-implemented]"
+          git push
