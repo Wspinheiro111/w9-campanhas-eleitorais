@@ -22,5 +22,5 @@ CREATE TABLE `platform_customer_portfolio_schedules` (
 );
 --> statement-breakpoint
 -- O vínculo da tarefa é lógico e validado pelo identificador seguro do agendamento; não há chave estrangeira física para evitar nomes de restrição incompatíveis com o limite do banco.--> statement-breakpoint
-ALTER TABLE `platform_customer_portfolio_schedules` ADD CONSTRAINT `platform_customer_portfolio_schedules_createdByUserId_users_id_fk` FOREIGN KEY (`createdByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `platform_customer_portfolio_schedules` ADD CONSTRAINT `pcps_created_by_user_fk` FOREIGN KEY (`createdByUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX `platform_customer_portfolio_report_schedule_idx` ON `platform_customer_portfolio_reports` (`scheduleTaskUid`,`generatedAt`);
