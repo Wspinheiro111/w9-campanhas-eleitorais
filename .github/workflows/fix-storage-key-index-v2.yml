@@ -1,0 +1,63 @@
+name: fix-storage-key-index-v2
+on:
+  push:
+    branches: [fix/issue-1-storage-proxy-authorization]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, '[storage-key-index-fixed]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_GA_MEASUREMENT_ID: G-ABCDEFGHIJ
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: python -m pip install flask
+      - name: Patch only indexed storage object key
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('drizzle/schema.ts'); t=p.read_text()
+          old='''export const storageObjects = mysqlTable("storage_objects", {\n  id: int("id").autoincrement().primaryKey(),\n  storageKey: varchar("storageKey", { length: 1000 }).notNull(),'''
+          new='''export const storageObjects = mysqlTable("storage_objects", {\n  id: int("id").autoincrement().primaryKey(),\n  storageKey: varchar("storageKey", { length: 700 }).notNull(),'''
+          if t.count(old)!=1: raise SystemExit('storageObjects schema anchor mismatch')
+          p.write_text(t.replace(old,new,1))
+          p=Path('drizzle/0062_storage_objects.sql'); t=p.read_text()
+          if t.count('`storageKey` varchar(1000)')!=1: raise SystemExit('0062 anchor mismatch')
+          p.write_text(t.replace('`storageKey` varchar(1000)','`storageKey` varchar(700)',1))
+          p=Path('server/storage.ts'); t=p.read_text()
+          old='''function normalizeKey(relKey: string): string {\n  return relKey.replace(/^\\/+/, "");\n}'''
+          new='''export const MAX_STORAGE_KEY_LENGTH = 700;\n\nfunction normalizeKey(relKey: string): string {\n  const key = relKey.replace(/^\\/+/, "");\n  if (!key || key.length > MAX_STORAGE_KEY_LENGTH) throw new Error(`Storage key must contain between 1 and ${MAX_STORAGE_KEY_LENGTH} characters`);\n  return key;\n}'''
+          if t.count(old)!=1: raise SystemExit('normalizeKey anchor mismatch')
+          p.write_text(t.replace(old,new,1))
+          PY
+      - name: Assert migration and schema
+        run: |
+          grep -q 'storageKey.*varchar(700).*NOT NULL' drizzle/0062_storage_objects.sql
+          ! grep -q 'storageKey.*varchar(1000).*NOT NULL' drizzle/0062_storage_objects.sql
+      - name: Focused storage tests
+        run: pnpm exec vitest run server/storage*.test.ts server/_core/storageProxy*.test.ts
+      - name: TypeScript
+        run: pnpm check
+      - name: Deterministic suite
+        run: pnpm exec vitest run --exclude server/googleCredentials.test.ts --exclude server/openrouter.health.test.ts --exclude server/geminiApi.test.ts --exclude server/analytics.ga.test.ts
+      - name: Build
+        run: pnpm build
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add drizzle/schema.ts drizzle/0062_storage_objects.sql server/storage.ts
+          git diff --cached --check
+          git commit -m "fix(storage): keep metadata key index within MySQL limit [storage-key-index-fixed]"
+          git push
