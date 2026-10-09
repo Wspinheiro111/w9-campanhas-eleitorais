@@ -435,6 +435,13 @@
       "when": 1787884264037,
       "tag": "0061_nifty_makkari",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "5",
+      "when": 1791421919693,
+      "tag": "0062_storage_objects",
+      "breakpoints": true
     }
   ]
 }

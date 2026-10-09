@@ -15,7 +15,7 @@
  *     }]
  *   });
  */
-import { storagePut } from "server/storage";
+import { storagePut, type StorageObjectMetadataInput } from "server/storage";
 import { ENV } from "./env";
 
 // Default model for generated sites. "MODEL_GPT_IMAGE_2" is the forge images.v1
@@ -34,6 +34,8 @@ export type GenerateImageOptions = {
   model?: string;
   /** Generation quality, e.g. "medium" | "high". Defaults to "medium" for GPT Image 2. */
   quality?: string;
+  /** Explicit ownership/visibility metadata for the generated object. */
+  storageMetadata: StorageObjectMetadataInput;
 };
 
 export type GenerateImageResponse = {
@@ -99,7 +101,8 @@ export async function generateImage(
   const { url } = await storagePut(
     `generated/${Date.now()}.png`,
     buffer,
-    result.image.mimeType
+    result.image.mimeType,
+    options.storageMetadata
   );
   return {
     url,

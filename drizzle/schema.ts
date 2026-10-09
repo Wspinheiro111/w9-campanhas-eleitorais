@@ -572,6 +572,23 @@ export const campaigns = mysqlTable("campaigns", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("campaign_owner_idx").on(table.ownerId), index("campaign_organization_idx").on(table.organizationId)]);
 
+export const storageObjects = mysqlTable("storage_objects", {
+  id: int("id").autoincrement().primaryKey(),
+  storageKey: varchar("storageKey", { length: 700 }).notNull(),
+  organizationId: int("organizationId").references(() => organizations.id),
+  campaignId: int("campaignId").references(() => campaigns.id),
+  visibility: mysqlEnum("visibility", ["private", "public"]).notNull().default("private"),
+  resourceType: varchar("resourceType", { length: 80 }).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("storage_object_key_unique_idx").on(table.storageKey),
+  index("storage_object_campaign_idx").on(table.campaignId),
+  index("storage_object_organization_idx").on(table.organizationId),
+  index("storage_object_visibility_idx").on(table.visibility),
+]);
+
 export const campaignMembers = mysqlTable("campaign_members", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull().references(() => organizations.id),

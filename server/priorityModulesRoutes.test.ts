@@ -165,7 +165,7 @@ describe("módulos prioritários", () => {
     await expect(appRouter.createCaller(context(12)).volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: pngDataUrl })).rejects.toMatchObject({ code: "FORBIDDEN" });
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never); vi.mocked(storagePut).mockResolvedValue({ key: "campaign-certificates/1/1/logo.png", url: "/manus-storage/campaign-certificates/1/1/logo.png" } as never);
     await expect(appRouter.createCaller(context()).volunteers.certificates.settings.uploadAsset({ campaignId: 1, assetType: "logo", dataUrl: pngDataUrl })).resolves.toEqual({ url: "/manus-storage/campaign-certificates/1/1/logo.png" });
-    expect(storagePut).toHaveBeenCalledWith(expect.stringMatching(/^campaign-certificates\/1\/1\/logo-[a-f0-9]+\.png$/), expect.any(Buffer), "image/png");
+    expect(storagePut).toHaveBeenCalledWith(expect.stringMatching(/^campaign-certificates\/1\/1\/logo-[a-f0-9]+\.png$/), expect.any(Buffer), "image/png", expect.objectContaining({ organizationId: 1, campaignId: 1, visibility: "public", resourceType: "certificate_logo", createdByUserId: 99 }));
   });
 
   it("rejeita SVG e conteúdo que não corresponde ao formato declarado no ativo de certificado", async () => {
