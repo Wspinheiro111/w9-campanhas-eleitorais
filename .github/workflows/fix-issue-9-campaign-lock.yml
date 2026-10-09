@@ -1,0 +1,95 @@
+name: fix-issue-9-campaign-lock
+on:
+  push:
+    branches: [fix/issue-9-critical-write-transactions]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[issue-9-lock]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Serialize critical commands on campaign row
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('server/criticalWriteCommands.ts')
+          text = p.read_text()
+          old = '''    const campaignRows = await tx
+      .select({ organizationId: campaigns.organizationId })
+      .from(campaigns)
+      .where(eq(campaigns.id, scope.campaignId))
+      .limit(1);
+    const organizationId = campaignRows[0]?.organizationId;
+    if (!organizationId) throw new Error("CAMPAIGN_NOT_FOUND");
+
+    // O upsert é também o claim concorrente da chave. Em MySQL, uma colisão no
+    // índice UNIQUE aguarda a transação dona da linha; depois do wait, a leitura
+    // abaixo enxerga o resultado já confirmado e evita executar o comando duas vezes.
+    await tx
+      .insert(campaignCommandIdempotency)
+      .values({
+        organizationId,
+        campaignId: scope.campaignId,
+        operation: scope.operation,
+        commandKey: scope.commandKey,
+        result: null,
+      })
+      .onDuplicateKeyUpdate({ set: { commandKey: scope.commandKey } });
+
+    const claimed = await tx
+      .select({ result: campaignCommandIdempotency.result })
+      .from(campaignCommandIdempotency)
+      .where(and(
+        eq(campaignCommandIdempotency.campaignId, scope.campaignId),
+        eq(campaignCommandIdempotency.operation, scope.operation),
+        eq(campaignCommandIdempotency.commandKey, scope.commandKey),
+      ))
+      .limit(1);
+    if (claimed[0]?.result) return claimed[0].result as T;
+'''
+          new = '''    // Os comandos críticos são curtos e pouco frequentes. Travar a linha da campanha
+    // serializa as intents concorrentes entre processos/instâncias sem depender de
+    // estado em memória. Depois que a transação anterior confirma, o segundo caller
+    // enxerga o resultado da mesma idempotency key e não repete os efeitos de negócio.
+    const campaignRows = await tx
+      .select({ organizationId: campaigns.organizationId })
+      .from(campaigns)
+      .where(eq(campaigns.id, scope.campaignId))
+      .limit(1)
+      .for("update");
+    const organizationId = campaignRows[0]?.organizationId;
+    if (!organizationId) throw new Error("CAMPAIGN_NOT_FOUND");
+
+    const claimed = await tx
+      .select({ result: campaignCommandIdempotency.result })
+      .from(campaignCommandIdempotency)
+      .where(and(
+        eq(campaignCommandIdempotency.campaignId, scope.campaignId),
+        eq(campaignCommandIdempotency.operation, scope.operation),
+        eq(campaignCommandIdempotency.commandKey, scope.commandKey),
+      ))
+      .limit(1);
+    if (claimed[0]?.result) return claimed[0].result as T;
+    if (!claimed[0]) {
+      await tx.insert(campaignCommandIdempotency).values({
+        organizationId,
+        campaignId: scope.campaignId,
+        operation: scope.operation,
+        commandKey: scope.commandKey,
+        result: null,
+      });
+    }
+'''
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exact block once, got {text.count(old)}')
+          p.write_text(text.replace(old, new))
+          PY
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/criticalWriteCommands.ts
+          git commit -m "fix(data): serialize critical command claims per campaign [issue-9-lock]"
+          git push
