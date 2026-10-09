@@ -39,27 +39,17 @@ async function withCommand<T extends Record<string, unknown>>(
 ): Promise<T> {
   const db = requireDb(await getDb());
   return db.transaction(async tx => {
+    // Comandos críticos são curtos e pouco frequentes. O lock da linha da campanha
+    // serializa intents concorrentes entre processos/instâncias; o segundo caller
+    // então lê o resultado idempotente já confirmado em vez de repetir efeitos.
     const campaignRows = await tx
       .select({ organizationId: campaigns.organizationId })
       .from(campaigns)
       .where(eq(campaigns.id, scope.campaignId))
-      .limit(1);
+      .limit(1)
+      .for("update");
     const organizationId = campaignRows[0]?.organizationId;
     if (!organizationId) throw new Error("CAMPAIGN_NOT_FOUND");
-
-    // O upsert é também o claim concorrente da chave. Em MySQL, uma colisão no
-    // índice UNIQUE aguarda a transação dona da linha; depois do wait, a leitura
-    // abaixo enxerga o resultado já confirmado e evita executar o comando duas vezes.
-    await tx
-      .insert(campaignCommandIdempotency)
-      .values({
-        organizationId,
-        campaignId: scope.campaignId,
-        operation: scope.operation,
-        commandKey: scope.commandKey,
-        result: null,
-      })
-      .onDuplicateKeyUpdate({ set: { commandKey: scope.commandKey } });
 
     const claimed = await tx
       .select({ result: campaignCommandIdempotency.result })
@@ -71,6 +61,15 @@ async function withCommand<T extends Record<string, unknown>>(
       ))
       .limit(1);
     if (claimed[0]?.result) return claimed[0].result as T;
+    if (!claimed[0]) {
+      await tx.insert(campaignCommandIdempotency).values({
+        organizationId,
+        campaignId: scope.campaignId,
+        operation: scope.operation,
+        commandKey: scope.commandKey,
+        result: null,
+      });
+    }
 
     const result = await work(tx, organizationId);
     await tx
