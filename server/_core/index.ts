@@ -12,6 +12,7 @@ import { serveStatic, setupVite } from "./vite";
 import { recordRoutePerformanceEvent } from "../campaignDb";
 import { generatePlatformCustomerPortfolioReport } from "../campaignDb";
 import { normalizeTelemetryRoute } from "../routeMetrics";
+import { validateRuntimeTotpEncryptionConfiguration } from "../authSecurity";
 import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -34,6 +35,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  validateRuntimeTotpEncryptionConfiguration();
+
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
@@ -86,4 +89,7 @@ async function startServer() {
   server.listen(port);
 }
 
-startServer().catch(console.error);
+startServer().catch(error => {
+  console.error("[startup] server initialization failed", error instanceof Error ? error.message : "unknown");
+  process.exitCode = 1;
+});
