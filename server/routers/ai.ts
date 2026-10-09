@@ -2,7 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { transcribeAudio } from "../_core/voiceTranscription";
 import * as campaignDb from "../campaignDb";
-import { OpenRouterApiError, generateWithOpenRouter } from "../openrouter";
+import { OpenRouterApiError } from "../openrouter";
+import { extractDirectIdentifiers, generateThroughAiPrivacyGateway } from "../aiPrivacyGateway";
 import { protectedProcedure, router } from "../_core/trpc";
 import { storageGetSignedUrl, storagePut } from "../storage";
 
@@ -26,7 +27,7 @@ export const aiRouter = router({
     const history = await campaignDb.listAiMessages(input.campaignId, ctx.user.id, "chat");
     await campaignDb.saveAiMessage({ campaignId: input.campaignId, userId: ctx.user.id, kind: "chat", role: "user", content: input.message });
     let answer: string;
-    try { answer = await generateWithOpenRouter({ systemInstruction: `${AI_GUARDRAILS}\nCampanha: ${access.campaign.name}. Cargo/eleição: ${access.campaign.electionLabel}. Região: ${access.campaign.region}.`, messages: [...history.reverse().map(item => ({ role: item.role === "assistant" ? "assistant" as const : "user" as const, content: item.content })), { role: "user", content: input.message }] }); } catch (error) { throw aiFailure(error); }
+    try { answer = await generateThroughAiPrivacyGateway({ organizationId: access.campaign.organizationId, campaignId: input.campaignId, userId: ctx.user.id, purpose: "operational_chat", systemInstruction: `${AI_GUARDRAILS}\nCampanha: ${access.campaign.name}. Cargo/eleição: ${access.campaign.electionLabel}. Região: ${access.campaign.region}.`, messages: [...history.reverse().map(item => ({ role: item.role === "assistant" ? "assistant" as const : "user" as const, content: item.content })), { role: "user", content: input.message }] }); } catch (error) { throw aiFailure(error); }
     await campaignDb.saveAiMessage({ campaignId: input.campaignId, userId: ctx.user.id, kind: "chat", role: "assistant", content: answer });
     return { answer };
   }),
@@ -35,7 +36,7 @@ export const aiRouter = router({
     const prompt = `Crie um ${input.format} de comunicação pública e institucional para a campanha ${access.campaign.name}. Tema: ${input.subject}. Objetivo: ${input.objective}. Tom: ${input.tone}. O texto deve ser geral, não usar dados pessoais, não fazer microsegmentação, evitar alegações não verificáveis e incluir uma nota curta de revisão antes da publicação.`;
     await campaignDb.saveAiMessage({ campaignId: input.campaignId, userId: ctx.user.id, kind: "content", role: "user", content: prompt, metadata: input });
     let content: string;
-    try { content = await generateWithOpenRouter({ systemInstruction: AI_GUARDRAILS, messages: [{ role: "user", content: prompt }] }); } catch (error) { throw aiFailure(error); }
+    try { content = await generateThroughAiPrivacyGateway({ organizationId: access.campaign.organizationId, campaignId: input.campaignId, userId: ctx.user.id, purpose: "public_content", systemInstruction: AI_GUARDRAILS, messages: [{ role: "user", content: prompt }] }); } catch (error) { throw aiFailure(error); }
     await campaignDb.saveAiMessage({ campaignId: input.campaignId, userId: ctx.user.id, kind: "content", role: "assistant", content });
     return { content };
   }),
@@ -51,10 +52,11 @@ export const aiRouter = router({
     const transcriptionUrl = await storageGetSignedUrl(savedFile.key);
     const transcription = await transcribeAudio({ audioUrl: transcriptionUrl, language: "pt", prompt: "Transcreva fielmente este relato de campo em português brasileiro." });
     if ("error" in transcription) throw new TRPCError({ code: "BAD_REQUEST", message: transcription.error });
+    const directIdentifiers = extractDirectIdentifiers(transcription.text);
     let extractedText: string;
-    try { extractedText = await generateWithOpenRouter({ systemInstruction: "Extraia somente dados explicitamente mencionados em um relato de campo. Não deduza informações. Retorne apenas JSON válido com as chaves name, phone, neighborhood, region, address, primaryDemand e engagementLevel. engagementLevel deve ser low, medium ou high; use low se não estiver explicitamente claro.", messages: [{ role: "user", content: transcription.text }], maxOutputTokens: 800, responseMimeType: "application/json" }); } catch (error) { throw aiFailure(error); }
+    try { extractedText = await generateThroughAiPrivacyGateway({ organizationId: access.campaign.organizationId, campaignId: input.campaignId, userId: ctx.user.id, purpose: "audio_extraction", consentConfirmed: input.consentConfirmed, systemInstruction: "Extraia somente dados explicitamente mencionados em um relato de campo. Não deduza atributos sensíveis, opinião política ou intenção de voto. Retorne apenas JSON válido com as chaves name, neighborhood, region, address, primaryDemand e engagementLevel. engagementLevel deve refletir somente indicação explícita no relato; se ausente, use low como valor operacional neutro de compatibilidade.", messages: [{ role: "user", content: transcription.text }], maxOutputTokens: 800, responseMimeType: "application/json" }); } catch (error) { throw aiFailure(error); }
     let extracted: { name: string; phone: string; neighborhood: string; region: string; address: string; primaryDemand: string; engagementLevel: "low" | "medium" | "high" };
-    try { extracted = JSON.parse(extractedText); } catch { throw new TRPCError({ code: "BAD_GATEWAY", message: "A extração de dados não retornou uma estrutura válida." }); }
+    try { const parsed = JSON.parse(extractedText) as Omit<typeof extracted, "phone">; extracted = { ...parsed, phone: directIdentifiers.phone ?? "" }; } catch { throw new TRPCError({ code: "BAD_GATEWAY", message: "A extração de dados não retornou uma estrutura válida." }); }
     let voterId: number | null = null;
     if (extracted.name.trim().length >= 2) {
       voterId = await campaignDb.createVoter({ campaignId: input.campaignId, ownerMemberId: member.id, name: extracted.name.trim(), phone: extracted.phone || null, neighborhood: extracted.neighborhood || null, region: extracted.region || null, address: extracted.address || null, primaryDemand: extracted.primaryDemand || null, engagementLevel: extracted.engagementLevel, contactConsent: false, doNotContact: false });

@@ -1,11 +1,12 @@
-type OpenRouterMessage = { role: "user" | "assistant"; content: string };
+export type OpenRouterMessage = { role: "user" | "assistant"; content: string };
 
-type OpenRouterRequest = {
+export type OpenRouterRequest = {
   systemInstruction: string;
   messages: OpenRouterMessage[];
   maxOutputTokens?: number;
   temperature?: number;
   responseMimeType?: "text/plain" | "application/json";
+  allowedModels?: readonly string[];
 };
 
 type OpenRouterResponse = {
@@ -53,16 +54,17 @@ function markUnavailable(model: string, response: Response) {
   cooldownUntil.set(model, Date.now() + retryAfterMs(response));
 }
 
-function availableModels() {
+function availableModels(allowedModels?: readonly string[]) {
   const now = Date.now();
-  return OPENROUTER_MODEL_CHAIN.filter(model => (cooldownUntil.get(model) ?? 0) <= now);
+  const allowed = new Set(allowedModels ?? OPENROUTER_MODEL_CHAIN);
+  return OPENROUTER_MODEL_CHAIN.filter(model => allowed.has(model) && (cooldownUntil.get(model) ?? 0) <= now);
 }
 
-export async function generateWithOpenRouter(request: OpenRouterRequest) {
+export async function generateWithOpenRouterDetailed(request: OpenRouterRequest) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new OpenRouterApiError("A chave da API OpenRouter não está configurada.");
 
-  const models = availableModels();
+  const models = availableModels(request.allowedModels);
   const attemptedModels: string[] = [];
   if (!models.length) throw new OpenRouterApiError("Todos os modelos OpenRouter estão temporariamente em cooldown.", 429, attemptedModels);
 
@@ -105,7 +107,7 @@ export async function generateWithOpenRouter(request: OpenRouterRequest) {
       }
 
       const content = responseText(payload.choices?.[0]?.message?.content);
-      if (content) return content;
+      if (content) return { content, model };
       markUnavailable(model, response);
     } catch (error) {
       if (error instanceof OpenRouterApiError) throw error;
@@ -114,6 +116,10 @@ export async function generateWithOpenRouter(request: OpenRouterRequest) {
   }
 
   throw new OpenRouterApiError("Nenhum modelo OpenRouter disponível para concluir a solicitação.", 503, attemptedModels);
+}
+
+export async function generateWithOpenRouter(request: OpenRouterRequest) {
+  return (await generateWithOpenRouterDetailed(request)).content;
 }
 
 export function resetOpenRouterCooldowns() {
