@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, gte, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { resolveCampaignRole } from "./campaignPolicy";
 import {
   aiMessages,
   audioCrmLogs,
@@ -494,7 +495,9 @@ export async function getCampaignAccess(campaignId: number, userId: number): Pro
     .where(eq(campaigns.id, campaignId))
     .limit(1);
 
-  return rows[0] ?? null;
+  const access = rows[0] ?? null;
+  if (!access) return null;
+  return resolveCampaignRole({ memberRole: access.member?.role, campaignOwnerId: access.campaign.ownerId, userId }) ? access : null;
 }
 
 export async function createCampaignWithOwner(input: {
