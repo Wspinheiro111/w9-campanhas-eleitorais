@@ -12,7 +12,10 @@ vi.mock("./campaignDb", () => ({
   recordCampaignComplianceDecision: vi.fn(),
 }));
 
+vi.mock("./criticalWriteCommands", () => ({ createPublicIntakeAtomic: vi.fn(), createContentWithComplianceAtomic: vi.fn(), createFinancialWithComplianceAtomic: vi.fn(), commitVoterImportAtomic: vi.fn(), grantConsentAtomic: vi.fn(), revokeConsentAtomic: vi.fn() }));
+
 import * as db from "./campaignDb";
+import * as criticalWrites from "./criticalWriteCommands";
 import { appRouter } from "./routers";
 
 const campaign = { id: 1, ownerId: 99, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active", createdAt: new Date(), updatedAt: new Date() };
@@ -46,27 +49,26 @@ describe("resumo diário e importação CSV", () => {
   it("atualiza apenas o contato existente aprovado pelo usuário", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
     vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 8, name: "Ana Antiga", email: "ana@example.com", phone: null, neighborhood: "Centro", contactConsent: true, doNotContact: false }]);
-    vi.mocked(db.createVotersBatch).mockResolvedValue(0);
-    vi.mocked(db.updateVoterFromImport).mockResolvedValue(undefined);
+    vi.mocked(criticalWrites.commitVoterImportAtomic).mockResolvedValue({ imported: 0, updated: 1, createdIds: [], decisionId: 901 } as never);
     const caller = appRouter.createCaller(context());
     const result = await caller.voters.commitCsv({ campaignId: 1, csv: "nome;email;bairro;consentimento\nAna Nova;ana@example.com;Centro;Sim", approvedUpdateRows: [2], approvedCandidateRows: [] });
     expect(result.updated).toBe(1);
-    expect(db.updateVoterFromImport).toHaveBeenCalledWith(8, expect.objectContaining({ name: "Ana Nova", email: "ana@example.com" }));
+    expect(criticalWrites.commitVoterImportAtomic).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, updates: [expect.objectContaining({ voterId: 8, values: expect.objectContaining({ name: "Ana Nova", email: "ana@example.com" }) })] }));
   });
 
   it("só cria possível duplicidade por nome e bairro quando ela é aprovada", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
     vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 15, name: "Carla", email: null, phone: null, neighborhood: "Norte", contactConsent: true, doNotContact: false }]);
-    vi.mocked(db.createVotersBatch).mockResolvedValue(0);
+    vi.mocked(criticalWrites.commitVoterImportAtomic).mockResolvedValue({ imported: 0, updated: 0, createdIds: [], decisionId: 902 } as never);
     const caller = appRouter.createCaller(context());
     const csv = "nome;bairro;consentimento\nCarla;Norte;Sim";
     const withoutApproval = await caller.voters.commitCsv({ campaignId: 1, csv, approvedUpdateRows: [], approvedCandidateRows: [] });
     expect(withoutApproval).toMatchObject({ imported: 0, skippedCandidates: 1 });
-    expect(db.createVotersBatch).toHaveBeenCalledWith([]);
-    vi.mocked(db.createVotersBatch).mockResolvedValue(1);
+    expect(criticalWrites.commitVoterImportAtomic).toHaveBeenCalledWith(expect.objectContaining({ newContacts: [] }));
+    vi.mocked(criticalWrites.commitVoterImportAtomic).mockResolvedValue({ imported: 1, updated: 0, createdIds: [321], decisionId: 903 } as never);
     const withApproval = await caller.voters.commitCsv({ campaignId: 1, csv, approvedUpdateRows: [], approvedCandidateRows: [2] });
     expect(withApproval.imported).toBe(1);
-    expect(db.createVotersBatch).toHaveBeenLastCalledWith([expect.objectContaining({ name: "Carla", campaignId: 1 })]);
+    expect(criticalWrites.commitVoterImportAtomic).toHaveBeenLastCalledWith(expect.objectContaining({ campaignId: 1, newContacts: [expect.objectContaining({ name: "Carla" })] }));
   });
 
   it("não permite aplicar dados inválidos", async () => {

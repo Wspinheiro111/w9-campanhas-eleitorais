@@ -24,8 +24,10 @@ vi.mock("./campaignDb", () => ({
 }));
 
 vi.mock("./storage", () => ({ storagePut: vi.fn() }));
+vi.mock("./criticalWriteCommands", () => ({ createPublicIntakeAtomic: vi.fn(), createContentWithComplianceAtomic: vi.fn(), createFinancialWithComplianceAtomic: vi.fn(), commitVoterImportAtomic: vi.fn(), grantConsentAtomic: vi.fn(), revokeConsentAtomic: vi.fn() }));
 
 import * as db from "./campaignDb";
+import * as criticalWrites from "./criticalWriteCommands";
 import { appRouter } from "./routers";
 import { storagePut } from "./storage";
 import {
@@ -122,22 +124,22 @@ describe("política do ciclo financeiro", () => {
 describe("financeLegal.entries", () => {
   it.each(["income", "expense"] as const)("encaminha a criação de %s para o ciclo financeiro", async entryType => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
-    vi.mocked(db.createFinancialEntry).mockResolvedValue(entryType === "income" ? 101 : 102);
+    vi.mocked(criticalWrites.createFinancialWithComplianceAtomic).mockResolvedValue({ id: entryType === "income" ? 101 : 102, decisionId: 501 } as never);
 
     const result = await appRouter.createCaller(context()).financeLegal.entries.create({ ...createPayload, entryType });
 
     expect(result).toMatchObject({ id: entryType === "income" ? 101 : 102, compliance: { decision: "approved" } });
-    expect(db.createFinancialEntry).toHaveBeenCalledWith(expect.objectContaining({ ...createPayload, entryType, createdByUserId: 99, paidAt: null }));
+    expect(criticalWrites.createFinancialWithComplianceAtomic).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, entry: expect.objectContaining({ category: createPayload.category, counterpartyName: createPayload.counterpartyName, amountCents: createPayload.amountCents, entryType, createdByUserId: 99, paidAt: null }) }));
   });
 
   it("vincula o lançamento a evento, fornecedor e centro de custo da mesma campanha", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator") as never);
     vi.mocked(db.getEvent).mockResolvedValue({ id: 45, campaignId: 1, title: "Encontro territorial" } as never);
-    vi.mocked(db.createFinancialEntry).mockResolvedValue(103);
+    vi.mocked(criticalWrites.createFinancialWithComplianceAtomic).mockResolvedValue({ id: 103, decisionId: 502 } as never);
 
     await expect(appRouter.createCaller(context()).financeLegal.entries.create({ ...createPayload, entryType: "expense", eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" })).resolves.toMatchObject({ id: 103, compliance: { decision: "approved" } });
     expect(db.getEvent).toHaveBeenCalledWith(45);
-    expect(db.createFinancialEntry).toHaveBeenCalledWith(expect.objectContaining({ eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" }));
+    expect(criticalWrites.createFinancialWithComplianceAtomic).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, entry: expect.objectContaining({ eventId: 45, supplierName: "Gráfica da campanha", costCenter: "Mobilização" }) }));
   });
 
   it("aplica a regra interna que exige documento ou recibo para despesa", async () => {

@@ -7,8 +7,10 @@ vi.mock("./campaignDb", () => ({
   getCampaignAccess: vi.fn(), listFieldVisits: vi.fn(), syncFieldVisits: vi.fn(), getVoter: vi.fn(), listConsentRecords: vi.fn(), createConsentRecord: vi.fn(), getConsentRecord: vi.fn(), revokeConsentRecord: vi.fn(), appendCampaignConsentLedger: vi.fn(), suppressCampaignContact: vi.fn(), listCrisisCases: vi.fn(), createCrisisCase: vi.fn(), getCrisisCase: vi.fn(), updateCrisisCase: vi.fn(), getTerritoryHeatmap: vi.fn(), getMobilizationScores: vi.fn(), listCampaignSurveys: vi.fn(), createCampaignSurvey: vi.fn(), submitSurveyResponse: vi.fn(), getSurveySummary: vi.fn(), getPublicCampaign: vi.fn(), getVolunteerByEmail: vi.fn(), getVolunteerByAccessTokenHash: vi.fn(), createVolunteer: vi.fn(), listVolunteers: vi.fn(), getVolunteer: vi.fn(), updateVolunteer: vi.fn(), updateVolunteerPortalProfile: vi.fn(), listVolunteerAssignments: vi.fn(), createVolunteerAssignment: vi.fn(), getVolunteerAssignment: vi.fn(), updateVolunteerAssignmentStatus: vi.fn(), listVolunteerTrainingMaterials: vi.fn(), getVolunteerTrainingMaterial: vi.fn(), updateVolunteerTrainingMaterialDeadline: vi.fn(), updateVolunteerTrainingMaterial: vi.fn(), reorderVolunteerTrainingMaterials: vi.fn(), getVolunteerTrainingDashboard: vi.fn(), getVolunteerTrainingTeamRanking: vi.fn(), setVolunteerTrainingTeamGoal: vi.fn(), getCampaignTrainingRecognitionRules: vi.fn(), updateCampaignTrainingRecognitionRules: vi.fn(), listVolunteerTrainingRecognitionHistory: vi.fn(), recordVolunteerTrainingRecognitionHistory: vi.fn(), completeVolunteerTrainingMaterial: vi.fn(), getVolunteerTrainingCertificate: vi.fn(), listVolunteerTrainingCertificates: vi.fn(), getVolunteerTrainingCertificateByCode: vi.fn(), getCampaignCertificateSettings: vi.fn(), updateCampaignCertificateSettings: vi.fn(), createVolunteerTrainingMaterial: vi.fn(), getTeamBenchmark: vi.fn(),
 }));
 vi.mock("./storage", () => ({ storagePut: vi.fn() }));
+vi.mock("./criticalWriteCommands", () => ({ createPublicIntakeAtomic: vi.fn(), createContentWithComplianceAtomic: vi.fn(), createFinancialWithComplianceAtomic: vi.fn(), commitVoterImportAtomic: vi.fn(), grantConsentAtomic: vi.fn(), revokeConsentAtomic: vi.fn() }));
 
 import * as db from "./campaignDb";
+import * as criticalWrites from "./criticalWriteCommands";
 import { storagePut } from "./storage";
 import { appRouter } from "./routers";
 
@@ -31,14 +33,14 @@ describe("módulos prioritários", () => {
   it("registra consentimento apenas para contato acessível ao integrante", async () => {
     vi.mocked(db.getVoter).mockResolvedValue({ id: 4, campaignId: 1, ownerMemberId: 12 } as never);
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: partnerMember, organizationMember: { role: "operator" } } as never);
-    vi.mocked(db.createConsentRecord).mockResolvedValue(33);
+    vi.mocked(criticalWrites.grantConsentAtomic).mockResolvedValue({ id: 33 } as never);
     const caller = appRouter.createCaller(context(12));
     const expiresAt = new Date("2027-01-31T23:59:59Z");
     await expect(caller.consent.create({ voterId: 4, purpose: "Relacionamento consentido", source: "Visita", consentedAt: new Date(), expiresAt })).resolves.toEqual({ id: 33 });
-    expect(db.createConsentRecord).toHaveBeenCalledWith(expect.objectContaining({ voterId: 4, campaignId: 1, createdByUserId: 12, expiresAt }));
-    vi.mocked(db.getConsentRecord).mockResolvedValue({ id: 33, voterId: 4 } as never); vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never); vi.mocked(db.revokeConsentRecord).mockResolvedValue(undefined);
+    expect(criticalWrites.grantConsentAtomic).toHaveBeenCalledWith(expect.objectContaining({ voterId: 4, campaignId: 1, createdByUserId: 12, expiresAt }));
+    vi.mocked(db.getConsentRecord).mockResolvedValue({ id: 33, voterId: 4 } as never); vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: adminMember, organizationMember: { role: "admin" } } as never); vi.mocked(criticalWrites.revokeConsentAtomic).mockResolvedValue({ success: true } as never);
     await expect(appRouter.createCaller(context()).consent.revoke({ consentId: 33 })).resolves.toEqual({ success: true });
-    expect(db.revokeConsentRecord).toHaveBeenCalledWith(expect.objectContaining({ consentId: 33, revokedAt: expect.any(Date) }));
+    expect(criticalWrites.revokeConsentAtomic).toHaveBeenCalledWith(expect.objectContaining({ consentId: 33, campaignId: 1, actorUserId: 99, occurredAt: expect.any(Date) }));
   });
 
   it("reserva a sala de crise para perfis gestores", async () => {
