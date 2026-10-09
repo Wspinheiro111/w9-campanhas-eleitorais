@@ -6,6 +6,7 @@ import { OpenRouterApiError } from "../openrouter";
 import { extractDirectIdentifiers, generateThroughAiPrivacyGateway } from "../aiPrivacyGateway";
 import { protectedProcedure, router } from "../_core/trpc";
 import { storageGetSignedUrl, storagePut } from "../storage";
+import { assertUploadRateLimit } from "../uploadRateLimit";
 
 async function ensureAiAccess(userId: number, campaignId: number) {
   const access = await campaignDb.getCampaignAccess(campaignId, userId);
@@ -44,6 +45,7 @@ export const aiRouter = router({
     const access = await ensureAiAccess(ctx.user.id, input.campaignId);
     const member = access.member;
     if (!member) throw new TRPCError({ code: "FORBIDDEN", message: "O processamento de áudio requer um vínculo ativo à campanha." });
+    assertUploadRateLimit({ userId: ctx.user.id, campaignId: input.campaignId });
     const rawBase64 = input.dataBase64.includes(",") ? input.dataBase64.split(",").pop()! : input.dataBase64;
     const audioBuffer = Buffer.from(rawBase64, "base64");
     if (!audioBuffer.length || audioBuffer.byteLength > 16 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "O áudio deve ter no máximo 16 MB." });
