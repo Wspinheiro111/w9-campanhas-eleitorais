@@ -574,7 +574,7 @@ export const campaigns = mysqlTable("campaigns", {
 
 export const storageObjects = mysqlTable("storage_objects", {
   id: int("id").autoincrement().primaryKey(),
-  storageKey: varchar("storageKey", { length: 1000 }).notNull(),
+  storageKey: varchar("storageKey", { length: 700 }).notNull(),
   organizationId: int("organizationId").references(() => organizations.id),
   campaignId: int("campaignId").references(() => campaigns.id),
   visibility: mysqlEnum("visibility", ["private", "public"]).notNull().default("private"),

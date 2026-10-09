@@ -1,6 +1,6 @@
 CREATE TABLE `storage_objects` (
 	`id` int AUTO_INCREMENT NOT NULL,
-	`storageKey` varchar(1000) NOT NULL,
+	`storageKey` varchar(700) NOT NULL,
 	`organizationId` int,
 	`campaignId` int,
 	`visibility` enum('private','public') NOT NULL DEFAULT 'private',

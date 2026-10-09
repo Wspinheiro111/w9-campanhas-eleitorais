@@ -28,8 +28,12 @@ function getForgeConfig() {
   return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
 }
 
+export const MAX_STORAGE_KEY_LENGTH = 700;
+
 function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
+  const key = relKey.replace(/^\/+/, "");
+  if (!key || key.length > MAX_STORAGE_KEY_LENGTH) throw new Error(`Storage key must contain between 1 and ${MAX_STORAGE_KEY_LENGTH} characters`);
+  return key;
 }
 
 function appendHashSuffix(relKey: string): string {
