@@ -6,8 +6,10 @@ vi.mock("./campaignDb", () => ({
 }));
 
 vi.mock("./storage", () => ({ storagePut: vi.fn() }));
+vi.mock("./criticalWriteCommands", () => ({ createPublicIntakeAtomic: vi.fn(), createContentWithComplianceAtomic: vi.fn(), createFinancialWithComplianceAtomic: vi.fn(), commitVoterImportAtomic: vi.fn(), grantConsentAtomic: vi.fn(), revokeConsentAtomic: vi.fn() }));
 
 import * as db from "./campaignDb";
+import * as criticalWrites from "./criticalWriteCommands";
 import { storagePut } from "./storage";
 import { appRouter } from "./routers";
 
@@ -20,10 +22,10 @@ afterEach(() => vi.clearAllMocks());
 describe("módulos de expansão", () => {
   it("aceita captação pública somente para campanha ativa e com consentimento", async () => {
     vi.mocked(db.getPublicCampaign).mockResolvedValue({ id: 1, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active" } as never);
-    vi.mocked(db.createVoter).mockResolvedValue(77);
+    vi.mocked(criticalWrites.createPublicIntakeAtomic).mockResolvedValue({ id: 77 } as never);
     const caller = appRouter.createCaller(ctx);
     await expect(caller.publicIntake.submit({ campaignId: 1, name: "Ana", phone: "51999990000", consent: true })).resolves.toEqual({ id: 77 });
-    expect(db.createVoter).toHaveBeenCalledWith(expect.objectContaining({ contactConsent: true, pipelineStage: "identified", ownerMemberId: null }));
+    expect(criticalWrites.createPublicIntakeAtomic).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, voter: expect.objectContaining({ contactConsent: true, pipelineStage: "identified", ownerMemberId: null }) }));
   });
 
   it("move um contato no pipeline somente para membro com acesso", async () => {
@@ -39,10 +41,10 @@ describe("módulos de expansão", () => {
 
   it("reserva a criação de conteúdo para perfis gestores", async () => {
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member } as never);
-    vi.mocked(db.createCampaignContent).mockResolvedValue(22);
+    vi.mocked(criticalWrites.createContentWithComplianceAtomic).mockResolvedValue({ id: 22, decisionId: null } as never);
     const caller = appRouter.createCaller(ctx);
     await expect(caller.contents.create({ campaignId: 1, title: "Roteiro", body: "Conteúdo revisado", channel: "social", status: "draft" })).resolves.toMatchObject({ id: 22, compliance: { decision: "not_applicable" } });
-    expect(db.createCampaignContent).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, createdById: 99 }));
+    expect(criticalWrites.createContentWithComplianceAtomic).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, content: expect.objectContaining({ createdById: 99 }) }));
   });
 
   it("aplica filtros territoriais por período e responsável", async () => {

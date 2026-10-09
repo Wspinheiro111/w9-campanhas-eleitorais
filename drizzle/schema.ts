@@ -578,6 +578,21 @@ export const campaigns = mysqlTable("campaigns", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [index("campaign_owner_idx").on(table.ownerId), index("campaign_organization_idx").on(table.organizationId)]);
 
+/** Resultado durável de comandos críticos para retries idempotentes. */
+export const campaignCommandIdempotency = mysqlTable("campaign_command_idempotency", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  campaignId: int("campaignId").notNull().references(() => campaigns.id),
+  operation: varchar("operation", { length: 80 }).notNull(),
+  commandKey: varchar("commandKey", { length: 128 }).notNull(),
+  result: json("result").$type<Record<string, unknown> | null>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("campaign_command_idempotency_unique").on(table.campaignId, table.operation, table.commandKey),
+  index("campaign_command_idempotency_org_idx").on(table.organizationId, table.createdAt),
+]);
+
 export const storageObjects = mysqlTable("storage_objects", {
   id: int("id").autoincrement().primaryKey(),
   storageKey: varchar("storageKey", { length: 700 }).notNull(),
