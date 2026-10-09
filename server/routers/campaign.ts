@@ -12,6 +12,7 @@ import { assertUploadRateLimit } from "../uploadRateLimit";
 import { evaluateCompliance } from "../complianceEngine";
 import { evaluateCampaignContentCompliance, hashContentComplianceMaterial, materialContentChanged, shouldInvalidateSyntheticReview, type ContentComplianceMaterial } from "../contentCompliancePolicy";
 import { isValidIanaTimeZone } from "../syntheticContentPolicy";
+import { assertMandatoryComplianceSettings } from "../mandatoryComplianceBaseline";
 
 const campaignIdInput = z.object({ campaignId: z.number().int().positive() });
 const memberRoles = ["admin", "coordinator", "partner"] as const;
@@ -47,6 +48,14 @@ function requireCapability(access: Access, action: "manage" | "team" | "own_data
   if (action === "team" && !canManageTeam(role)) throw new TRPCError({ code: "FORBIDDEN", message: "Somente administradores podem gerenciar a equipe." });
   if (action === "manage" && !canManageCampaign(role)) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil possui acesso restrito aos próprios registros." });
   return role;
+}
+
+function validateMandatoryComplianceSettings(input: { blockBusinessDonation: boolean; blockSyntheticPublicationWindow: boolean }) {
+  try { assertMandatoryComplianceSettings(input); } catch (error) {
+    const code = error instanceof Error ? error.message : "MANDATORY_COMPLIANCE_RULE";
+    const message = code === "MANDATORY_BUSINESS_DONATION_RULE" ? "O bloqueio de receita identificada por CNPJ pertence ao baseline obrigatório e não pode ser desativado." : code === "MANDATORY_SYNTHETIC_WINDOW_RULE" ? "A janela objetiva de conteúdo sintético pertence ao baseline obrigatório e não pode ser desativada." : "Regra obrigatória de compliance inválida.";
+    throw new TRPCError({ code: "BAD_REQUEST", message });
+  }
 }
 
 function validateElectionConfiguration(electionEndsAt: Date | null | undefined, electionTimeZone: string | null | undefined) {
@@ -537,7 +546,7 @@ export const financeLegalRouter = router({
   internalAlerts: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getFinancialInternalAlerts(input.campaignId); }),
   rules: router({
     get: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.getCampaignComplianceRules(input.campaignId); }),
-    update: protectedProcedure.input(campaignIdInput.extend({ blockBusinessDonation: z.boolean(), requireExpenseDocument: z.boolean(), reviewDeadlineHours: z.number().int().min(1).max(720), blockElectoralPhoneContact: z.boolean().default(true), requireConsentEvidence: z.boolean().default(true), requireHumanReviewForSyntheticContent: z.boolean().default(true), blockSyntheticPublicationWindow: z.boolean().default(true), requireResearchRegistrationForPublication: z.boolean().default(true), requireFinancialEvidence: z.boolean().default(true), ruleVersion: z.string().min(3).max(32).default("2026.1") })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team"); return db.updateCampaignComplianceRules({ ...input, updatedByUserId: ctx.user.id }); }),
+    update: protectedProcedure.input(campaignIdInput.extend({ blockBusinessDonation: z.boolean(), requireExpenseDocument: z.boolean(), reviewDeadlineHours: z.number().int().min(1).max(720), blockElectoralPhoneContact: z.boolean().default(true), requireConsentEvidence: z.boolean().default(true), requireHumanReviewForSyntheticContent: z.boolean().default(true), blockSyntheticPublicationWindow: z.boolean().default(true), requireResearchRegistrationForPublication: z.boolean().default(true), requireFinancialEvidence: z.boolean().default(true), ruleVersion: z.string().min(3).max(32).default("2026.1") })).mutation(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team"); validateMandatoryComplianceSettings(input); return db.updateCampaignComplianceRules({ ...input, updatedByUserId: ctx.user.id }); }),
   }),
   legalProcesses: router({
     list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage"); return db.listLegalProcesses(input.campaignId); }),
@@ -697,7 +706,7 @@ export const complianceRouter = router({
     }),
     update: protectedProcedure.input(campaignIdInput.extend({ blockBusinessDonation: z.boolean(), requireExpenseDocument: z.boolean(), reviewDeadlineHours: z.number().int().min(1).max(720), blockElectoralPhoneContact: z.boolean(), requireConsentEvidence: z.boolean(), requireHumanReviewForSyntheticContent: z.boolean(), blockSyntheticPublicationWindow: z.boolean(), requireResearchRegistrationForPublication: z.boolean(), requireFinancialEvidence: z.boolean(), ruleVersion: z.string().min(3).max(32) })).mutation(async ({ ctx, input }) => {
       const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team");
-      return db.updateCampaignComplianceRules({ ...input, updatedByUserId: ctx.user.id });
+      validateMandatoryComplianceSettings(input); return db.updateCampaignComplianceRules({ ...input, updatedByUserId: ctx.user.id });
     }),
     sources: router({
       list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => {

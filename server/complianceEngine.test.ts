@@ -32,6 +32,11 @@ describe("motor de compliance eleitoral", () => {
     expect(awaitingReview.decision).toBe("needs_human_review");
   });
 
+  it("mantém bloqueio obrigatório de receita por CNPJ mesmo com política local falsa", () => {
+    const result = evaluateCompliance({ action: "financial.register", rules: { ...rules, blockBusinessDonation: false }, financial: { entryType: "income", counterpartyDocumentDigits: 14, evidenceProvided: true } });
+    expect(result.decision).toBe("blocked");
+  });
+
   it("bloqueia pesquisa pública sem referência de registro", () => {
     const result = evaluateCompliance({ action: "survey.publish", rules, survey: { classification: "public_disclosure", methodologyProvided: true, reviewStatus: "approved" } });
     expect(result.decision).toBe("blocked");

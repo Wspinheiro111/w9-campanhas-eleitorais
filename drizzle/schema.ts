@@ -492,6 +492,8 @@ export const campaignComplianceDecisions = mysqlTable("campaign_compliance_decis
   ruleVersion: varchar("ruleVersion", { length: 32 }).notNull(),
   entityVersion: int("entityVersion"),
   entityHash: varchar("entityHash", { length: 64 }),
+  baselineVersion: varchar("baselineVersion", { length: 32 }).notNull().default("legacy"),
+  localPolicyVersion: varchar("localPolicyVersion", { length: 32 }).notNull().default("legacy"),
   requestedByUserId: int("requestedByUserId").references(() => users.id),
   reviewedByUserId: int("reviewedByUserId").references(() => users.id),
   reviewNote: text("reviewNote"),
