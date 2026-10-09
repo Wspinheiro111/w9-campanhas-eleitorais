@@ -27,7 +27,7 @@ describe("motor de compliance eleitoral", () => {
 
   it("requer identificação e revisão humana para conteúdo sintético", () => {
     const withoutDisclosure = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: false, reviewStatus: "pending" } });
-    const awaitingReview = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: true, reviewStatus: "pending" } });
+    const awaitingReview = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: true, disclosureProvided: true, reviewStatus: "pending", syntheticUseDeclared: true, usesCandidateOrPublicPerson: false, restrictedWindowConfigured: true } });
     expect(withoutDisclosure.decision).toBe("blocked");
     expect(awaitingReview.decision).toBe("needs_human_review");
   });

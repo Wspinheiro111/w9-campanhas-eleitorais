@@ -10,6 +10,8 @@ import { storagePut } from "../storage";
 import { isFinancialStatusTransitionAllowed } from "../financialStatus";
 import { assertUploadRateLimit } from "../uploadRateLimit";
 import { evaluateCompliance } from "../complianceEngine";
+import { evaluateCampaignContentCompliance, hashContentComplianceMaterial, materialContentChanged, shouldInvalidateSyntheticReview, type ContentComplianceMaterial } from "../contentCompliancePolicy";
+import { isValidIanaTimeZone } from "../syntheticContentPolicy";
 
 const campaignIdInput = z.object({ campaignId: z.number().int().positive() });
 const memberRoles = ["admin", "coordinator", "partner"] as const;
@@ -47,6 +49,19 @@ function requireCapability(access: Access, action: "manage" | "team" | "own_data
   return role;
 }
 
+function validateElectionConfiguration(electionEndsAt: Date | null | undefined, electionTimeZone: string | null | undefined) {
+  const hasEnd = Boolean(electionEndsAt);
+  const hasZone = Boolean(electionTimeZone?.trim());
+  if (hasEnd !== hasZone) throw new TRPCError({ code: "BAD_REQUEST", message: "Informe juntos o término do pleito e o timezone da campanha." });
+  if (hasZone && !isValidIanaTimeZone(electionTimeZone)) throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um timezone IANA válido para a campanha." });
+}
+
+type CampaignContentRecord = NonNullable<Awaited<ReturnType<typeof db.getContentById>>>;
+
+function contentMaterial(content: CampaignContentRecord): ContentComplianceMaterial {
+  return { title: content.title, body: content.body, assetUrl: content.assetUrl, assetKey: content.assetKey, channel: content.channel, objective: content.objective, scheduledAt: content.scheduledAt, isSynthetic: content.isSynthetic, syntheticDisclosure: content.syntheticDisclosure, syntheticUsesCandidateOrPublicPerson: content.syntheticUsesCandidateOrPublicPerson };
+}
+
 async function findTeamShiftConflicts(campaignId: number, startsAt: Date, endsAt: Date, memberIds: number[], excludeShiftId?: number) { const shifts = (await db.listTeamShifts(campaignId)) ?? []; return shifts.filter(shift => shift.id !== excludeShiftId && shift.status === "scheduled" && shift.startsAt < endsAt && shift.endsAt > startsAt).flatMap(shift => shift.assignments.filter(assignment => memberIds.includes(assignment.memberId)).map(assignment => ({ shiftId: shift.id, title: shift.title, memberName: assignment.memberName, startsAt: shift.startsAt, endsAt: shift.endsAt }))); }
 
 export const campaignRouter = router({
@@ -54,7 +69,8 @@ export const campaignRouter = router({
     if (input?.organizationId && !await db.getOrganizationMembership(ctx.user.id, input.organizationId)) throw new TRPCError({ code: "FORBIDDEN", message: "Organização não disponível para este usuário." });
     return db.listCampaignsForUser(ctx.user.id, input?.organizationId);
   }),
-  create: protectedProcedure.input(z.object({ organizationId: z.number().int().positive().optional(), name: z.string().min(3).max(160), candidateName: z.string().min(3).max(160), electionLabel: z.string().min(3).max(120), region: z.string().min(2).max(160) })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(z.object({ organizationId: z.number().int().positive().optional(), name: z.string().min(3).max(160), candidateName: z.string().min(3).max(160), electionLabel: z.string().min(3).max(120), electionEndsAt: z.date().nullable().optional(), electionTimeZone: z.string().trim().max(80).nullable().optional(), region: z.string().min(2).max(160) })).mutation(async ({ ctx, input }) => {
+    validateElectionConfiguration(input.electionEndsAt, input.electionTimeZone);
     const organizationId = input.organizationId ?? await db.getOrCreateInitialOrganization(ctx.user.id, ctx.user.name);
     const membership = await db.getOrganizationMembership(ctx.user.id, organizationId);
     if (!membership || !["admin", "manager"].includes(membership.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Você não possui permissão para criar campanhas nesta organização." });
@@ -62,9 +78,12 @@ export const campaignRouter = router({
     return { id };
   }),
   details: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => requireAccess(ctx.user.id, input.campaignId)),
-  updateDetails: protectedProcedure.input(campaignIdInput.extend({ name: z.string().min(3).max(160), candidateName: z.string().min(3).max(160), electionLabel: z.string().min(3).max(120), region: z.string().min(2).max(160), status: z.enum(["planning", "active", "paused", "closed"]) })).mutation(async ({ ctx, input }) => {
+  updateDetails: protectedProcedure.input(campaignIdInput.extend({ name: z.string().min(3).max(160), candidateName: z.string().min(3).max(160), electionLabel: z.string().min(3).max(120), electionEndsAt: z.date().nullable().optional(), electionTimeZone: z.string().trim().max(80).nullable().optional(), region: z.string().min(2).max(160), status: z.enum(["planning", "active", "paused", "closed"]) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "team");
-    const { campaignId, ...details } = input; await db.updateCampaignDetails(campaignId, { ...details, actorUserId: ctx.user.id }); return { success: true };
+    const electionEndsAt = input.electionEndsAt === undefined ? access.campaign.electionEndsAt : input.electionEndsAt;
+    const electionTimeZone = input.electionTimeZone === undefined ? access.campaign.electionTimeZone : input.electionTimeZone;
+    validateElectionConfiguration(electionEndsAt, electionTimeZone);
+    const { campaignId, ...details } = input; await db.updateCampaignDetails(campaignId, { ...details, electionEndsAt, electionTimeZone: electionTimeZone?.trim() || null, actorUserId: ctx.user.id }); return { success: true };
   }),
   publicInfo: publicProcedure.input(campaignIdInput).query(({ input }) => db.getPublicCampaign(input.campaignId)),
 });
@@ -351,22 +370,37 @@ export const territoryRouter = router({
 
 export const contentsRouter = router({
   list: protectedProcedure.input(campaignIdInput).query(async ({ ctx, input }) => { await requireAccess(ctx.user.id, input.campaignId); return db.listCampaignContents(input.campaignId); }),
-  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999).default(1), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), isSynthetic: z.boolean().default(false), syntheticDisclosure: z.string().max(1500).optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(campaignIdInput.extend({ title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999).default(1), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), isSynthetic: z.boolean().default(false), syntheticDisclosure: z.string().max(1500).optional(), syntheticUsesCandidateOrPublicPerson: z.boolean().optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
     const access = await requireAccess(ctx.user.id, input.campaignId); requireCapability(access, "manage");
     if (input.ownerMemberId && !await db.getCampaignMember(input.campaignId, input.ownerMemberId)) throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável editorial precisa pertencer a esta campanha." });
     const rules = await db.getCampaignComplianceRules(input.campaignId);
-    const decision = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: input.isSynthetic, disclosureProvided: Boolean(input.syntheticDisclosure?.trim()), reviewStatus: input.isSynthetic ? "pending" : "not_required", withinRestrictedSyntheticWindow: false } });
-    if (decision.decision === "blocked" && input.status === "approved") throw new TRPCError({ code: "BAD_REQUEST", message: decision.reasons.join(" ") });
+    const material: ContentComplianceMaterial = { title: input.title, body: input.body, assetUrl: input.assetUrl ?? null, assetKey: null, channel: input.channel, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, isSynthetic: input.isSynthetic, syntheticDisclosure: input.syntheticDisclosure ?? null, syntheticUsesCandidateOrPublicPerson: input.syntheticUsesCandidateOrPublicPerson ?? null };
+    const policy = evaluateCampaignContentCompliance({ rules, campaign: access.campaign, material, reviewStatus: input.isSynthetic ? "pending" : "not_required" });
+    if (input.status === "approved" && input.isSynthetic) {
+      if (policy.evaluation.decision === "blocked") throw new TRPCError({ code: "BAD_REQUEST", message: policy.evaluation.reasons.join(" ") });
+    }
     const status = input.isSynthetic && input.status === "approved" ? "review" : input.status;
-    const id = await db.createCampaignContent({ ...input, assetUrl: input.assetUrl ?? null, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, ownerMemberId: input.ownerMemberId ?? null, status, complianceReviewStatus: input.isSynthetic ? decision.reviewStatus : "not_required", complianceReviewNote: input.isSynthetic ? decision.reasons.join(" ") : null, createdById: ctx.user.id });
-    if (input.isSynthetic) await db.recordCampaignComplianceDecision({ campaignId: input.campaignId, action: "content.publish", entityType: "campaign_content", entityId: id, decision: decision.decision, reviewStatus: decision.reviewStatus, reasons: decision.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id });
-    return { id, compliance: decision };
+    const id = await db.createCampaignContent({ ...input, syntheticUsesCandidateOrPublicPerson: input.syntheticUsesCandidateOrPublicPerson ?? null, assetUrl: input.assetUrl ?? null, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, ownerMemberId: input.ownerMemberId ?? null, status, complianceReviewStatus: input.isSynthetic ? policy.evaluation.reviewStatus : "not_required", complianceReviewNote: input.isSynthetic ? policy.evaluation.reasons.join(" ") : null, complianceReviewedContentVersion: null, complianceReviewedContentHash: null, complianceReviewedRuleVersion: null, createdById: ctx.user.id });
+    if (input.isSynthetic) await db.recordCampaignComplianceDecision({ campaignId: input.campaignId, action: "content.publish", entityType: "campaign_content", entityId: id, decision: policy.evaluation.decision, reviewStatus: policy.evaluation.reviewStatus, reasons: policy.evaluation.reasons, ruleVersion: rules.ruleVersion, entityVersion: input.version, entityHash: policy.contentHash, requestedByUserId: ctx.user.id });
+    return { id, compliance: policy.evaluation };
   }),
-  update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
+  update: protectedProcedure.input(z.object({ id: z.number().int().positive(), title: z.string().min(3).max(200), body: z.string().min(2).max(10000), assetUrl: z.string().url().max(1200).optional(), version: z.number().int().min(1).max(999), channel: z.enum(["social", "whatsapp", "print", "speech", "video", "other"]), objective: z.string().max(220).optional(), scheduledAt: z.date().optional(), ownerMemberId: z.number().int().positive().optional(), isSynthetic: z.boolean().optional(), syntheticDisclosure: z.string().max(1500).nullable().optional(), syntheticUsesCandidateOrPublicPerson: z.boolean().nullable().optional(), status: z.enum(["draft", "review", "approved", "archived"]) })).mutation(async ({ ctx, input }) => {
     const content = await db.getContentById(input.id); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
     const access = await requireAccess(ctx.user.id, content.campaignId); requireCapability(access, "manage");
     if (input.ownerMemberId && !await db.getCampaignMember(content.campaignId, input.ownerMemberId)) throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável editorial precisa pertencer a esta campanha." });
-    await db.updateCampaignContent(input.id, { ...input, assetUrl: input.assetUrl ?? null, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, ownerMemberId: input.ownerMemberId ?? null }); return { success: true };
+    const currentMaterial = contentMaterial(content);
+    const nextMaterial: ContentComplianceMaterial = { title: input.title, body: input.body, assetUrl: input.assetUrl ?? null, assetKey: content.assetKey, channel: input.channel, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, isSynthetic: input.isSynthetic ?? content.isSynthetic, syntheticDisclosure: input.syntheticDisclosure === undefined ? content.syntheticDisclosure : input.syntheticDisclosure, syntheticUsesCandidateOrPublicPerson: input.syntheticUsesCandidateOrPublicPerson === undefined ? content.syntheticUsesCandidateOrPublicPerson : input.syntheticUsesCandidateOrPublicPerson };
+    const changed = materialContentChanged(currentMaterial, nextMaterial);
+    const invalidateReview = shouldInvalidateSyntheticReview({ current: { ...currentMaterial, complianceReviewStatus: content.complianceReviewStatus }, next: nextMaterial });
+    if (input.status === "approved" && (content.isSynthetic || nextMaterial.isSynthetic)) throw new TRPCError({ code: "BAD_REQUEST", message: "Conteúdo sintético não pode ser aprovado pela atualização comum. Use o fluxo dedicado de revisão de compliance." });
+    const rules = await db.getCampaignComplianceRules(content.campaignId);
+    const policy = evaluateCampaignContentCompliance({ rules, campaign: access.campaign, material: nextMaterial, reviewStatus: invalidateReview ? "pending" : content.complianceReviewStatus });
+    const nextVersion = changed ? content.version + 1 : content.version;
+    const nextStatus = invalidateReview && input.status !== "archived" ? "review" : input.status;
+    const nextReviewStatus = nextMaterial.isSynthetic ? policy.evaluation.reviewStatus : (invalidateReview ? "pending" : "not_required");
+    await db.updateCampaignContent(input.id, { title: input.title, body: input.body, assetUrl: input.assetUrl ?? null, assetKey: content.assetKey, assetName: content.assetName, assetMime: content.assetMime, assetSize: content.assetSize, version: nextVersion, channel: input.channel, objective: input.objective ?? null, scheduledAt: input.scheduledAt ?? null, ownerMemberId: input.ownerMemberId ?? null, status: nextStatus, isSynthetic: nextMaterial.isSynthetic, syntheticDisclosure: nextMaterial.syntheticDisclosure ?? null, syntheticUsesCandidateOrPublicPerson: nextMaterial.syntheticUsesCandidateOrPublicPerson ?? null, complianceReviewStatus: nextReviewStatus, complianceReviewNote: invalidateReview ? "Revisão reaberta após edição material do conteúdo." : content.complianceReviewNote, complianceReviewedByUserId: invalidateReview ? null : content.complianceReviewedByUserId, complianceReviewedAt: invalidateReview ? null : content.complianceReviewedAt, complianceReviewedContentVersion: invalidateReview ? null : content.complianceReviewedContentVersion, complianceReviewedContentHash: invalidateReview ? null : content.complianceReviewedContentHash, complianceReviewedRuleVersion: invalidateReview ? null : content.complianceReviewedRuleVersion });
+    if (content.isSynthetic || nextMaterial.isSynthetic || invalidateReview) await db.recordCampaignComplianceDecision({ campaignId: content.campaignId, action: "content.publish", entityType: "campaign_content", entityId: content.id, decision: policy.evaluation.decision, reviewStatus: nextReviewStatus, reasons: invalidateReview ? ["Revisão reaberta após edição material.", ...policy.evaluation.reasons] : policy.evaluation.reasons, ruleVersion: rules.ruleVersion, entityVersion: nextVersion, entityHash: policy.contentHash, requestedByUserId: ctx.user.id });
+    return { success: true, version: nextVersion, reviewReopened: invalidateReview, compliance: policy.evaluation };
   }),
   attach: protectedProcedure.input(z.object({ id: z.number().int().positive(), fileName: z.string().min(1).max(240), mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.presentationml.presentation"]), base64: z.string().min(8).max(14_000_000) })).mutation(async ({ ctx, input }) => {
     const content = await db.getContentById(input.id); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
@@ -375,8 +409,16 @@ export const contentsRouter = router({
     if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O arquivo deve ter até 10 MB." });
     const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
     const stored = await storagePut(`campaigns/${content.campaignId}/materials/${content.id}/${safeName}`, bytes, input.mimeType, { organizationId: access.campaign.organizationId, campaignId: content.campaignId, visibility: "private", resourceType: "campaign_content_asset", createdByUserId: ctx.user.id });
-    await db.saveCampaignContentAsset(input.id, { assetUrl: stored.url, assetKey: stored.key, assetName: input.fileName, assetMime: input.mimeType, assetSize: bytes.length });
-    return { url: stored.url, name: input.fileName, size: bytes.length };
+    const saved = await db.saveCampaignContentAsset(input.id, { assetUrl: stored.url, assetKey: stored.key, assetName: input.fileName, assetMime: input.mimeType, assetSize: bytes.length });
+    if (saved.invalidatedReview) {
+      const updated = await db.getContentById(input.id);
+      if (updated) {
+        const rules = await db.getCampaignComplianceRules(content.campaignId);
+        const policy = evaluateCampaignContentCompliance({ rules, campaign: access.campaign, material: contentMaterial(updated), reviewStatus: "pending" });
+        await db.recordCampaignComplianceDecision({ campaignId: content.campaignId, action: "content.publish", entityType: "campaign_content", entityId: content.id, decision: policy.evaluation.decision, reviewStatus: "pending", reasons: ["Revisão reaberta após alteração do ativo vinculado.", ...policy.evaluation.reasons], ruleVersion: rules.ruleVersion, entityVersion: saved.version, entityHash: policy.contentHash, requestedByUserId: ctx.user.id });
+      }
+    }
+    return { url: stored.url, name: input.fileName, size: bytes.length, version: saved.version, reviewReopened: saved.invalidatedReview };
   }),
 });
 
@@ -697,10 +739,11 @@ export const complianceRouter = router({
       const content = await db.getContentById(input.contentId); if (!content) throw new TRPCError({ code: "NOT_FOUND" });
       const access = await requireAccess(ctx.user.id, content.campaignId); requireCapability(access, "team");
       const rules = await db.getCampaignComplianceRules(content.campaignId);
-      const evaluation = evaluateCompliance({ action: "content.publish", rules, content: { isSynthetic: content.isSynthetic, disclosureProvided: Boolean(content.syntheticDisclosure?.trim()), reviewStatus: input.status, withinRestrictedSyntheticWindow: false } });
+      const policy = evaluateCampaignContentCompliance({ rules, campaign: access.campaign, material: contentMaterial(content), reviewStatus: input.status });
+      const evaluation = policy.evaluation;
       if (input.status === "approved" && evaluation.decision !== "approved" && evaluation.decision !== "not_applicable") throw new TRPCError({ code: "BAD_REQUEST", message: evaluation.reasons.join(" ") });
-      await db.reviewCampaignContentCompliance({ id: content.id, status: input.status, reviewedByUserId: ctx.user.id, note: input.note ?? null });
-      await db.recordCampaignComplianceDecision({ campaignId: content.campaignId, action: "content.publish", entityType: "campaign_content", entityId: content.id, decision: input.status === "approved" ? "approved" : "blocked", reviewStatus: input.status, reasons: evaluation.reasons, ruleVersion: rules.ruleVersion, requestedByUserId: ctx.user.id, reviewedByUserId: ctx.user.id, reviewNote: input.note ?? null, reviewedAt: new Date() });
+      await db.reviewCampaignContentCompliance({ id: content.id, status: input.status, reviewedByUserId: ctx.user.id, note: input.note ?? null, contentVersion: content.version, contentHash: policy.contentHash, ruleVersion: rules.ruleVersion });
+      await db.recordCampaignComplianceDecision({ campaignId: content.campaignId, action: "content.publish", entityType: "campaign_content", entityId: content.id, decision: input.status === "approved" ? "approved" : "blocked", reviewStatus: input.status, reasons: evaluation.reasons, ruleVersion: rules.ruleVersion, entityVersion: content.version, entityHash: policy.contentHash, requestedByUserId: ctx.user.id, reviewedByUserId: ctx.user.id, reviewNote: input.note ?? null, reviewedAt: new Date() });
       return { success: true };
     }),
   }),

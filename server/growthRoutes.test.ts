@@ -58,10 +58,11 @@ describe("módulos de expansão", () => {
     vi.mocked(db.getContentById).mockResolvedValue({ id: 22, campaignId: 1 } as never);
     vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member } as never);
     vi.mocked(storagePut).mockResolvedValue({ key: "campaigns/1/material.pdf", url: "/manus-storage/campaigns/1/material.pdf" });
-    vi.mocked(db.saveCampaignContentAsset).mockResolvedValue(undefined);
+    vi.mocked(db.saveCampaignContentAsset).mockResolvedValue({ version: 2, invalidatedReview: false } as never);
     const caller = appRouter.createCaller(ctx);
     const result = await caller.contents.attach({ id: 22, fileName: "material.pdf", mimeType: "application/pdf", base64: Buffer.from("arquivo").toString("base64") });
     expect(result.url).toBe("/manus-storage/campaigns/1/material.pdf");
+    expect(result).toMatchObject({ version: 2, reviewReopened: false });
     expect(db.saveCampaignContentAsset).toHaveBeenCalledWith(22, expect.objectContaining({ assetName: "material.pdf", assetMime: "application/pdf" }));
   });
 });
