@@ -15,6 +15,7 @@ import {
   campaignCapabilityProcedure,
   hasCampaignCapability,
   hasOrganizationCapability,
+  organizationCapabilityProcedure,
   requireCampaignAuthorization,
 } from "./campaignAuthorization";
 
@@ -24,6 +25,10 @@ function access(campaignRole: "admin" | "coordinator" | "partner" | null, organi
     member: campaignRole ? { id: campaignRole === "partner" ? 42 : 41, campaignId: 7, userId: 99, role: campaignRole } : null,
     organizationMember: { id: 5, organizationId: 3, userId: 99, role: organizationRole, active: true },
   } as never;
+}
+
+function organizationMembership(role: "admin" | "manager" | "operator" | "viewer") {
+  return { id: 5, organizationId: 3, userId: 99, role, active: true } as never;
 }
 
 function context(userId = 99): TrpcContext {
@@ -95,5 +100,19 @@ describe("campaign capability authorization", () => {
 
     vi.mocked(db.getCampaignAccess).mockResolvedValue(access("coordinator", "viewer") as never);
     await expect(testRouter.createCaller(context()).manage({ campaignId: 7 })).resolves.toEqual({ role: "coordinator" });
+  });
+
+  it("procedure builder de organização preserva manager e bloqueia operator", async () => {
+    const testRouter = router({
+      manage: organizationCapabilityProcedure("organization.manage")
+        .input(z.object({ organizationId: z.number().int().positive() }))
+        .query(({ ctx }) => ({ role: ctx.organizationAuthorization.organizationRole })),
+    });
+
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue(organizationMembership("operator"));
+    await expect(testRouter.createCaller(context()).manage({ organizationId: 3 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    vi.mocked(db.getOrganizationMembership).mockResolvedValue(organizationMembership("manager"));
+    await expect(testRouter.createCaller(context()).manage({ organizationId: 3 })).resolves.toEqual({ role: "manager" });
   });
 });
