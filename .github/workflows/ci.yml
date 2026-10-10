@@ -135,6 +135,8 @@ jobs:
         run: pnpm exec drizzle-kit migrate
       - name: Test critical write transactions on disposable MySQL
         run: pnpm exec vitest run server/criticalWriteCommands.integration.test.ts
+      - name: Test public abuse protection on shared MySQL
+        run: pnpm exec vitest run server/publicAbuseProtection.integration.test.ts
 
   secrets:
     name: secrets

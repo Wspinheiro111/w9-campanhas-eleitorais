@@ -77,9 +77,22 @@ describe("módulos prioritários", () => {
 
   it("recebe inscrição consentida de voluntário sem expor o painel administrativo", async () => {
     vi.mocked(db.getPublicCampaign).mockResolvedValue(campaign as never); vi.mocked(db.getVolunteerByEmail).mockResolvedValue(null); vi.mocked(db.createVolunteer).mockResolvedValue(81);
-    const result = await appRouter.createCaller(context()).volunteers.publicSignup({ campaignId: 1, name: "Ana Voluntária", email: "ana@example.com", neighborhood: "Centro", region: "Norte", consent: true });
-    expect(result).toEqual(expect.objectContaining({ id: 81, alreadyRegistered: false, portalToken: expect.any(String) }));
+    const result = await appRouter.createCaller(context()).volunteers.publicSignup({ campaignId: 1, name: "Ana Voluntária", email: " ANA@example.com ", neighborhood: "Centro", region: "Norte", consent: true, requestId: "11111111-1111-4111-8111-111111111111", formStartedAt: Date.now() - 2_000 });
+    expect(result).toEqual({ accepted: true, reference: expect.any(String) });
+    expect(result).not.toHaveProperty("id");
+    expect(result).not.toHaveProperty("alreadyRegistered");
+    expect(result).not.toHaveProperty("portalToken");
     expect(db.createVolunteer).toHaveBeenCalledWith(expect.objectContaining({ campaignId: 1, email: "ana@example.com", accessTokenHash: expect.any(String), consent: true, status: "pending" }));
+  });
+
+  it("não revela se o e-mail de voluntário já estava cadastrado", async () => {
+    vi.mocked(db.getPublicCampaign).mockResolvedValue(campaign as never);
+    vi.mocked(db.getVolunteerByEmail).mockResolvedValue({ id: 81, campaignId: 1, email: "ana@example.com" } as never);
+    const result = await appRouter.createCaller(context()).volunteers.publicSignup({ campaignId: 1, name: "Ana Voluntária", email: "ana@example.com", consent: true, requestId: "22222222-2222-4222-8222-222222222222", formStartedAt: Date.now() - 2_000 });
+    expect(result).toEqual({ accepted: true, reference: expect.any(String) });
+    expect(result).not.toHaveProperty("alreadyRegistered");
+    expect(result).not.toHaveProperty("portalToken");
+    expect(db.createVolunteer).not.toHaveBeenCalled();
   });
 
   it("retorna somente o portal do voluntário associado ao token privado", async () => {
