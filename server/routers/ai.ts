@@ -4,15 +4,10 @@ import { transcribeAudio } from "../_core/voiceTranscription";
 import * as campaignDb from "../campaignDb";
 import { OpenRouterApiError } from "../openrouter";
 import { extractDirectIdentifiers, generateThroughAiPrivacyGateway } from "../aiPrivacyGateway";
-import { protectedProcedure, router } from "../_core/trpc";
+import { router } from "../_core/trpc";
+import { campaignCapabilityProcedure } from "../campaignAuthorization";
 import { storageGetSignedUrl, storagePut } from "../storage";
 import { assertUploadRateLimit } from "../uploadRateLimit";
-
-async function ensureAiAccess(userId: number, campaignId: number) {
-  const access = await campaignDb.getCampaignAccess(campaignId, userId);
-  if (!access) throw new TRPCError({ code: "FORBIDDEN", message: "Você não possui acesso a esta campanha." });
-  return access;
-}
 
 const AI_GUARDRAILS = `Você é o assistente operacional W9 para gestão de campanhas eleitorais. Apoie planejamento, organização da equipe, agenda, acompanhamento de atividades, indicadores e comunicação institucional. Também pode explicar dúvidas gerais sobre eleições e normas eleitorais brasileiras em linguagem clara. Para temas eleitorais ou jurídicos, responda de modo informativo, indique que a resposta não substitui parecer jurídico e cite somente fontes oficiais quando mencionar normas: TSE (https://www.tse.jus.br/legislacao) e Planalto (https://www.planalto.gov.br/ccivil_03/). Não invente artigos, prazos, resoluções, jurisprudência ou links. Não use dados pessoais para inferir atributos sensíveis, fazer segmentação persuasiva individualizada ou direcionar mensagens a indivíduos. Não invente dados da campanha. Não produza instruções para violar normas eleitorais ou contornar fiscalização. Quando houver risco jurídico, destaque a necessidade de revisão pela equipe jurídica. Para indicações, sugira apenas categorias e critérios de avaliação; não invente fornecedores, serviços ou endossos. Responda em português do Brasil, com objetividade e organização.`;
 
@@ -22,9 +17,9 @@ function aiFailure(error: unknown) {
 }
 
 export const aiRouter = router({
-  history: protectedProcedure.input(z.object({ campaignId: z.number().int().positive() })).query(async ({ ctx, input }) => { await ensureAiAccess(ctx.user.id, input.campaignId); return campaignDb.listAiMessages(input.campaignId, ctx.user.id, "chat"); }),
-  chat: protectedProcedure.input(z.object({ campaignId: z.number().int().positive(), message: z.string().min(2).max(4000) })).mutation(async ({ ctx, input }) => {
-    const access = await ensureAiAccess(ctx.user.id, input.campaignId);
+  history: campaignCapabilityProcedure("campaign.read").input(z.object({ campaignId: z.number().int().positive() })).query(async ({ ctx, input }) => campaignDb.listAiMessages(input.campaignId, ctx.user.id, "chat")),
+  chat: campaignCapabilityProcedure("campaign.read").input(z.object({ campaignId: z.number().int().positive(), message: z.string().min(2).max(4000) })).mutation(async ({ ctx, input }) => {
+    const access = ctx.campaignAuthorization.access;
     const history = await campaignDb.listAiMessages(input.campaignId, ctx.user.id, "chat");
     await campaignDb.saveAiMessage({ campaignId: input.campaignId, userId: ctx.user.id, kind: "chat", role: "user", content: input.message });
     let answer: string;
@@ -32,8 +27,8 @@ export const aiRouter = router({
     await campaignDb.saveAiMessage({ campaignId: input.campaignId, userId: ctx.user.id, kind: "chat", role: "assistant", content: answer });
     return { answer };
   }),
-  generateContent: protectedProcedure.input(z.object({ campaignId: z.number().int().positive(), format: z.enum(["post", "roteiro", "nota", "convite"]), subject: z.string().min(3).max(600), objective: z.string().min(3).max(600), tone: z.enum(["institucional", "próximo", "informativo"]).default("institucional") })).mutation(async ({ ctx, input }) => {
-    const access = await ensureAiAccess(ctx.user.id, input.campaignId);
+  generateContent: campaignCapabilityProcedure("campaign.read").input(z.object({ campaignId: z.number().int().positive(), format: z.enum(["post", "roteiro", "nota", "convite"]), subject: z.string().min(3).max(600), objective: z.string().min(3).max(600), tone: z.enum(["institucional", "próximo", "informativo"]).default("institucional") })).mutation(async ({ ctx, input }) => {
+    const access = ctx.campaignAuthorization.access;
     const prompt = `Crie um ${input.format} de comunicação pública e institucional para a campanha ${access.campaign.name}. Tema: ${input.subject}. Objetivo: ${input.objective}. Tom: ${input.tone}. O texto deve ser geral, não usar dados pessoais, não fazer microsegmentação, evitar alegações não verificáveis e incluir uma nota curta de revisão antes da publicação.`;
     await campaignDb.saveAiMessage({ campaignId: input.campaignId, userId: ctx.user.id, kind: "content", role: "user", content: prompt, metadata: input });
     let content: string;
@@ -41,8 +36,8 @@ export const aiRouter = router({
     await campaignDb.saveAiMessage({ campaignId: input.campaignId, userId: ctx.user.id, kind: "content", role: "assistant", content });
     return { content };
   }),
-  processAudioCrm: protectedProcedure.input(z.object({ campaignId: z.number().int().positive(), filename: z.string().min(3).max(180), mimeType: z.enum(["audio/webm", "audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4"]), dataBase64: z.string().min(20).max(22_000_000), consentConfirmed: z.literal(true) })).mutation(async ({ ctx, input }) => {
-    const access = await ensureAiAccess(ctx.user.id, input.campaignId);
+  processAudioCrm: campaignCapabilityProcedure("field.write").input(z.object({ campaignId: z.number().int().positive(), filename: z.string().min(3).max(180), mimeType: z.enum(["audio/webm", "audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4"]), dataBase64: z.string().min(20).max(22_000_000), consentConfirmed: z.literal(true) })).mutation(async ({ ctx, input }) => {
+    const access = ctx.campaignAuthorization.access;
     const member = access.member;
     if (!member) throw new TRPCError({ code: "FORBIDDEN", message: "O processamento de áudio requer um vínculo ativo à campanha." });
     assertUploadRateLimit({ userId: ctx.user.id, campaignId: input.campaignId });
