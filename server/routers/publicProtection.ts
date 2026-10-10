@@ -2,9 +2,9 @@ import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { volunteers } from "../../drizzle/schema";
-import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { publicProcedure, router } from "../_core/trpc";
 import * as db from "../campaignDb";
-import { canManageCampaign, type CampaignRole } from "../campaignPolicy";
+import { campaignCapabilityProcedure } from "../campaignAuthorization";
 import { createPublicIntakeAtomic } from "../criticalWriteCommands";
 import { getDb } from "../db";
 import {
@@ -56,14 +56,6 @@ function verifyHumanForm(input: { website?: string | null; formStartedAt: number
 async function resolvePortalVolunteer(token: string) {
   if (unitTestWithoutDb()) return db.getVolunteerByAccessTokenHash(hashVolunteerToken(token));
   return getPublicAbuseStore().resolvePortalToken(token);
-}
-
-async function requireManageAccess(userId: number, campaignId: number) {
-  const access = await db.getCampaignAccess(campaignId, userId);
-  if (!access) throw new TRPCError({ code: "FORBIDDEN" });
-  const role = (access.member?.role ?? "admin") as CampaignRole;
-  if (!canManageCampaign(role)) throw new TRPCError({ code: "FORBIDDEN" });
-  return access;
 }
 
 const guardedPublicIntake = publicProcedure.input(z.object({
@@ -160,8 +152,7 @@ const completeTrainingMaterial = publicProcedure.input(z.object({ token: z.strin
   return db.completeVolunteerTrainingMaterial({ campaignId: volunteer.campaignId, materialId: material.id, volunteerId: volunteer.id });
 });
 
-const issuePortalAccess = protectedProcedure.input(z.object({ campaignId: z.number().int().positive(), volunteerId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-  await requireManageAccess(ctx.user.id, input.campaignId);
+const issuePortalAccess = campaignCapabilityProcedure("volunteers.manage").input(z.object({ campaignId: z.number().int().positive(), volunteerId: z.number().int().positive() })).mutation(async ({ input }) => {
   const drizzle = await getDb();
   if (!drizzle) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   const volunteer = (await drizzle.select({ id: volunteers.id }).from(volunteers).where(eq(volunteers.id, input.volunteerId)).limit(1))[0];
@@ -170,8 +161,7 @@ const issuePortalAccess = protectedProcedure.input(z.object({ campaignId: z.numb
   return { portalToken: result.token, expiresAt: result.expiresAt };
 });
 
-const revokePortalAccess = protectedProcedure.input(z.object({ campaignId: z.number().int().positive(), volunteerId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-  await requireManageAccess(ctx.user.id, input.campaignId);
+const revokePortalAccess = campaignCapabilityProcedure("volunteers.manage").input(z.object({ campaignId: z.number().int().positive(), volunteerId: z.number().int().positive() })).mutation(async ({ input }) => {
   await getPublicAbuseStore().revokePortalAccess(input);
   return { success: true as const };
 });
