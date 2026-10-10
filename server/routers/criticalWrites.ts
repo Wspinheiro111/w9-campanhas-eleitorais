@@ -3,7 +3,12 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import * as db from "../campaignDb";
-import { canAccessOwnedRecord, canManageCampaign, canManageTeam, type CampaignRole } from "../campaignPolicy";
+import {
+  assertOwnedCampaignRecord,
+  campaignCapabilityProcedure,
+  requireCampaignAuthorization,
+  requireCampaignCapability,
+} from "../campaignAuthorization";
 import { parseContactsCsv } from "../csvContacts";
 import { deduplicateWithFlask } from "../flaskDeduplication";
 import { evaluateCompliance } from "../complianceEngine";
@@ -25,21 +30,6 @@ import {
 } from "./campaign";
 
 const campaignIdInput = z.object({ campaignId: z.number().int().positive() });
-
-type Access = NonNullable<Awaited<ReturnType<typeof db.getCampaignAccess>>>;
-
-async function requireAccess(userId: number, campaignId: number): Promise<Access> {
-  const access = await db.getCampaignAccess(campaignId, userId);
-  if (!access) throw new TRPCError({ code: "FORBIDDEN", message: "Você não possui acesso a esta campanha." });
-  return access;
-}
-
-function requireCapability(access: Access, action: "manage" | "team" | "own_data") {
-  const role = (access.member?.role ?? "admin") as CampaignRole;
-  if (action === "team" && !canManageTeam(role)) throw new TRPCError({ code: "FORBIDDEN", message: "Somente administradores podem gerenciar a equipe." });
-  if (action === "manage" && !canManageCampaign(role)) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil possui acesso restrito aos próprios registros." });
-  return role;
-}
 
 function commandKey(input: { commandKey?: string }) {
   return input.commandKey ?? randomBytes(16).toString("hex");
@@ -111,10 +101,8 @@ const consentCreate = protectedProcedure.input(z.object({
 })).mutation(async ({ ctx, input }) => {
   const voter = await db.getVoter(input.voterId);
   if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
-  const access = await requireAccess(ctx.user.id, voter.campaignId);
-  if (access.member?.role === "partner" && !canAccessOwnedRecord("partner", voter.ownerMemberId, access.member.id)) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
+  const authorization = await requireCampaignAuthorization(ctx.user.id, voter.campaignId);
+  assertOwnedCampaignRecord(authorization, voter.ownerMemberId);
   return grantConsentAtomic({
     campaignId: voter.campaignId,
     commandKey: commandKey(input),
@@ -139,10 +127,12 @@ const consentRevoke = protectedProcedure.input(z.object({
   if (!record) throw new TRPCError({ code: "NOT_FOUND" });
   const voter = await db.getVoter(record.voterId);
   if (!voter) throw new TRPCError({ code: "NOT_FOUND" });
-  const access = await requireAccess(ctx.user.id, voter.campaignId);
-  requireCapability(access, "manage");
+  const authorization = requireCampaignCapability(
+    await requireCampaignAuthorization(ctx.user.id, voter.campaignId),
+    "consent.manage",
+  );
   await revokeConsentAtomic({
-    campaignId: voter.campaignId,
+    campaignId: authorization.access.campaign.id,
     commandKey: commandKey(input),
     consentId: input.consentId,
     actorUserId: ctx.user.id,
@@ -158,7 +148,7 @@ export const consentRouter = router({
   revoke: consentRevoke,
 });
 
-const commitCsv = protectedProcedure.input(campaignIdInput.extend({
+const commitCsv = campaignCapabilityProcedure("contacts.import").input(campaignIdInput.extend({
   csv: z.string().min(12).max(2_000_000),
   approvedUpdateRows: z.array(z.number().int().min(2)).max(1000),
   approvedCandidateRows: z.array(z.number().int().min(2)).max(1000),
@@ -167,7 +157,7 @@ const commitCsv = protectedProcedure.input(campaignIdInput.extend({
   importEvidence: z.string().max(3000).optional(),
   commandKey: z.string().uuid().optional(),
 })).mutation(async ({ ctx, input }) => {
-  const access = await requireAccess(ctx.user.id, input.campaignId);
+  const access = ctx.campaignAuthorization.access;
   const parsed = parseContactsCsv(input.csv);
   if (parsed.errors.length) return { imported: 0, updated: 0, skippedCandidates: 0, errors: parsed.errors, importedContacts: [], updatedContacts: [] };
 
@@ -237,7 +227,7 @@ export const votersRouter = router({
   commitCsv,
 });
 
-const contentCreate = protectedProcedure.input(campaignIdInput.extend({
+const contentCreate = campaignCapabilityProcedure("content.manage").input(campaignIdInput.extend({
   title: z.string().min(3).max(200),
   body: z.string().min(2).max(10000),
   assetUrl: z.string().url().max(1200).optional(),
@@ -252,8 +242,7 @@ const contentCreate = protectedProcedure.input(campaignIdInput.extend({
   status: z.enum(["draft", "review", "approved", "archived"]),
   commandKey: z.string().uuid().optional(),
 })).mutation(async ({ ctx, input }) => {
-  const access = await requireAccess(ctx.user.id, input.campaignId);
-  requireCapability(access, "manage");
+  const access = ctx.campaignAuthorization.access;
   if (input.ownerMemberId && !await db.getCampaignMember(input.campaignId, input.ownerMemberId)) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável editorial precisa pertencer a esta campanha." });
   }
@@ -317,7 +306,7 @@ export const contentsRouter = router({
   create: contentCreate,
 });
 
-const financialCreate = protectedProcedure.input(campaignIdInput.extend({
+const financialCreate = campaignCapabilityProcedure("finance.manage").input(campaignIdInput.extend({
   entryType: z.enum(["income", "expense"]),
   category: z.string().min(2).max(120),
   counterpartyName: z.string().min(2).max(220),
@@ -335,8 +324,6 @@ const financialCreate = protectedProcedure.input(campaignIdInput.extend({
   notes: z.string().max(3000).optional(),
   commandKey: z.string().uuid().optional(),
 })).mutation(async ({ ctx, input }) => {
-  const access = await requireAccess(ctx.user.id, input.campaignId);
-  requireCapability(access, "manage");
   const rules = await db.getCampaignComplianceRules(input.campaignId);
   const documentDigits = input.counterpartyDocument?.replace(/\D/g, "") ?? "";
   const decision = evaluateCompliance({
