@@ -45,8 +45,8 @@ function commandKey(input: { commandKey?: string }) {
   return input.commandKey ?? randomBytes(16).toString("hex");
 }
 
-function baseRecord(value: unknown): Record<string, any> {
-  return (value as any)._def.record as Record<string, any>;
+function baseRecord<TRecord extends Record<string, any>>(value: { _def: { record: TRecord } }): TRecord {
+  return value._def.record;
 }
 
 const publicSubmit = publicProcedure.input(z.object({
@@ -387,7 +387,7 @@ const financialCreate = protectedProcedure.input(campaignIdInput.extend({
 });
 
 const financeRecord = baseRecord(baseFinanceLegalRouter);
-const entriesRecord = baseRecord(financeRecord.entries);
+const entriesRecord = financeRecord.entries;
 
 export const financeLegalRouter = router({
   ...financeRecord,
