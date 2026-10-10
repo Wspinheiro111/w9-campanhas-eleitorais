@@ -300,7 +300,8 @@ export async function createFinancialWithComplianceAtomic(input: {
   requestedByUserId: number;
 } & TestHook) {
   if (useLegacyUnitTestAdapter()) {
-    const id = await legacyDb.createFinancialEntry({ campaignId: input.campaignId, ...input.entry });
+    const legacyEntry = { campaignId: input.campaignId, ...input.entry, createdByUserId: input.requestedByUserId } as Parameters<typeof legacyDb.createFinancialEntry>[0];
+    const id = await legacyDb.createFinancialEntry(legacyEntry);
     await legacyDb.recordCampaignComplianceDecision({
       campaignId: input.campaignId,
       action: "financial.register",
@@ -499,7 +500,7 @@ export async function commitVoterImportAtomic(input: {
   if (useLegacyUnitTestAdapter()) {
     const records = input.newContacts.map(contact => ({ ...contact, campaignId: input.campaignId }));
     const imported = await legacyDb.createVotersBatch(records);
-    await Promise.all(input.updates.map(update => legacyDb.updateVoterFromImport(update.voterId, update.values)));
+    await Promise.all(input.updates.map(update => legacyDb.updateVoterFromImport(update.voterId, update.values as Parameters<typeof legacyDb.updateVoterFromImport>[1])));
     const importedRows = await legacyDb.listImportContacts(input.campaignId);
     await Promise.all(importedRows.filter(contact => records.some(record => record.name === contact.name && record.phone === contact.phone && record.email === contact.email)).map(contact => legacyDb.appendCampaignConsentLedger({
       campaignId: input.campaignId,
