@@ -53,6 +53,8 @@ const ORGANIZATION_CAPABILITIES: Record<OrganizationRole, ReadonlySet<Organizati
   viewer: new Set<OrganizationCapability>(["organization.read"]),
 };
 
+const NO_ORGANIZATION_CAPABILITIES: ReadonlySet<OrganizationCapability> = new Set<OrganizationCapability>();
+
 const CAMPAIGN_CAPABILITIES: Record<CampaignRole, ReadonlySet<CampaignCapability>> = {
   admin: new Set<CampaignCapability>([
     "campaign.read",
@@ -100,7 +102,7 @@ const CAMPAIGN_CAPABILITIES: Record<CampaignRole, ReadonlySet<CampaignCapability
 export type CampaignAuthorization = {
   access: CampaignAccess;
   campaignRole: CampaignRole;
-  organizationRole: OrganizationRole;
+  organizationRole: OrganizationRole | null;
   currentMemberId: number | null;
   campaignCapabilities: ReadonlySet<CampaignCapability>;
   organizationCapabilities: ReadonlySet<OrganizationCapability>;
@@ -128,14 +130,18 @@ export function buildCampaignAuthorization(access: CampaignAccess, userId: numbe
     userId,
   });
   if (!campaignRole) return forbidden("Vínculo da campanha não encontrado.");
-  const organizationRole = normalizeOrganizationRole(access.organizationMember.role);
+  const organizationRole = access.organizationMember
+    ? normalizeOrganizationRole(access.organizationMember.role)
+    : null;
   return {
     access,
     campaignRole,
     organizationRole,
     currentMemberId: access.member?.id ?? null,
     campaignCapabilities: CAMPAIGN_CAPABILITIES[campaignRole],
-    organizationCapabilities: ORGANIZATION_CAPABILITIES[organizationRole],
+    organizationCapabilities: organizationRole
+      ? ORGANIZATION_CAPABILITIES[organizationRole]
+      : NO_ORGANIZATION_CAPABILITIES,
   };
 }
 
