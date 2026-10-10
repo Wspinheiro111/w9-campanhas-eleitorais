@@ -15,8 +15,10 @@ vi.mock("./campaignDb", () => ({
 import * as db from "./campaignDb";
 import { appRouter } from "./routers";
 
-const campaign = { id: 1, ownerId: 99, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active", createdAt: new Date(), updatedAt: new Date() };
+const campaign = { id: 1, organizationId: 3, ownerId: 99, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active", createdAt: new Date(), updatedAt: new Date() };
 const membership = { id: 10, campaignId: 1, userId: 99, role: "admin" as const };
+const organizationMember = { id: 30, organizationId: 3, userId: 99, role: "admin" as const, active: true };
+const campaignAccess = { campaign, member: membership, organizationMember } as never;
 
 function context(): TrpcContext {
   return { user: { id: 99, openId: "daily-import", name: "Admin", email: "admin@example.com", loginMethod: "manus", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() }, req: { protocol: "https", headers: {} } as TrpcContext["req"], res: {} as TrpcContext["res"] };
@@ -27,7 +29,7 @@ afterEach(() => vi.clearAllMocks());
 describe("resumo diário e importação CSV", () => {
   it("retorna o resumo diário para um usuário vinculado", async () => {
     const summary = { date: new Date(), overdue: [], dueToday: [], upcoming: [], todayEvents: [] };
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     vi.mocked(db.getDailySummary).mockResolvedValue(summary as never);
     const caller = appRouter.createCaller(context());
     await expect(caller.dashboard.dailySummary({ campaignId: 1 })).resolves.toEqual(summary);
@@ -35,7 +37,7 @@ describe("resumo diário e importação CSV", () => {
   });
 
   it("gera uma prévia de contatos novos sem persistir dados", async () => {
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     vi.mocked(db.listImportContacts).mockResolvedValue([]);
     const caller = appRouter.createCaller(context());
     const result = await caller.voters.previewCsv({ campaignId: 1, csv: "nome;telefone;consentimento\nAna Silva;51999990000;Sim" });
@@ -44,7 +46,7 @@ describe("resumo diário e importação CSV", () => {
   });
 
   it("atualiza apenas o contato existente aprovado pelo usuário", async () => {
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 8, name: "Ana Antiga", email: "ana@example.com", phone: null, neighborhood: "Centro", contactConsent: true, doNotContact: false }]);
     vi.mocked(db.createVotersBatch).mockResolvedValue(0);
     vi.mocked(db.updateVoterFromImport).mockResolvedValue(undefined);
@@ -55,7 +57,7 @@ describe("resumo diário e importação CSV", () => {
   });
 
   it("só cria possível duplicidade por nome e bairro quando ela é aprovada", async () => {
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     vi.mocked(db.listImportContacts).mockResolvedValue([{ id: 15, name: "Carla", email: null, phone: null, neighborhood: "Norte", contactConsent: true, doNotContact: false }]);
     vi.mocked(db.createVotersBatch).mockResolvedValue(0);
     const caller = appRouter.createCaller(context());
@@ -70,7 +72,7 @@ describe("resumo diário e importação CSV", () => {
   });
 
   it("não permite aplicar dados inválidos", async () => {
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member: membership } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     const caller = appRouter.createCaller(context());
     const result = await caller.voters.previewCsv({ campaignId: 1, csv: "nome;email;consentimento\nAna;invalido;Não" });
     expect(result.errors).toHaveLength(2);
