@@ -163,7 +163,7 @@ export function requireCampaignCapability(authorization: CampaignAuthorization, 
   return authorization;
 }
 
-export function requireOrganizationCapability(authorization: CampaignAuthorization | OrganizationAuthorization, capability: OrganizationCapability) {
+export function requireOrganizationCapability<T extends CampaignAuthorization | OrganizationAuthorization>(authorization: T, capability: OrganizationCapability): T {
   if (!hasOrganizationCapability(authorization, capability)) {
     return forbidden("Seu perfil não possui permissão para esta ação na organização.");
   }
