@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import {
   campaignComplianceDecisions,
   campaignConsentLedger,
@@ -234,8 +234,21 @@ export async function createPublicIntakeAtomic(input: {
     return { id };
   }
   return withCommand({ campaignId: input.campaignId, commandKey: input.commandKey, operation: "public_intake" }, async (tx, organizationId) => {
-    const inserted = await tx.insert(voters).values({ ...input.voter, organizationId, campaignId: input.campaignId });
-    const voterId = Number(inserted[0].insertId);
+    const identityMatch = input.voter.email && input.voter.phone
+      ? or(eq(voters.email, input.voter.email), eq(voters.phone, input.voter.phone))
+      : input.voter.email
+        ? eq(voters.email, input.voter.email)
+        : input.voter.phone
+          ? eq(voters.phone, input.voter.phone)
+          : null;
+    const existing = identityMatch
+      ? await tx.select({ id: voters.id }).from(voters).where(and(eq(voters.campaignId, input.campaignId), identityMatch)).orderBy(voters.id).limit(1)
+      : [];
+    let voterId = existing[0]?.id ?? null;
+    if (!voterId) {
+      const inserted = await tx.insert(voters).values({ ...input.voter, organizationId, campaignId: input.campaignId });
+      voterId = Number(inserted[0].insertId);
+    }
     if (input._testFailAfterPrimary) throw new Error("TEST_FAIL_AFTER_PRIMARY");
     await appendLedgerTx(tx, organizationId, {
       campaignId: input.campaignId,

@@ -456,6 +456,13 @@
       "when": 1791497133982,
       "tag": "0064_mandatory_compliance_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "5",
+      "when": 1791596791467,
+      "tag": "0065_public_abuse_guards",
+      "breakpoints": true
     }
   ]
 }

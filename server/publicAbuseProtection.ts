@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { createPool, type Pool, type RowDataPacket } from "mysql2/promise";
 import { campaigns, volunteers } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -49,8 +49,7 @@ export function opaquePublicReference(input: { campaignId: number; routeKey: str
 }
 
 export function publicCommandKey(input: { campaignId: number; routeKey: string; normalizedEmail?: string | null; normalizedPhone?: string | null; requestId: string }) {
-  const identity = input.normalizedEmail || input.normalizedPhone || input.requestId;
-  return hashPublicSignal(`${input.campaignId}:${input.routeKey}:${identity}`);
+  return hashPublicSignal(`${input.campaignId}:${input.routeKey}:request:${input.requestId}`);
 }
 
 export function assertPublicFormTiming(input: { website?: string | null; formStartedAt: number; now?: number; minimumMs?: number; maximumMs?: number }) {
@@ -168,11 +167,23 @@ export class PublicAbuseStore {
   }
 
   async revokePortalAccess(input: { campaignId: number; volunteerId: number }) {
-    await this.pool.execute(
-      `UPDATE volunteer_portal_tokens SET revokedAt = CURRENT_TIMESTAMP(3)
-        WHERE volunteerId = ? AND campaignId = ? AND revokedAt IS NULL`,
-      [input.volunteerId, input.campaignId],
-    );
+    const replacementHash = hashVolunteerToken(randomBytes(32).toString("base64url"));
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(
+        `UPDATE volunteer_portal_tokens SET revokedAt = CURRENT_TIMESTAMP(3)
+          WHERE volunteerId = ? AND campaignId = ? AND revokedAt IS NULL`,
+        [input.volunteerId, input.campaignId],
+      );
+      await connection.execute(`UPDATE volunteers SET accessTokenHash = ? WHERE id = ? AND campaignId = ?`, [replacementHash, input.volunteerId, input.campaignId]);
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback().catch(() => undefined);
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 }
 
@@ -204,8 +215,11 @@ export async function submitPublicVolunteer(input: {
   const reference = opaquePublicReference({ campaignId: input.campaignId, routeKey: "volunteer_signup", requestKey });
 
   if (process.env.NODE_ENV === "test" && !process.env.DATABASE_URL) {
-    const existing = await campaignDb.getVolunteerByEmail(input.campaignId, email);
-    if (!existing) {
+    const existingByEmail = await campaignDb.getVolunteerByEmail(input.campaignId, email);
+    const existingByPhone = !existingByEmail && phone
+      ? ((await campaignDb.listVolunteers(input.campaignId)) ?? []).find(item => normalizePublicPhone(item.phone) === phone)
+      : null;
+    if (!existingByEmail && !existingByPhone) {
       const unissuedHash = hashVolunteerToken(randomBytes(32).toString("base64url"));
       await campaignDb.createVolunteer({
         campaignId: input.campaignId,
@@ -232,7 +246,8 @@ export async function submitPublicVolunteer(input: {
   await db.transaction(async tx => {
     const campaignRows = await tx.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, input.campaignId)).for("update");
     if (!campaignRows[0]) throw new Error("CAMPAIGN_NOT_FOUND");
-    const existing = await tx.select({ id: volunteers.id }).from(volunteers).where(and(eq(volunteers.campaignId, input.campaignId), eq(volunteers.email, email))).limit(1);
+    const identityMatch = phone ? or(eq(volunteers.email, email), eq(volunteers.phone, phone)) : eq(volunteers.email, email);
+    const existing = await tx.select({ id: volunteers.id }).from(volunteers).where(and(eq(volunteers.campaignId, input.campaignId), identityMatch)).limit(1);
     if (existing[0]) return;
     const unissuedHash = hashVolunteerToken(randomBytes(32).toString("base64url"));
     await tx.insert(volunteers).values({

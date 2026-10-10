@@ -26,8 +26,8 @@ function baseRecord<TRecord extends Record<string, any>>(value: { _def: { record
   return value._def.record;
 }
 
-function remoteSignal(ctx: { req: { socket?: { remoteAddress?: string | null } } }) {
-  return ctx.req.socket?.remoteAddress || "unknown";
+function remoteSignal(ctx: { req: { ip?: string; socket?: { remoteAddress?: string | null } } }) {
+  return ctx.req.ip || ctx.req.socket?.remoteAddress || "unknown";
 }
 
 function unitTestWithoutDb() {
@@ -70,7 +70,7 @@ const guardedPublicIntake = publicProcedure.input(z.object({
   campaignId: z.number().int().positive(),
   name: z.string().min(2).max(180),
   phone: z.string().max(32).optional(),
-  email: z.string().email().optional(),
+  email: z.string().trim().email().optional(),
   neighborhood: z.string().max(120).optional(),
   region: z.string().max(120).optional(),
   contactProfile: z.string().max(120).optional(),
@@ -86,6 +86,7 @@ const guardedPublicIntake = publicProcedure.input(z.object({
   const phone = normalizePublicPhone(input.phone);
   const identity = email || phone || input.requestId;
   await rate({ campaignId: input.campaignId, routeKey: "public_intake_campaign", signal: "campaign", limit: 120, windowMs: 15 * 60_000 });
+  await rate({ campaignId: input.campaignId, routeKey: "public_intake_remote", signal: remoteSignal(ctx), limit: 30, windowMs: 15 * 60_000 });
   await rate({ campaignId: input.campaignId, routeKey: "public_intake_identity", signal: identity, limit: 8, windowMs: 15 * 60_000 });
   const commandKey = publicCommandKey({ campaignId: input.campaignId, routeKey: "public_intake", normalizedEmail: email, normalizedPhone: phone, requestId: input.requestId });
   await createPublicIntakeAtomic({
@@ -104,7 +105,7 @@ const guardedPublicIntake = publicProcedure.input(z.object({
 export const publicIntakeRouter = router({ ...baseRecord(basePublicIntakeRouter), submit: guardedPublicIntake });
 
 const publicSignup = publicProcedure.input(z.object({
-  campaignId: z.number().int().positive(), name: z.string().min(2).max(180), email: z.string().email().max(320), phone: z.string().max(32).optional(),
+  campaignId: z.number().int().positive(), name: z.string().min(2).max(180), email: z.string().trim().email().max(320), phone: z.string().max(32).optional(),
   neighborhood: z.string().max(120).optional(), region: z.string().max(120).optional(), availability: z.string().max(2000).optional(), skills: z.string().max(1000).optional(), consent: z.literal(true),
   requestId: z.string().uuid(), formStartedAt: z.number().int().positive(), website: z.string().max(200).optional(),
 })).mutation(async ({ ctx, input }) => {
@@ -114,6 +115,7 @@ const publicSignup = publicProcedure.input(z.object({
   const email = normalizePublicEmail(input.email);
   const phone = normalizePublicPhone(input.phone);
   await rate({ campaignId: input.campaignId, routeKey: "volunteer_signup_campaign", signal: "campaign", limit: 100, windowMs: 15 * 60_000 });
+  await rate({ campaignId: input.campaignId, routeKey: "volunteer_signup_remote", signal: remoteSignal(ctx), limit: 30, windowMs: 15 * 60_000 });
   await rate({ campaignId: input.campaignId, routeKey: "volunteer_signup_identity", signal: email, limit: 5, windowMs: 15 * 60_000 });
   return submitPublicVolunteer({ ...input, email, phone });
 });

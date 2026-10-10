@@ -22,7 +22,7 @@ describe("módulos de expansão", () => {
     vi.mocked(db.getPublicCampaign).mockResolvedValue({ id: 1, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active" } as never);
     vi.mocked(db.createVoter).mockResolvedValue(77);
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.publicIntake.submit({ campaignId: 1, name: "Ana", phone: "51999990000", consent: true })).resolves.toEqual({ id: 77 });
+    await expect(caller.publicIntake.submit({ campaignId: 1, name: "Ana", phone: "51999990000", consent: true, requestId: "11111111-1111-4111-8111-111111111111", formStartedAt: Date.now() - 2_000 })).resolves.toEqual({ accepted: true, reference: expect.any(String) });
     expect(db.createVoter).toHaveBeenCalledWith(expect.objectContaining({ contactConsent: true, pipelineStage: "identified", ownerMemberId: null }));
   });
 
