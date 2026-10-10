@@ -11,8 +11,10 @@ import * as db from "./campaignDb";
 import { storagePut } from "./storage";
 import { appRouter } from "./routers";
 
-const campaign = { id: 1, ownerId: 99, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active", createdAt: new Date(), updatedAt: new Date() };
+const campaign = { id: 1, organizationId: 3, ownerId: 99, name: "Campanha", candidateName: "Candidata", electionLabel: "Vereança", region: "Cidade", status: "active", createdAt: new Date(), updatedAt: new Date() };
 const member = { id: 10, campaignId: 1, userId: 99, role: "admin" as const };
+const organizationMember = { id: 30, organizationId: 3, userId: 99, role: "admin" as const, active: true };
+const campaignAccess = { campaign, member, organizationMember } as never;
 const ctx: TrpcContext = { user: { id: 99, openId: "growth-test", name: "Admin", email: "admin@example.com", loginMethod: "manus", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() }, req: { protocol: "https", headers: {} } as TrpcContext["req"], res: {} as TrpcContext["res"] };
 
 afterEach(() => vi.clearAllMocks());
@@ -28,7 +30,7 @@ describe("módulos de expansão", () => {
 
   it("move um contato no pipeline somente para membro com acesso", async () => {
     vi.mocked(db.getVoter).mockResolvedValue({ id: 4, campaignId: 1, ownerMemberId: 10 } as never);
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     vi.mocked(db.updateVoterPipeline).mockResolvedValue(undefined);
     vi.mocked(db.createFollowupForPipeline).mockResolvedValue({ id: 31, created: true });
     const caller = appRouter.createCaller(ctx);
@@ -38,7 +40,7 @@ describe("módulos de expansão", () => {
   });
 
   it("reserva a criação de conteúdo para perfis gestores", async () => {
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     vi.mocked(db.createCampaignContent).mockResolvedValue(22);
     const caller = appRouter.createCaller(ctx);
     await expect(caller.contents.create({ campaignId: 1, title: "Roteiro", body: "Conteúdo revisado", channel: "social", status: "draft" })).resolves.toMatchObject({ id: 22, compliance: { decision: "not_applicable" } });
@@ -46,7 +48,7 @@ describe("módulos de expansão", () => {
   });
 
   it("aplica filtros territoriais por período e responsável", async () => {
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     vi.mocked(db.getTerritoryData).mockResolvedValue({ territories: [], events: [], incidents: [] } as never);
     const caller = appRouter.createCaller(ctx);
     const startsAt = new Date("2026-08-01T00:00:00Z"); const endsAt = new Date("2026-08-15T23:59:59Z");
@@ -56,7 +58,7 @@ describe("módulos de expansão", () => {
 
   it("envia anexo de material ao armazenamento apenas para gestor da campanha", async () => {
     vi.mocked(db.getContentById).mockResolvedValue({ id: 22, campaignId: 1 } as never);
-    vi.mocked(db.getCampaignAccess).mockResolvedValue({ campaign, member } as never);
+    vi.mocked(db.getCampaignAccess).mockResolvedValue(campaignAccess);
     vi.mocked(storagePut).mockResolvedValue({ key: "campaigns/1/material.pdf", url: "/manus-storage/campaigns/1/material.pdf" });
     vi.mocked(db.saveCampaignContentAsset).mockResolvedValue({ version: 2, invalidatedReview: false } as never);
     const caller = appRouter.createCaller(ctx);
