@@ -1,5 +1,7 @@
 export { aiRouter } from "./ai";
-export { campaignRouter, communicationRouter, complianceRouter, crisisRouter, dashboardRouter, fieldRouter, followupsRouter, insightsRouter, monitoringRouter, operationsRouter, planningRouter, publicEventsRouter, reportsRouter, territoryRouter } from "./campaign";
+export { communicationRouter, complianceRouter, crisisRouter, fieldRouter, followupsRouter, insightsRouter, monitoringRouter, operationsRouter, planningRouter, publicEventsRouter, reportsRouter, territoryRouter } from "./campaign";
+export { campaignRouter } from "./campaignBasics";
+export { dashboardRouter } from "./dashboard";
 export { goalsRouter } from "./goals";
 export { tasksRouter } from "./tasks";
 export { teamRouter } from "./team";
